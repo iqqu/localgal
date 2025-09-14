@@ -1,0 +1,200 @@
+{{define "file.gohtml"}}
+{{$title := printf "%s - %s" (or (and .File.Title.Valid .File.Title.String) (or (and .File.Urlid.Valid .File.Urlid.String) (printf "%d" .File.FileId))) .File.RipperHost}}
+{{template "base_start" (dict "title" $title)}}
+  {{if or .Prev .Next}}
+    <div class="pv-rail" style="display:flex; gap: 1rem; align-items:stretch; margin: 0.75rem 0;">
+      <div style="flex:1; overflow:hidden;">
+        <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
+          {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">Start</div></div>{{end}}
+          {{range .Prev}}
+            <a class="card-link" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+              <div class="card thumb">
+                {{ if and .Filename.Valid .MimeType.Valid }}
+                  {{ $fn := .Filename.String }}
+                  {{ $urlid := (or (and .Urlid.Valid .Urlid.String) "") }}
+                  {{ $src := mediaURL $.File.RipperHost $.CurrentAlbum.Gid $fn $urlid }}
+                  {{ if hasPrefix .MimeType.String "video/" }}
+                    <div class="video-container">
+                      <video preload="metadata" src="{{$src}}"></video>
+                    </div>
+                  {{ else }}{{/* assume image */}}
+                    <img src="{{$src}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                  {{ end }}
+                {{ else }}
+                  <p>[no thumbnail]</p>
+                {{ end }}
+              </div>
+            </a>
+          {{end}}
+        </div>
+      </div>
+      <div class="muted" style="width:80px; display: flex; flex-direction:column; text-align: center; justify-content:space-around;">
+        {{if .CurrentAlbum}}
+          <div><a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}"><span style="display: block">&uparrow;</span>Back to Gallery</a></div>
+        {{end}}
+        <div>&larr;&nbsp;Browse&nbsp;&rarr;</div>
+      </div>
+      <div style="flex:1; overflow:hidden;">
+        <div class="pv-next" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-start;">
+          {{range .Next}}
+            <a class="card-link" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+              <div class="card thumb">
+                {{ if and .Filename.Valid .MimeType.Valid }}
+                  {{ $fn := .Filename.String }}
+                  {{ $urlid := (or (and .Urlid.Valid .Urlid.String) "") }}
+                  {{ $src := mediaURL $.File.RipperHost $.CurrentAlbum.Gid $fn $urlid }}
+                  {{ if hasPrefix .MimeType.String "video/" }}
+                    <div class="video-container">
+                      <video preload="metadata" src="{{$src}}"></video>
+                    </div>
+                  {{ else }}{{/* assume image */}}
+                    <img src="{{$src}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                  {{ end }}
+                {{ else }}
+                  <p>[no thumbnail]</p>
+                {{ end }}
+              </div>
+            </a>
+          {{end}}
+          {{if lt (len .Next) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">End</div></div>{{end}}
+        </div>
+      </div>
+    </div>
+  {{end}}
+
+  <a id="main-content"></a>
+  <div class="card">
+    {{ if and .File.Filename.Valid .File.MimeType.Valid }}
+      {{ $fn := .File.Filename.String }}
+      {{ $urlid := (or (and .File.Urlid.Valid .File.Urlid.String) "") }}
+      {{ $src := mediaURL .File.RipperHost .CurrentAlbum.Gid $fn $urlid }}
+      <div class="full-bleed">
+        <input type="checkbox" id="fb-expand" hidden />
+        <div class="fb-wrap">
+          <label for="fb-expand">
+            {{ if hasPrefix .File.MimeType.String "video/" }}
+              <div class="video-container">
+                <video class="fb-content main-content-resource" loop controls src="{{$src}}"></video>
+              </div>
+            {{ else }}
+              <img class="fb-content main-content-resource" src="{{$src}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
+            {{ end }}
+          </label>
+        </div>
+      </div>
+      <div class="fb-label">
+        <label for="fb-expand" class="fb-label-expand">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to expand]</label>
+        <label for="fb-expand" class="fb-label-contract">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to contract]</label>
+      </div>
+    {{ else }}
+      <div class="muted">No media filename available.</div>
+    {{ end }}
+
+    <h1>{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}{{if .File.Hidden}} <span class="muted" title="This file is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
+
+    <p class="muted" style="margin-top:0.5rem;">
+      {{if .CurrentAlbum}}
+        In album: <a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>
+      {{end}}
+    </p>
+    {{if .File.Filename.Valid}}
+      <p>Filename: <code>{{.File.Filename.String}}</code></p>
+    {{end}}
+    {{if .File.Description.Valid}}
+      <p>{{.File.Description.String}}</p>
+    {{end}}
+    <table>
+      <tr>
+        <td>Uploaded</td>
+        <td>{{if .File.UploadedTs.Valid}}{{fmtDateMillis .File.UploadedTs.Int64}}{{else}}n/a{{end}}</td>
+      </tr>
+      <tr>
+        <td>Local remote_file_id</td>
+        <td><code>{{.File.FileId}}</code></td>
+      </tr>
+      {{if and .CurrentAlbum (gt .CurrentAlbum.AlbumId 0)}}
+        <tr>
+          <td>Local album_id</td>
+          <td><code>{{.CurrentAlbum.AlbumId}}</code></td>
+        </tr>
+      {{end}}
+      <tr>
+        <td>Host</td>
+        <td>{{.File.RipperHost}}</td>
+      </tr>
+      <tr>
+        <td>First Fetched</td>
+        <td>{{fmtDateMillis .File.InsertedTs}}</td>
+      </tr>
+
+      {{if .File.Uploader.Valid}}
+        <tr>
+          <td>Uploader</td>
+          <td>{{.File.Uploader.String}}</td>
+        </tr>
+      {{end}}
+      {{if .File.UploadedTs.Valid}}
+        <tr>
+          <td>Updated</td>
+          <td>{{fmtDateMillis .File.UploadedTs.Int64}}</td>
+        </tr>
+      {{end}}
+      {{if .CurrentAlbum}}
+        {{if .CurrentAlbum.Gid}}
+          <tr>
+            <td>Album GID</td>
+            <td>{{.CurrentAlbum.Gid}}</td>
+          </tr>
+        {{end}}
+        {{if .CurrentAlbum.Title.Valid}}
+          <tr>
+            <td>Album Title</td>
+            <td>{{.CurrentAlbum.Title.String}}</td>
+          </tr>
+        {{end}}
+      {{end}}
+    </table>
+    {{if .FileTags}}
+      <h3>Tags</h3>
+      <p class="chips">
+        {{range .FileTags}}
+          <a href="/tag/{{.Name | urlquery}}">{{.Name}}</a>
+        {{end}}
+      </p>
+    {{end}}
+  </div>
+
+  {{if .AsyncAlbums}}
+    {{/* Load album HTML fragment with JS */}}
+    <div id="async-albums">
+      <div style="display: flex; align-items: center"><img src="/static/spinner.svg" alt="Loading"/>Loading related galleries...</div>
+    </div>
+    <script>
+      (function () {
+        const host = {{.File.RipperHost}};
+        const fileId = {{.File.FileId}};
+        fetch(`/file/${host}/${fileId}/galleries`)
+            .then(function (response) {
+              if (response.ok) {
+                return response.text();
+              } else {
+                throw new Error('Unable to load related galleries');
+              }
+            })
+            .then(function (text) {
+              document.querySelector('#async-albums').innerHTML = text;
+            })
+            .catch(function (error) {
+              document.querySelector('#async-albums').innerHTML = error;
+            });
+      })();
+    </script>
+  {{else if .Albums}}
+    {{/* Client does not have JS on, or first page load */}}
+    <div>
+      {{template "file_galleries.gohtml" .}}
+    </div>
+  {{end}}
+  <div class="pushup"></div>
+{{template "base_end" .}}
+{{end}}

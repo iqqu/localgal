@@ -1,0 +1,29 @@
+{{define "about.gohtml"}}
+{{template "base_start" (dict "title" "About")}}
+<h1>About LocalGal</h1>
+<img src="/static/localgal.svg" alt="LocalGal Icon" style="width:80px; height:auto;"/>
+<p>Local Gallery web server. Companion to RipMe3 app.</p>
+<p><em>"Browse your gals with pleasure!"</em></p>
+
+<h2>Shortcuts</h2>
+<table class="shortcuts">
+  <tr><td><kbd class="alpha">f</kbd></td><td>Random File</td></tr>
+  <tr><td><kbd class="alpha">g</kbd></td><td>Random Gallery</td></tr>
+  <tr><td><kbd class="alpha">i</kbd></td><td>Toggle Image Zoom</td></tr>
+  <tr><td><kbd>&larr;</kbd> or <kbd class="alpha">h</kbd></td><td>Previous Item or Page</td></tr>
+  <tr><td><kbd class="alpha">j</kbd></td><td>Jump to Top</td></tr>
+  <tr><td><kbd class="alpha">k</kbd></td><td>Jump to Content</td></tr>
+  <tr><td><kbd>&rarr;</kbd> or <kbd class="alpha">l</kbd></td><td>Next Item or Page</td></tr>
+  <tr><td><kbd>Shift</kbd>+<kbd class="alpha">j</kbd></td><td>Toggle Autojump</td></tr>
+</table>
+
+<h2>Links</h2>
+<p>To prevent accidental web requests, please manually copy-paste the links.</p>
+<ul style="line-height: 1.5">
+  <li>Source code: <span style="text-decoration: black underline">https://github.com/iqqu/localgal</span></li>
+  <li>Please report issues to: <span style="text-decoration: black underline">https://github.com/iqqu/localgal/issues</span></li>
+  <li>RipMe3 app: <span style="text-decoration: black underline">https://github.com/RipMeApp3/ripme</span></li>
+</ul>
+
+{{template "base_end" .}}
+{{end}}

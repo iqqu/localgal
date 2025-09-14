@@ -1,0 +1,33 @@
+{{define "tags.gohtml"}}
+{{template "base_start" (dict "title" "Tags")}}
+  <h1>Tags</h1>
+  {{if or .ImageTags .AlbumTags}}
+    {{/* File tags */}}
+    {{if .ImageTags}}
+      <h2>File tags</h2>
+      <div class="card">
+        <p class="chips">
+          {{range .ImageTags}}
+            <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+          {{end}}
+        </p>
+      </div>
+    {{end}}
+
+    {{/* Album tags */}}
+    {{if .AlbumTags}}
+      <h2>Album tags</h2>
+      <div class="card">
+        <p class="chips">
+          {{range .AlbumTags}}
+            <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+          {{end}}
+        </p>
+      </div>
+    {{end}}
+
+  {{else}}
+    <p class="muted">No tags available.</p>
+  {{end}}
+{{template "base_end" .}}
+{{end}}

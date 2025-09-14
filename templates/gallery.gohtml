@@ -1,0 +1,101 @@
+{{define "gallery.gohtml"}}
+{{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
+{{template "base_start" (dict "title" $title)}}
+  <p><a href="/">← Back to Galleries</a></p>
+  <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}} <span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
+
+  {{if .Files}}
+    <div class="pager">
+      <div>
+        {{if .HasPrev}}
+          <a class="pager-prev" href="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}?page={{sub .Page 1}}&size={{.PageSize}}">← Previous</a>
+        {{else}}
+          <span class="muted">← Previous</span>
+        {{end}}
+      </div>
+      <div class="muted">Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
+      <form method="get" action="/" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <label class="muted">
+          <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
+        </label>
+        <input type="hidden" name="size" value="{{.PageSize}}">
+        <button type="submit">Go</button>
+      </form>
+      <div>
+        {{if .HasNext}}
+          <a class="pager-next" href="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}?page={{add .Page 1}}&size={{.PageSize}}">Next →</a>
+        {{else}}
+          <span class="muted">Next →</span>
+        {{end}}
+      </div>
+    </div>
+    <div class="masonry">
+      {{range .Files}}
+        <a class="card-link masonry-item" href="/gallery/{{$.Album.RipperHost}}/{{$.Album.Gid}}/{{.FileId}}" title="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}">
+          <div class="card thumb">
+            {{ if and .Filename.Valid .MimeType.Valid }}
+              {{ $fn := .Filename.String }}
+              {{ $urlid := (or (and .Urlid.Valid .Urlid.String) .FileId) }}
+              {{ $src := mediaURL .RipperHost $.Album.Gid $fn $urlid }}
+              {{ if hasPrefix .MimeType.String "video/" }}
+                <div class="video-container">
+                  <video preload="metadata" src="{{$src}}"></video>
+                </div>
+              {{ else }}{{/* assume image */}}
+                <img src="{{$src}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+              {{ end }}
+            {{ else }}
+              <p>[no thumbnail]</p>
+            {{ end }}
+            <div class="muted" style="margin-top: 0.5rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span title="This file is hidden" style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
+          </div>
+        </a>
+      {{end}}
+    </div>
+    <div class="pager">
+      <div>
+        {{if .HasPrev}}
+          <a class="pager-prev" href="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}?page={{sub .Page 1}}&size={{.PageSize}}">← Previous</a>
+        {{else}}
+          <span class="muted">← Previous</span>
+        {{end}}
+      </div>
+      <div class="muted">Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
+      <form method="get" action="/" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <label class="muted">
+          <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
+        </label>
+        <input type="hidden" name="size" value="{{.PageSize}}">
+        <button type="submit">Go</button>
+      </form>
+      <div>
+        {{if .HasNext}}
+          <a class="pager-next" href="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}?page={{add .Page 1}}&size={{.PageSize}}">Next →</a>
+        {{else}}
+          <span class="muted">Next →</span>
+        {{end}}
+      </div>
+    </div>
+  {{else}}
+    <p class="muted">This album has no items.</p>
+  {{end}}
+
+  {{if .AlbumTags}}
+    <h3>Tags</h3>
+    <p class="chips">
+      {{range .AlbumTags}}
+        <a href="/tag/{{.Name | urlquery}}">{{.Name}}</a>
+      {{end}}
+    </p>
+  {{end}}
+
+  {{if .FileTags}}
+    <h3>File Tags in Album</h3>
+    <p class="chips">
+      {{range .FileTags}}
+        <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+      {{end}}
+    </p>
+  {{end}}
+{{template "base_end" .}}
+{{end}}

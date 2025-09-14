@@ -1,0 +1,70 @@
+{{define "base_start"}}
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{/*<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />*/}}
+  <title>{{.title}} - LocalGal</title>
+  <link rel="stylesheet" type="text/css" href="/static/app.css"/>
+  <link rel="icon" type="image/svg+xml" href="/static/localgal.svg"/>
+  <script src="/static/app.js"></script>
+  <script>
+    (function(){
+      const jsRequredStyle = document.createElement('style');
+      jsRequredStyle.textContent = '.js-required {display: initial}';
+      document.head.appendChild(jsRequredStyle);
+    })();
+  </script>
+</head>
+<body>
+  <a id="top" href="#top" style="visibility: collapse"></a>
+  <header>
+    <div style="max-width: 960px; width: 100%; margin: 0 auto; display:flex; justify-content:space-between; align-items:center;">
+      <div style="display: flex; align-items:center; gap: .1rem;">
+        <a href="/">LocalGal</a>
+        <span class="muted"> | </span>
+        <a href="/tags">Tags</a>
+      </div>
+      <div style="display: flex; align-items:center; gap: .1rem;">
+        <a id="jump-to-content-link" href="#main-content">Jump to Content</a>
+        <span class="js-required">
+          <span class="muted"> | </span>
+          <label>
+            <input type="checkbox" id="auto-jump-checkbox"> Autojump
+          </label>
+        </span>
+      </div>
+      <div class="muted" style="display: flex; align-items:center; gap: .1rem; font-size:0.95rem;">
+        <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery">
+          <span style="font-size: 1.2rem;">&#x2684;{{/*die 5-face*/}}</span>
+          Gallery
+        </a>
+        <span class="muted"> | </span>
+        <a id="random-file-link" href="/random/file" title="Go to a random file">
+          <span style="font-size: 1.2rem;">&#x2684;{{/*die 5-face*/}}</span>
+          File
+        </a>
+      </div>
+      <div style="display: flex; align-items:center; gap: .1rem;">
+        <a href="/about" title="About">?</a>
+      </div>
+    </div>
+  </header>
+  <main>
+{{end}}
+
+{{define "base_end"}}
+  </main>
+  <footer>
+    <div style="display:flex; justify-content:center; align-items:center;">
+      <small class="muted">
+        <span title="Render performance">SQL: {{or .Perf.SQLCount 0}} queries in {{fmtMillis .Perf.SQLTime}} | Page: {{finalPageMillis .Perf}}</span>
+        |
+        <span title="Build information">Version: {{appVersion}}{{if appCommit}} ({{appCommit}}){{end}}{{if appBuildDate}} | built {{appBuildDate}}{{end}}</span>
+      </small>
+    </div>
+  </footer>
+</body>
+</html>
+{{end}}

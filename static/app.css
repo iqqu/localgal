@@ -1,0 +1,119 @@
+:root {
+    --base-padding: 0.75rem;
+    --grid-gap: 0.5rem;
+    --header-height: 35px;
+    --main-margin: var(--base-padding);
+    --thumb-padding: 0.25rem;
+    --thumb-border-width: 1px;
+    --card-padding: 0.75rem;
+    --card-border-width: 1px;
+    --pv-rail-height: 100px;
+    --pv-rail-margin: 0.75rem;
+    --content-min-height: 250px;
+}
+
+*, *::before, *::after {box-sizing: border-box;}
+* { margin: 0 }
+img, picture, video, canvas, svg {display: block;max-width: 100%;}
+html {scrollbar-gutter: stable;}
+/*Chrome scroll-behavior smooth is bugged; sometimes scrollIntoView goes too far or stops too early*/
+/*.scroll-smooth {scroll-behavior: smooth;}*/
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fafafa; color: #222; }
+header { height: var(--header-height); background: #222; color: #fff; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
+header a { color: #fff; text-decoration: none; border-bottom: 1px dotted; display: inline-flex; align-items: center; }
+/*header img { display: inline;max-height: 1em;vertical-align: middle;}*/
+h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; }
+h2 { margin: 0.35rem 0 0.5rem; font-size: 1.2rem; }
+h3 { margin: 0.3rem 0 0.4rem; font-size: 1.1rem; }
+p { margin: 0.35rem 0; }
+main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0 1rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--grid-gap); }
+/* Masonry layout for variable-height thumbnails on gallery page */
+.masonry { column-gap: var(--base-padding); }
+@media (min-width: 400px) { .masonry { column-count: 2; } }
+@media (min-width: 480px) { .masonry { column-count: 3; } }
+@media (min-width: 800px) { .masonry { column-count: 4; } }
+@media (min-width: 1100px) { .masonry { column-count: 5; } }
+.masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; -moz-column-break-inside: avoid; display: block; margin: 0 0 0.6rem 0; }
+/* Override square thumbs within masonry to allow natural heights */
+.masonry .thumb img, .masonry .thumb video { aspect-ratio: auto; height: auto; object-fit: contain; }
+.card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: var(--card-padding); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.muted { color: #666; font-size: 0.9rem; }
+a.card-link { text-decoration: none; color: inherit; }
+.hidden { font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
+.removed { font-size:0.8em; border:1px solid #fb8276; color:#952438; background:#fed1c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
+ul { padding-left: 1.2rem; }
+.file { padding: 0.5rem 0; border-bottom: 1px dashed #eee; }
+.file:last-child { border-bottom: none; }
+code { background: #f5f5f5; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.thumb { padding: var(--thumb-padding); }
+.thumb img, .thumb video { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 6px; display: block; background: #f3f4f6; }
+.thumb video {pointer-events: none;}
+.chips a { display:inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.4rem; background: #f0f0f0; border-radius: 999px; font-size: 0.9rem; text-decoration: none; color: inherit; }
+footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; color: #666; }
+.pager { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); display:flex; justify-content: center; align-items:center; margin: 0.5rem 0; font-size: 0.9rem; padding: 0.2rem; gap: 1rem; }
+.pushup {background-image: radial-gradient(circle, rgba(0,0,0,.1) 20%, transparent 20%, transparent 80%, rgba(0,0,0,.1) 80%);background-size: 10px 10px;background-position: center;height: 300px;width: 100%; }
+.js-required {display: none;}
+
+/****** File page ******/
+.pv-rail {
+    max-height: var(--pv-rail-height);
+}
+.pv-rail img, .pv-rail video {
+    height: calc(var(--pv-rail-height) - 2 * (var(--thumb-border-width) + var(--thumb-padding)));
+}
+
+.full-bleed {text-align: center;}
+.fb-wrap {display: block;text-align: center;}
+.fb-wrap label {display: inline-block;}
+/*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
+.full-bleed input:checked ~ .fb-wrap {width: calc(100vw - 2rem);position: relative;left: 50%;right: 50%;margin-left: calc(1rem - 50vw);margin-right: calc(1rem - 50vw);}
+/* simpler to use !important than to add specificity for each case */
+.full-bleed input:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
+
+.fb-label {display: flex;justify-content: center;margin-top: var(--card-padding);user-select: none;}
+.fb-label label.fb-label-expand {display: block;cursor: pointer;}
+.fb-label label.fb-label-contract {display: none;cursor: pointer;}
+.full-bleed:has(input:checked) ~ .fb-label label.fb-label-expand {display: none;}
+.full-bleed:has(input:checked) ~ .fb-label label.fb-label-contract {display: block;}
+
+.fb-wrap img {
+    cursor: pointer;
+    display: block;
+}
+/* rail shown */
+.pv-rail ~ * .full-bleed input ~ .fb-wrap .fb-content {
+    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
+}
+/* rail not shown */
+.full-bleed input ~ .fb-wrap .fb-content {
+    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - var(--main-margin) - var(--card-border-width) - var(--card-padding) * 2));
+}
+/* main content */
+#main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
+    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
+}
+
+/* No full bleed for video; expand/contract would be too annoying with click-to-play */
+.fit-to-view video {
+    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
+}
+#main-content:target + * .fit-to-view video {
+    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
+}
+
+.shortcuts td {padding: .2rem;}
+.shortcuts td:first-child {text-align: right;}
+.shortcuts kbd {border-radius: 3px;border: 1px solid #bbb;box-shadow: 0 2px 2px rgba(0,0,0,0.2);padding: .1rem .2rem;margin:-.1rem 0;min-width: 1.3rem;display: inline-block;text-align: center;font-family: sans-serif;}
+.shortcuts kbd.alpha {font-family: monospace;}
+
+
+/* Video thumbnail indicator */
+.thumb .video-container {position: relative;}
+.thumb .video-container::before,
+.thumb .video-container::after {content: '';position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);transition: opacity 0.3s ease;}
+/* Play button circle */
+.thumb .video-container::before {width: 2rem;height: 2rem;background-color: rgba(0, 0, 0, 0.8);border-radius: 100%;opacity: 0.7;}
+/* Play button triangle */
+.thumb .video-container::after {width: 0;height: 0;border-style: solid;border-width: 0.5rem 0 0.5rem 0.9rem;border-color: transparent transparent transparent #ccc;margin-left: 0.1rem;}
+
