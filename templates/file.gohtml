@@ -169,25 +169,9 @@
     <div id="async-albums">
       <div style="display: flex; align-items: center"><img src="/static/spinner.svg" alt="Loading"/>Loading related galleries...</div>
     </div>
-    <script>
-      (function () {
-        const host = {{.File.RipperHost}};
-        const fileId = {{.File.FileId}};
-        fetch(`/file/${host}/${fileId}/galleries`)
-            .then(function (response) {
-              if (response.ok) {
-                return response.text();
-              } else {
-                throw new Error('Unable to load related galleries');
-              }
-            })
-            .then(function (text) {
-              document.querySelector('#async-albums').innerHTML = text;
-            })
-            .catch(function (error) {
-              document.querySelector('#async-albums').innerHTML = error;
-            });
-      })();
+    <script src="/static/file_galleries.js">
+      {{/*  const host = {{.File.RipperHost}};*/}}
+      {{/*  const fileId = {{.File.FileId}};*/}}
     </script>
   {{else if .Albums}}
     {{/* Client does not have JS on, or first page load */}}

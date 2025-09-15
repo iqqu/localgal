@@ -1,3 +1,10 @@
+// This should be done ASAP and can be done before DOMContentLoaded to prevent FOUC
+(function(){
+    const jsRequredStyle = document.createElement('style');
+    jsRequredStyle.textContent = '.js-required {display: initial}';
+    document.head.appendChild(jsRequredStyle);
+})();
+
 (function () {
     // Let the server know that we are using JavaScript so we can dynamically load content
     // The server will clear the cookie upon sending a page response,

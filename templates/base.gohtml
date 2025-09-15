@@ -4,18 +4,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {{/*<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />*/}}
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
   <title>{{.title}} - LocalGal</title>
   <link rel="stylesheet" type="text/css" href="/static/app.css"/>
   <link rel="icon" type="image/svg+xml" href="/static/localgal.svg"/>
   <script src="/static/app.js"></script>
-  <script>
-    (function(){
-      const jsRequredStyle = document.createElement('style');
-      jsRequredStyle.textContent = '.js-required {display: initial}';
-      document.head.appendChild(jsRequredStyle);
-    })();
-  </script>
 </head>
 <body>
   <a id="top" href="#top" style="visibility: collapse"></a>
