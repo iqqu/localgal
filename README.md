@@ -13,6 +13,8 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
   * Hotkeys enabled
   * Auto jump to content enabled
 
+[Screenshots](https://github.com/iqqu/localgal/wiki/Screenshots)
+
 Pages:
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery
