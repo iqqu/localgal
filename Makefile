@@ -17,7 +17,7 @@ build:
 	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN) $(PKG)
 
 run: build
-	./$(BIN)
+	./$(BINDIR)/$(BIN)
 
 clean:
 	rm -f $(BIN)
