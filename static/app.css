@@ -40,6 +40,8 @@ main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0 1
 .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: var(--card-padding); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .muted { color: #666; font-size: 0.9rem; }
 a.card-link { text-decoration: none; color: inherit; }
+.fade-bottom {position: relative;overflow: hidden;}
+.fade-bottom::after {content: '';position: absolute;left: 0;right: 0;bottom: 0;height: 2em;background-image: linear-gradient(to top, rgba(255, 255, 255, 1), transparent);}
 .hidden { font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
 .removed { font-size:0.8em; border:1px solid #fb8276; color:#952438; background:#fed1c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
 ul { padding-left: 1.2rem; }
