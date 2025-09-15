@@ -2,3 +2,5 @@
 
 /localgal.sqlite*
 /ripme.sqlite*
+/bin/
+/dist/
