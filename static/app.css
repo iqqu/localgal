@@ -22,9 +22,9 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; marg
 header { height: var(--header-height); background: #222; color: #fff; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
 header a { color: #fff; text-decoration: none; border-bottom: 1px dotted; display: inline-flex; align-items: center; }
 /*header img { display: inline;max-height: 1em;vertical-align: middle;}*/
-h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; }
-h2 { margin: 0.35rem 0 0.5rem; font-size: 1.2rem; }
-h3 { margin: 0.3rem 0 0.4rem; font-size: 1.1rem; }
+h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; word-wrap: break-word; }
+h2 { margin: 0.35rem 0 0.5rem; font-size: 1.2rem; word-wrap: break-word; }
+h3 { margin: 0.3rem 0 0.4rem; font-size: 1.1rem; word-wrap: break-word; }
 p { margin: 0.35rem 0; }
 main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0 1rem; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--grid-gap); }
