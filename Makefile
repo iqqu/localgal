@@ -22,5 +22,5 @@ run: build
 clean:
 	rm -f $(BIN)
 
- test:
+test:
 	go test ./...
