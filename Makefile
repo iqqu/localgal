@@ -20,7 +20,7 @@ run: build
 	./$(BINDIR)/$(BIN)
 
 clean:
-	rm -f $(BIN)
+	rm -f $(BINDIR)/$(BIN)
 
 test:
 	go test ./...
