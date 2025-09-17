@@ -158,6 +158,12 @@ func perfTracker(parent context.Context, next func(ctx context.Context, p *Perf)
 	start := time.Now()
 	p := Perf{Start: start}
 	ctx := context.WithValue(parent, perfKey{}, &p)
+	select {
+	case <-ctx.Done():
+		p.PageTime = time.Since(start)
+		return p, ctx.Err()
+	default:
+	}
 	err := next(ctx, &p)
 	p.PageTime = time.Since(start)
 	return p, err
@@ -171,6 +177,11 @@ type countTime struct {
 }
 
 func withSQL(ctx context.Context, fn func() error) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	perf, _ := ctx.Value(perfKey{}).(*Perf)
 	start := time.Now()
 	err := fn()
@@ -1462,6 +1473,11 @@ func isClientJsOn(r *http.Request) bool {
 }
 
 func render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	jsCookie := &http.Cookie{
 		Name:   "js",
 		Value:  "",
@@ -1476,6 +1492,11 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 }
 
 func renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
@@ -1483,6 +1504,11 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 }
 
 func renderError(ctx context.Context, w http.ResponseWriter, perf *Perf, status int, err error) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if errors.Is(err, sql.ErrNoRows) {
