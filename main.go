@@ -423,44 +423,47 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		var total int
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
-			SELECT COUNT(*)
-			FROM album
-			WHERE fetch_count > 0
-		`).Scan(&total)
+				SELECT COUNT(*)
+				  FROM album
+				 WHERE fetch_count > 0
+			`).Scan(&total)
 		}); err != nil {
 			return err
 		}
 		list := []Album{}
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
-				SELECT
-				  a.album_id,
-				  a.ripper_id,
-				  r.name AS ripper_name,
-				  r.host AS ripper_host,
-				  a.gid,
-				  a.uploader,
-				  a.title,
-				  a.description,
-				  a.created_ts,
-				  a.modified_ts,
-				  a.hidden,
-				  a.removed,
-				  a.last_fetch_ts,
-				  a.inserted_ts,
-				  (SELECT COUNT(*) FROM map_album_remote_file marf WHERE marf.album_id = a.album_id) AS file_count,
-				  (SELECT rf.remote_file_id
-					 FROM map_album_remote_file marf
-							  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-					 WHERE marf.album_id = a.album_id
-					   AND rf.fetched = 1
-					 ORDER BY marf.remote_file_id
-					 LIMIT 1) AS thumb_remote_file_id
-				FROM album a
-				JOIN ripper r ON r.ripper_id = a.ripper_id
+				SELECT a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , (
+				    SELECT COUNT(*) FROM map_album_remote_file marf WHERE marf.album_id = a.album_id
+				       ) AS file_count
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				     ORDER BY marf.remote_file_id
+				     LIMIT 1
+				       ) AS thumb_remote_file_id
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
 				-- WHERE a.fetch_count > 0 -- not as important as remote_file.fetched=1
-				ORDER BY a.album_id
-				LIMIT ? OFFSET ?
+				 ORDER BY a.album_id
+				 LIMIT ? OFFSET ?
 			`, size, offset)
 			if err != nil {
 				return err
@@ -505,12 +508,11 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			thumb := list[i].Thumb
 			if err := withSQL(ctx, func() error {
 				return db.QueryRowContext(ctx, `
-				SELECT
-				    rf.filename,
-				    mt.name AS mime_type
-				    FROM remote_file rf
-				    LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					WHERE rf.remote_file_id = ?
+					SELECT rf.filename
+					     , mt.name AS mime_type
+					  FROM remote_file rf
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.remote_file_id = ?
 			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 			}); err != nil {
 				return err
@@ -562,9 +564,10 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , a.removed
 				     , a.last_fetch_ts
 				     , a.inserted_ts
-				FROM album a
-				JOIN ripper r ON r.ripper_id = a.ripper_id
-				WHERE r.host = ? AND a.gid = ?
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 WHERE r.host = ?
+				   AND a.gid = ?
 			`, ripperHost, gid).Scan(
 				&a.AlbumId,
 				&a.RipperId,
@@ -592,9 +595,9 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			if err := withSQL(ctx, func() error {
 				return db.QueryRowContext(ctx, `
 					SELECT COUNT(*)
-					FROM map_album_remote_file m
-					JOIN remote_file rf ON rf.remote_file_id=m.remote_file_id AND rf.fetched=1
-					WHERE m.album_id = ?
+					  FROM map_album_remote_file m
+					  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
+					 WHERE m.album_id = ?
 				`, a.AlbumId).Scan(&total)
 			}); err != nil {
 				return err
@@ -602,26 +605,26 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			files := []File{}
 			if err := withSQL(ctx, func() error {
 				rows, err := db.QueryContext(ctx, `
-					SELECT rf.remote_file_id,
-					       r.name AS ripper_name,
-					       r.host AS ripper_host,
-					       rf.urlid,
-					       rf.filename,
-					       mt.name AS mime_type,
-					       rf.title,
-					       rf.description,
-					       rf.uploaded_ts,
-					       rf.uploader,
-					       rf.hidden,
-					       rf.removed,
-					       rf.inserted_ts
-					FROM map_album_remote_file marf
-					JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched=1
-					JOIN ripper r ON r.ripper_id = rf.ripper_id
-					LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					WHERE marf.album_id = ?
-					ORDER BY marf.remote_file_id
-					LIMIT ? OFFSET ?
+					SELECT rf.remote_file_id
+					     , r.name AS ripper_name
+					     , r.host AS ripper_host
+					     , rf.urlid
+					     , rf.filename
+					     , mt.name AS mime_type
+					     , rf.title
+					     , rf.description
+					     , rf.uploaded_ts
+					     , rf.uploader
+					     , rf.hidden
+					     , rf.removed
+					     , rf.inserted_ts
+					  FROM map_album_remote_file marf
+					  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+					  JOIN ripper r ON r.ripper_id = rf.ripper_id
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE marf.album_id = ?
+					 ORDER BY marf.remote_file_id
+					 LIMIT ? OFFSET ?
 				`, a.AlbumId, size, offset)
 				if err != nil {
 					return err
@@ -658,10 +661,10 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			if err := withSQL(ctx, func() error {
 				rows, e := db.QueryContext(ctx, `
 					SELECT t.tag_id, t.name
-					FROM map_album_tag mat
-					JOIN tag t ON t.tag_id = mat.tag_id
-					WHERE mat.album_id = ?
-					ORDER BY t.name
+					  FROM map_album_tag mat
+					  JOIN tag t ON t.tag_id = mat.tag_id
+					 WHERE mat.album_id = ?
+					 ORDER BY t.name
 				`, a.AlbumId)
 				if e != nil {
 					return e
@@ -681,14 +684,14 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			if err := withSQL(ctx, func() error {
 				rows, e := db.QueryContext(ctx, `
 					SELECT t.tag_id, t.name, COUNT(*) as count
-					FROM tag t
-					    JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
-					    JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
-					    JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched=1
-					WHERE marf.album_id = ?
-					GROUP BY t.tag_id, t.name
-					ORDER BY count DESC
-					LIMIT 100 -- some albums might have a million tags...
+					  FROM tag t
+					  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
+					  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
+					  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+					 WHERE marf.album_id = ?
+					 GROUP BY t.tag_id, t.name
+					 ORDER BY count DESC
+					 LIMIT 100 -- some albums might have a million tags...
 				`, a.AlbumId)
 				if e != nil {
 					return e
@@ -721,24 +724,26 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		var f File
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
-				SELECT rf.remote_file_id,
-				       r.name AS ripper_name,
-				       r.host AS ripper_host,
-				       rf.urlid,
-				       rf.filename,
-				       mt.name AS mime_type,
-				       rf.title,
-				       rf.description,
-				       rf.uploaded_ts,
-				       rf.uploader,
-				       rf.hidden,
-				       rf.removed,
-				       rf.inserted_ts
-				FROM remote_file rf
-				LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				JOIN map_album_remote_file m ON m.remote_file_id=rf.remote_file_id
-				JOIN ripper r on rf.ripper_id = r.ripper_id
-				WHERE m.album_id=? AND rf.remote_file_id=? AND rf.fetched = 1
+				SELECT rf.remote_file_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				     , rf.inserted_ts
+				  FROM remote_file rf
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				  JOIN map_album_remote_file m ON m.remote_file_id = rf.remote_file_id
+				  JOIN ripper r on rf.ripper_id = r.ripper_id
+				 WHERE m.album_id = ?
+				   AND rf.remote_file_id = ?
+				   AND rf.fetched = 1
 			`, a.AlbumId, fileId).Scan(
 				&f.FileId,
 				&f.RipperName, // TODO use value from Album
@@ -764,29 +769,30 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
 				-- Step 2: Join the small set to remote_file and filter to available rows.
 				-- Step 3: Re-order ascending for display as chronological prev list.
-				SELECT rf.remote_file_id,
-					   rf.urlid,
-					   rf.filename,
-					   mt.name AS mime_type,
-					   rf.title,
-					   rf.description,
-					   rf.uploaded_ts,
-					   rf.uploader,
-					   rf.hidden,
-					   rf.removed
-				FROM (
-					-- Performance: do the LIMIT on the indexed mapping table first; avoids joining many rows only to drop them.
-					-- Uses composite PK (album_id, remote_file_id) for efficient range+order scan.
-					SELECT marf.remote_file_id
-					FROM map_album_remote_file marf
-					JOIN remote_file rf ON marf.remote_file_id = rf.remote_file_id AND rf.fetched = 1
-					WHERE marf.album_id=? AND marf.remote_file_id < ?
-					ORDER BY marf.remote_file_id DESC
-					LIMIT 3
-				) s
-				JOIN remote_file rf ON rf.remote_file_id=s.remote_file_id AND rf.fetched=1
-				LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				ORDER BY rf.remote_file_id
+				SELECT rf.remote_file_id
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				  FROM (
+				      -- Performance: do the LIMIT on the indexed mapping table first; avoids joining many rows only to drop them.
+				      -- Uses composite PK (album_id, remote_file_id) for efficient range+order scan.
+				      SELECT marf.remote_file_id
+				        FROM map_album_remote_file marf
+				        JOIN remote_file rf ON marf.remote_file_id = rf.remote_file_id AND rf.fetched = 1
+				       WHERE marf.album_id = ?
+				         AND marf.remote_file_id < ?
+				       ORDER BY marf.remote_file_id DESC
+				       LIMIT 3
+				       ) s
+				  JOIN remote_file rf ON rf.remote_file_id = s.remote_file_id AND rf.fetched = 1
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 ORDER BY rf.remote_file_id
 				`, a.AlbumId, f.FileId)
 			if e != nil {
 				return e
@@ -817,24 +823,24 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		next := []File{}
 		if err := withSQL(ctx, func() error {
 			rows, e := db.QueryContext(ctx, `
-				SELECT rf.remote_file_id,
-				       rf.urlid,
-				       rf.filename,
-				       mt.name AS mime_type,
-				       rf.title,
-				       rf.description,
-				       rf.uploaded_ts,
-				       rf.uploader,
-				       rf.hidden,
-				       rf.removed
-				FROM map_album_remote_file marf
-				JOIN remote_file rf ON rf.remote_file_id=marf.remote_file_id AND rf.fetched=1
-				LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				WHERE marf.album_id=?
-				  AND marf.remote_file_id > ?
+				SELECT rf.remote_file_id
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				  FROM map_album_remote_file marf
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE marf.album_id = ?
+				   AND marf.remote_file_id > ?
 				-- Performance: order and range on mapping table column aligned with PK; avoids sort on rf and uses index for next-page scan.
-				ORDER BY marf.remote_file_id
-				LIMIT 3
+				 ORDER BY marf.remote_file_id
+				 LIMIT 3
 				`, a.AlbumId, f.FileId)
 			if e != nil {
 				return e
@@ -870,10 +876,10 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				-- Step 2: Join to tag to fetch tag names for display.
 				-- Step 3: Order alphabetically.
 				SELECT t.tag_id, t.name
-				FROM map_remote_file_tag m
-				JOIN tag t ON t.tag_id=m.tag_id
-				WHERE m.remote_file_id=?
-				ORDER BY t.name
+				  FROM map_remote_file_tag mrft
+				  JOIN tag t ON t.tag_id = mrft.tag_id
+				 WHERE mrft.remote_file_id = ?
+				 ORDER BY t.name
 				`, f.FileId)
 			if e != nil {
 				return e
@@ -899,33 +905,37 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		albums := []Album{}
 		if err := withSQL(ctx, func() error {
 			rows, e := db.QueryContext(ctx, `
-					SELECT a.album_id,
-					   a.ripper_id,
-					   r.name AS ripper_name,
-					   r.host AS ripper_host,
-					   a.gid,
-					   a.uploader,
-					   a.title,
-					   a.description,
-					   a.created_ts,
-					   a.modified_ts,
-					   a.hidden,
-					   a.removed,
-					   a.last_fetch_ts,
-					   a.inserted_ts,
-					   (SELECT COUNT(*) FROM map_album_remote_file marf WHERE marf.album_id = a.album_id) AS file_count,
-					   (SELECT rf.remote_file_id
-					    FROM map_album_remote_file marf2
-					    JOIN remote_file rf ON rf.remote_file_id = marf2.remote_file_id
-					    WHERE marf2.album_id = a.album_id
-					    AND rf.fetched = 1
-					    ORDER BY marf2.remote_file_id
-					    LIMIT 1) AS thumb
-				FROM album a
-				JOIN ripper r ON r.ripper_id=a.ripper_id
-				JOIN map_album_remote_file marf ON marf.album_id = a.album_id
-				WHERE marf.remote_file_id = ?
-				`, f.FileId)
+				SELECT a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , (
+				    SELECT COUNT(*) FROM map_album_remote_file marf WHERE marf.album_id = a.album_id
+				       ) AS file_count
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf2
+				      JOIN remote_file rf ON rf.remote_file_id = marf2.remote_file_id
+				     WHERE marf2.album_id = a.album_id
+				       AND rf.fetched = 1
+				     ORDER BY marf2.remote_file_id
+				     LIMIT 1
+				       ) AS thumb
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
+				 WHERE marf.remote_file_id = ?
+			`, f.FileId)
 			if e != nil {
 				return e
 			}
@@ -964,13 +974,12 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			thumb := albums[i].Thumb
 			if err := withSQL(ctx, func() error {
 				return db.QueryRowContext(ctx, `
-				SELECT
-				    rf.filename,
-				    mt.name AS mime_type
-				    FROM remote_file rf
-				    LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					WHERE rf.remote_file_id = ?
-			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+					SELECT rf.filename
+					     , mt.name AS mime_type
+					  FROM remote_file rf
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.remote_file_id = ?
+				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 			}); err != nil {
 				return err
 			}
@@ -1023,10 +1032,12 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 				     , rf.hidden
 				     , rf.removed
 				     , rf.inserted_ts
-				FROM remote_file rf
-				JOIN ripper r ON r.ripper_id = rf.ripper_id
-				LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				WHERE r.host = ? AND rf.remote_file_id = ? AND rf.fetched=1
+				  FROM remote_file rf
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE r.host = ?
+				   AND rf.remote_file_id = ?
+				   AND rf.fetched = 1
 			`, ripperHost, fileId).Scan(
 				&f.FileId,
 				&f.Urlid,
@@ -1050,11 +1061,11 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 			// Standalone file view: no Prev/Next
 			if err := withSQL(ctx, func() error {
 				rows, e := db.QueryContext(ctx, `
-				SELECT t.tag_id, t.name
-				FROM map_remote_file_tag m
-				JOIN tag t ON t.tag_id=m.tag_id
-				WHERE m.remote_file_id=?
-				ORDER BY t.name
+					SELECT t.tag_id, t.name
+					  FROM map_remote_file_tag m
+					  JOIN tag t ON t.tag_id = m.tag_id
+					 WHERE m.remote_file_id = ?
+					 ORDER BY t.name
 				`, f.FileId)
 				if e != nil {
 					return e
@@ -1081,36 +1092,39 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 		if !asyncAlbums || isAsyncAlbumsRequest {
 			if err := withSQL(ctx, func() error {
 				rows, e := db.QueryContext(ctx, `
-				SELECT
-					a.album_id,
-					a.ripper_id,
-					r.name AS ripper_name,
-					r.host AS ripper_host,
-					a.gid,
-					a.uploader,
-					a.title,
-					a.description,
-					a.created_ts,
-					a.modified_ts,
-					a.hidden,
-					a.removed,
-					a.last_fetch_ts,
-					a.inserted_ts,
-					(SELECT COUNT(*)
-					 FROM map_album_remote_file marf
-					 JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched=1
-					 WHERE marf.album_id = a.album_id) AS file_count,
-					(SELECT rf.remote_file_id
-						 FROM map_album_remote_file marf
-						 JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched=1
-						 WHERE marf.album_id = a.album_id
-						 -- ORDER BY rf.remote_file_id ASC
-						 LIMIT 1) AS thumb
-				FROM album a
-				JOIN ripper r ON r.ripper_id = a.ripper_id
-				JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
-				ORDER BY a.album_id
-			`, f.FileId)
+					SELECT a.album_id
+					     , a.ripper_id
+					     , r.name AS ripper_name
+					     , r.host AS ripper_host
+					     , a.gid
+					     , a.uploader
+					     , a.title
+					     , a.description
+					     , a.created_ts
+					     , a.modified_ts
+					     , a.hidden
+					     , a.removed
+					     , a.last_fetch_ts
+					     , a.inserted_ts
+					     , (
+					    SELECT COUNT(*)
+					      FROM map_album_remote_file marf
+					      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+					     WHERE marf.album_id = a.album_id
+					       ) AS file_count
+					     , (
+					    SELECT rf.remote_file_id
+					      FROM map_album_remote_file marf
+					      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+					     WHERE marf.album_id = a.album_id
+					-- ORDER BY rf.remote_file_id ASC
+					     LIMIT 1
+					       ) AS thumb
+					  FROM album a
+					  JOIN ripper r ON r.ripper_id = a.ripper_id
+					  JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
+					 ORDER BY a.album_id
+				`, f.FileId)
 				if e != nil {
 					return e
 				}
@@ -1149,13 +1163,12 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 				thumb := albums[i].Thumb
 				if err := withSQL(ctx, func() error {
 					return db.QueryRowContext(ctx, `
-				SELECT
-				    rf.filename,
-				    mt.name AS mime_type
-				    FROM remote_file rf
-				    LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					WHERE rf.remote_file_id = ?
-			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+						SELECT rf.filename
+						     , mt.name AS mime_type
+						  FROM remote_file rf
+						  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+						 WHERE rf.remote_file_id = ?
+					`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 				}); err != nil {
 					return err
 				}
@@ -1199,9 +1212,9 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
 				SELECT tag_id, name
-				FROM tag
-				WHERE name=?
-				`, name).Scan(&t.TagId, &t.Name)
+				  FROM tag
+				 WHERE name = ?
+			`, name).Scan(&t.TagId, &t.Name)
 		}); err != nil {
 			return err
 		}
@@ -1212,9 +1225,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
-				FROM album a
-				    JOIN map_album_tag mat 
-				        ON mat.album_id=a.album_id AND mat.tag_id=?
+				  FROM album a
+				  JOIN map_album_tag mat ON mat.album_id = a.album_id AND mat.tag_id = ?
 			`, t.TagId).Scan(&total)
 		}); err != nil {
 			return err
@@ -1222,35 +1234,35 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		albums := []Album{}
 		if err := withSQL(ctx, func() error {
 			rows, e := db.QueryContext(ctx, `
-					SELECT a.album_id,
-					       a.ripper_id,
-					       r.name AS ripper_name,
-					       r.host AS ripper_host,
-					       a.gid,
-					       a.uploader,
-					       a.title,
-					       a.description,
-					       a.created_ts,
-					       a.modified_ts,
-					       a.hidden,
-					       a.removed,
-					       a.last_fetch_ts,
-					       a.inserted_ts,
-					       COALESCE(cnt.c,0) as file_count,
-					       rf.filename AS thumb -- TODO use correlated subquery for performance
-					FROM album a
-					JOIN ripper r ON r.ripper_id=a.ripper_id
-					JOIN map_album_tag mat ON mat.album_id=a.album_id AND mat.tag_id=?
-					LEFT JOIN (
-					  SELECT m.album_id, COUNT(*) c, MIN(m.remote_file_id) AS min_rf
-					  FROM map_album_remote_file m
-					  JOIN remote_file rf2 ON rf2.remote_file_id=m.remote_file_id AND rf2.fetched=1
-					  GROUP BY m.album_id
-					) cnt ON a.album_id=cnt.album_id
-					LEFT JOIN remote_file rf ON rf.remote_file_id = cnt.min_rf
-					ORDER BY a.album_id
-					LIMIT ? OFFSET ?
-					`, t.TagId, size, offset)
+				SELECT a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , COALESCE(cnt.c, 0) as file_count
+				     , rf.filename AS thumb -- TODO use correlated subquery for performance
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				  JOIN map_album_tag mat ON mat.album_id = a.album_id AND mat.tag_id = ?
+				  LEFT JOIN (
+				          SELECT m.album_id, COUNT(*) c, MIN(m.remote_file_id) AS min_rf
+				            FROM map_album_remote_file m
+				            JOIN remote_file rf2 ON rf2.remote_file_id = m.remote_file_id AND rf2.fetched = 1
+				           GROUP BY m.album_id
+				            ) cnt ON a.album_id = cnt.album_id
+				  LEFT JOIN remote_file rf ON rf.remote_file_id = cnt.min_rf
+				 ORDER BY a.album_id
+				 LIMIT ? OFFSET ?
+			`, t.TagId, size, offset)
 			if e != nil {
 				return e
 			}
@@ -1289,13 +1301,12 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			thumb := albums[i].Thumb
 			if err := withSQL(ctx, func() error {
 				return db.QueryRowContext(ctx, `
-				SELECT
-				    rf.filename,
-				    mt.name AS mime_type
-				    FROM remote_file rf
-				    LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					WHERE rf.remote_file_id = ?
-			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+					SELECT rf.filename
+					     , mt.name AS mime_type
+					  FROM remote_file rf
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.remote_file_id = ?
+				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 			}); err != nil {
 				return err
 			}
@@ -1318,13 +1329,13 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				     , rf.hidden
 				     , rf.removed
 				     , rf.inserted_ts
-				FROM remote_file rf
-				JOIN ripper r ON r.ripper_id=rf.ripper_id
-				JOIN map_remote_file_tag m ON m.remote_file_id=rf.remote_file_id AND m.tag_id=?
-				LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				WHERE rf.fetched=1
-				ORDER BY m.remote_file_id
-				`, t.TagId)
+				  FROM remote_file rf
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  JOIN map_remote_file_tag m ON m.remote_file_id = rf.remote_file_id AND m.tag_id = ?
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE rf.fetched = 1
+				 ORDER BY m.remote_file_id
+			`, t.TagId)
 			if e != nil {
 				return e
 			}
@@ -1373,12 +1384,12 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
 				SELECT t.tag_id, t.name, COUNT(*) as cnt
-				FROM tag t
-				    JOIN map_remote_file_tag m ON m.tag_id=t.tag_id
-				    JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched=1
-				GROUP BY t.tag_id, t.name
-				ORDER BY cnt DESC, t.name ASC
-				`)
+				  FROM tag t
+				  JOIN map_remote_file_tag m ON m.tag_id = t.tag_id
+				  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
+				 GROUP BY t.tag_id, t.name
+				 ORDER BY cnt DESC, t.name ASC
+			`)
 			if err != nil {
 				return err
 			}
@@ -1398,11 +1409,11 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
 				SELECT t.tag_id, t.name, COUNT(*) as cnt
-				FROM tag t
-				    JOIN map_album_tag m ON m.tag_id=t.tag_id
-				GROUP BY t.tag_id, t.name
-				ORDER BY cnt DESC, t.name ASC
-				`)
+				  FROM tag t
+				  JOIN map_album_tag m ON m.tag_id = t.tag_id
+				 GROUP BY t.tag_id, t.name
+				 ORDER BY cnt DESC, t.name ASC
+			`)
 			if err != nil {
 				return err
 			}
@@ -1472,10 +1483,10 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
 				SELECT r.host, a.gid
-				FROM album a
-				JOIN ripper r ON r.ripper_id = a.ripper_id
-				ORDER BY RANDOM()
-				LIMIT 1
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 ORDER BY RANDOM()
+				 LIMIT 1
 			`).Scan(&ripperHost, &gid)
 		}); err != nil {
 			return err
@@ -1502,30 +1513,40 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			// Correct randomness, but slow-ish (avg 200ms)
 			//return db.QueryRowContext(ctx, `
-			//	WITH row_count AS (SELECT COUNT(*) as cnt FROM remote_file rf WHERE rf.fetched = 1)
+			//	  WITH row_count AS (
+			//	      SELECT COUNT(*) as cnt
+			//	        FROM remote_file rf
+			//	       WHERE rf.fetched = 1
+			//	                    )
 			//	SELECT r.host, rf.remote_file_id
-			//	FROM remote_file rf
-			//	JOIN ripper r ON r.ripper_id = rf.ripper_id
-			//	WHERE rf.fetched = 1
-			//	ORDER BY remote_file_id
-			//	LIMIT 1 OFFSET (ABS(RANDOM()) % (SELECT cnt FROM row_count))
+			//	  FROM remote_file rf
+			//	  JOIN ripper r ON r.ripper_id = rf.ripper_id
+			//	 WHERE rf.fetched = 1
+			//	 ORDER BY remote_file_id
+			//	 LIMIT 1 OFFSET (ABS(RANDOM()) % (SELECT cnt FROM row_count))
 			//`).Scan(&ripperHost, &fileId)
 
 			// Not the best random distribution if rows are deleted, but fast (avg 1ms)
 			return db.QueryRowContext(ctx, `
 				SELECT r.host
 				     , rf.remote_file_id
-				     , (SELECT a.gid
-				        FROM album a
-				            JOIN map_album_remote_file m ON a.album_id = m.album_id
-				        WHERE m.remote_file_id = rf.remote_file_id
-				        LIMIT 1) AS gid
-				FROM remote_file rf
-				    JOIN ripper r ON r.ripper_id = rf.ripper_id
-				WHERE remote_file_id >= (ABS(RANDOM()) % (SELECT MAX(remote_file_id) FROM remote_file rf WHERE rf.fetched = 1))
-				  AND rf.fetched = 1
-				ORDER BY remote_file_id
-				LIMIT 1
+				     , (
+				    SELECT a.gid
+				      FROM album a
+				      JOIN map_album_remote_file m ON a.album_id = m.album_id
+				     WHERE m.remote_file_id = rf.remote_file_id
+				     LIMIT 1
+				       ) AS gid
+				  FROM remote_file rf
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				 WHERE remote_file_id >= (ABS(RANDOM()) % (
+				     SELECT MAX(remote_file_id)
+				       FROM remote_file rf
+				      WHERE rf.fetched = 1
+				                                          ))
+				   AND rf.fetched = 1
+				 ORDER BY remote_file_id
+				 LIMIT 1
 			`).Scan(&ripperHost, &fileId, &gid)
 		}); err != nil {
 			return err
