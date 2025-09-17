@@ -174,17 +174,11 @@ func withSQL(ctx context.Context, fn func() error) error {
 		perf.SQLTime += elapsed
 	}
 	// Slow query logging: threshold via SLOW_SQL_MS env (default 100ms)
-	thrMs := 100
-	if v := os.Getenv("SLOW_SQL_MS"); v != "" {
-		if n, e := strconv.Atoi(v); e == nil && n >= 0 {
-			thrMs = n
-		}
-	}
-	if elapsed >= time.Duration(thrMs)*time.Millisecond {
+	if slowSqlMs >= 0 && elapsed >= time.Duration(slowSqlMs)*time.Millisecond {
 		if _, file, line, ok := runtime.Caller(1); ok {
-			log.Printf("SLOW SQL at %s:%d: %v (>= %dms)", file, line, elapsed.Round(time.Millisecond), thrMs)
+			log.Printf("SLOW SQL at %s:%d: %v (>= %dms)", file, line, elapsed.Round(time.Millisecond), slowSqlMs)
 		} else {
-			log.Printf("SLOW SQL: %v (>= %dms)", elapsed.Round(time.Millisecond), thrMs)
+			log.Printf("SLOW SQL: %v (>= %dms)", elapsed.Round(time.Millisecond), slowSqlMs)
 		}
 	}
 	return err
@@ -193,6 +187,8 @@ func withSQL(ctx context.Context, fn func() error) error {
 var knownFilePaths map[string][]string
 var mediaRoot string
 var dfLogRoot string
+
+var slowSqlMs int
 
 func main() {
 	var help bool
@@ -218,6 +214,13 @@ func main() {
 	bind := getEnv("BIND", "127.0.0.1:5037")
 	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON")
 	dsn = forceReadOnlyDsn(dsn)
+
+	slowSqlMs = 100
+	if v := os.Getenv("SLOW_SQL_MS"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n >= -1 {
+			slowSqlMs = n
+		}
+	}
 
 	var err error
 	db, err = sql.Open("sqlite3", dsn)
