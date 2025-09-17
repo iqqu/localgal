@@ -69,7 +69,7 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
 .fb-wrap {display: block;text-align: center;}
 .fb-wrap label {display: inline-block;}
 /*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
-.full-bleed input:checked ~ .fb-wrap {width: calc(100vw - 2rem);position: relative;left: 50%;right: 50%;margin-left: calc(1rem - 50vw);margin-right: calc(1rem - 50vw);}
+.full-bleed .fb-wrap {width: calc(100vw - 2rem);position: relative;left: 50%;right: 50%;margin-left: calc(1rem - 50vw);margin-right: calc(1rem - 50vw);}
 /* simpler to use !important than to add specificity for each case */
 .full-bleed input:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
 
