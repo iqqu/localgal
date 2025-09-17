@@ -469,7 +469,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			for rows.Next() {
 				var a Album
 				var f File
-				a.Thumb = f
+				var thumbFileId sql.NullInt64
 				if err := rows.Scan(
 					&a.AlbumId,
 					&a.RipperId,
@@ -486,12 +486,16 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					&a.LastFetchTs,
 					&a.InsertedTs,
 					&a.FileCount,
-					&f.FileId,
+					&thumbFileId,
 				); err != nil {
 					return err
 				}
-				a.Thumb = f
-				list = append(list, a)
+				// If an album has no fetched files, thumb_remote_file_id will be null
+				if thumbFileId.Valid {
+					f.FileId = thumbFileId.Int64
+					a.Thumb = f
+					list = append(list, a)
+				}
 			}
 			return rows.Err()
 		}); err != nil {
