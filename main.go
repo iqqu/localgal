@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -1593,8 +1594,19 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		ripperHost := parts[0]
 		gid := parts[1]
 		name := parts[2]
+
 		// prefer direct path under mediaRoot/ripperHost_gid/
-		tryFiles = append(tryFiles, cleanJoin(mediaRoot, ripperHost+"_"+gid, name))
+		preferredPath := cleanJoin(mediaRoot, ripperHost+"_"+gid, name)
+		tryFiles = append(tryFiles, preferredPath)
+
+		// first fallback: ripme-mangled path
+		mangledGid := filesystemSafe(gid)
+		mangledName := sanitizedFilename(name)
+		if mangledGid != gid || mangledName != name {
+			mangledPath := cleanJoin(mediaRoot, ripperHost+"_"+mangledGid, mangledName)
+			tryFiles = append(tryFiles, mangledPath)
+		}
+
 		// fallback to knownFilePaths by name
 		if list, ok := knownFilePaths[name]; ok {
 			for _, p := range list {
@@ -1606,6 +1618,14 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		name := parts[1]
 		// prefer direct path under mediaRoot
 		tryFiles = append(tryFiles, cleanJoin(mediaRoot, ripperHost, name))
+
+		// first fallback: ripme-mangled path
+		mangledName := sanitizedFilename(name)
+		if mangledName != name {
+			mangledPath := cleanJoin(mediaRoot, ripperHost, mangledName)
+			tryFiles = append(tryFiles, mangledPath)
+		}
+
 		// fallback to knownFilePaths by name
 		if list, ok := knownFilePaths[name]; ok {
 			for _, p := range list {
@@ -1652,6 +1672,26 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.NotFound(w, r)
+}
+
+var filesystemSafeRe = regexp.MustCompile("[^a-zA-Z0-9-.,_ ]")
+
+// from ripme Utils.filesystemSafe; used on gid
+func filesystemSafe(path string) string {
+	path = filesystemSafeRe.ReplaceAllString(path, "")
+	path = strings.TrimSpace(path)
+	if len(path) > 100 {
+		path = path[:99] // obviously a bug, but copying the bug from ripme
+	}
+	return path
+}
+
+var sanitizedFilenameRe = regexp.MustCompile("[\\\\:*?\"<>|]")
+
+// from ripme Utils.sanitizeSaveAs; used on filename
+func sanitizedFilename(filename string) string {
+	filename = sanitizedFilenameRe.ReplaceAllString(filename, "_")
+	return filename
 }
 
 func logMiddleware(next http.Handler) http.Handler {
