@@ -193,7 +193,7 @@ var mediaRoot string
 
 func main() {
 	log.Printf("Starting golocalml")
-	addr := getEnv("ADDR", "127.0.0.1:5037")
+	bind := getEnv("BIND", "127.0.0.1:5037")
 	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON")
 	dsn = forceReadOnlyDsn(dsn)
 
@@ -289,8 +289,8 @@ func main() {
 	http.HandleFunc("/about/", handleAbout)
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 
-	log.Printf("LocalGal listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, logMiddleware(http.DefaultServeMux)))
+	log.Printf("LocalGal listening on %s", bind)
+	log.Fatal(http.ListenAndServe(bind, logMiddleware(http.DefaultServeMux)))
 }
 
 func getEnv(k, def string) string {
