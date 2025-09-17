@@ -191,6 +191,7 @@ func withSQL(ctx context.Context, fn func() error) error {
 
 var knownFilePaths map[string][]string
 var mediaRoot string
+var dfLogRoot string
 
 func main() {
 	var help bool
@@ -207,6 +208,8 @@ func main() {
 		fmt.Println("  SQLITE_DSN:\tsqlite data source name (connection string), default `file:ripme.sqlite`")
 		fmt.Println("  MEDIA_ROOT:\trip base directory, default: `./rips`")
 		fmt.Println("  SLOW_SQL_MS:\tduration threshold to log slow sql queries, milliseconds, default `100`")
+		fmt.Println("  DFLOG:\tdownloaded file log, default `./ripme.downloaded.files.log`")
+		fmt.Println("  DFLOG_ROOT:\tbase directory to resolve relative paths in DFLOG from, default directory that DFLOG is in")
 		os.Exit(0)
 	}
 
@@ -300,7 +303,10 @@ func main() {
 
 	// Media server: dynamic resolution using MEDIA_ROOT and known_files.log
 	mediaRoot = getEnv("MEDIA_ROOT", "./rips")
-	loadKnownFiles("./ripme.downloaded.files.log")
+	dfLog := getEnv("DFLOG", "./ripme.downloaded.files.log")
+	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
+	dfLogRoot = getEnv("DFLOG_ROOT", defaultDfLogRoot)
+	loadKnownFiles(dfLog)
 	http.HandleFunc("/media/", handleMedia)
 
 	http.HandleFunc("/static/", handleStatic)
@@ -309,6 +315,17 @@ func main() {
 
 	log.Printf("LocalGal listening on %s", bind)
 	log.Fatal(http.ListenAndServe(bind, logMiddleware(http.DefaultServeMux)))
+}
+
+func getDefaultDfLogRoot(path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(filepath.Dir(path))
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Unable to get cwd: %w", err)
+	}
+	return filepath.Clean(filepath.Dir(filepath.Join(wd, path)))
 }
 
 func getEnv(k, def string) string {
@@ -1538,10 +1555,15 @@ func loadKnownFiles(path string) {
 		}
 		base := filepath.Base(p)
 		target := filepath.Join(dir, p)
-		targetRel, err := filepath.Rel(mediaRoot, target)
-		if err == nil {
-			knownFilePaths[base] = append(knownFilePaths[base], targetRel)
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(dfLogRoot, target)
+			target = filepath.Clean(target)
+			target, err = filepath.Rel(dfLogRoot, target)
+			if err != nil {
+				log.Printf("Not able to resolve clean relative path for %v: %v", p, err)
+			}
 		}
+		knownFilePaths[base] = append(knownFilePaths[base], target)
 	}
 	if err := s.Err(); err != nil {
 		log.Printf("known file log scan: %v", err)
@@ -1576,7 +1598,7 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		// fallback to knownFilePaths by name
 		if list, ok := knownFilePaths[name]; ok {
 			for _, p := range list {
-				tryFiles = append(tryFiles, cleanJoin(mediaRoot, p))
+				tryFiles = append(tryFiles, cleanJoin(dfLogRoot, p))
 			}
 		}
 	} else if len(parts) >= 2 { // fallback: /media/{ripper_host}/{filename}
@@ -1587,14 +1609,14 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		// fallback to knownFilePaths by name
 		if list, ok := knownFilePaths[name]; ok {
 			for _, p := range list {
-				tryFiles = append(tryFiles, cleanJoin(mediaRoot, p))
+				tryFiles = append(tryFiles, cleanJoin(dfLogRoot, p))
 			}
 		}
 	} else if len(parts) == 1 && parts[0] != "" { // last resort: find by filename only
 		name := parts[0]
 		if list, ok := knownFilePaths[name]; ok {
 			for _, p := range list {
-				tryFiles = append(tryFiles, cleanJoin(mediaRoot, p))
+				tryFiles = append(tryFiles, cleanJoin(dfLogRoot, p))
 			}
 		}
 	}
