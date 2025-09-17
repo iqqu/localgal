@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -192,6 +193,23 @@ var knownFilePaths map[string][]string
 var mediaRoot string
 
 func main() {
+	var help bool
+	flag.BoolVar(&help, "h", false, "show help")
+	flag.BoolVar(&help, "help", false, "show help")
+	flag.Parse()
+	if help {
+		flag.CommandLine.SetOutput(os.Stdout)
+		fmt.Println("Usage: localgal [options]")
+		fmt.Println("Options:")
+		flag.PrintDefaults()
+		fmt.Println("Environment Variables:")
+		fmt.Println("  BIND:\tlisten address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)")
+		fmt.Println("  SQLITE_DSN:\tsqlite data source name (connection string), default `file:ripme.sqlite`")
+		fmt.Println("  MEDIA_ROOT:\trip base directory, default: `./rips`")
+		fmt.Println("  SLOW_SQL_MS:\tduration threshold to log slow sql queries, milliseconds, default `100`")
+		os.Exit(0)
+	}
+
 	log.Printf("Starting golocalml")
 	bind := getEnv("BIND", "127.0.0.1:5037")
 	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON")
