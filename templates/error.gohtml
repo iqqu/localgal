@@ -1,0 +1,14 @@
+{{define "error.gohtml"}}
+{{template "base_start" (dict "title" (or .StatusText "Error"))}}
+  <article style="display: flex; flex-direction: column; justify-content: center; align-items: center;gap: .5rem;">
+    <h1>{{if .StatusText}}{{.StatusText}}{{else}}Error{{end}}</h1>
+    <div class="card" style="width: calc(min(100%,80ch));text-align: center;">
+      <div style="white-space: pre-wrap; word-break: break-word;">
+        {{- if .Message }}{{.Message}}{{else}}Unexpected error. Please try again.{{ end -}}
+      </div>
+    </div>
+    <a href="#" class="js-required card-link onclick-back">&larr; Back</a>
+    <a href="/" class="card-link" style="margin-bottom: 2rem;">&#x1f3e0; Home</a>
+  </article>
+{{template "base_end" .}}
+{{end}}

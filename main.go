@@ -146,6 +146,12 @@ type TagDetailPage struct {
 	Perf     Perf
 }
 
+type ErrorPage struct {
+	StatusText string
+	Message    string
+	Perf       Perf
+}
+
 // perfTracker helps measure SQL and request timings
 // It attaches a Perf tracker to the provided parent context to preserve request cancellation/deadlines.
 func perfTracker(parent context.Context, next func(ctx context.Context, p *Perf) error) (Perf, error) {
@@ -315,6 +321,9 @@ func main() {
 
 	http.HandleFunc("/static/", handleStatic)
 	http.HandleFunc("/about/", handleAbout)
+	//http.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+	//	renderError(r.Context(), w, &Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
+	//})
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 
 	log.Printf("LocalGal listening on %s", bind)
@@ -399,22 +408,22 @@ func handleStatic(w http.ResponseWriter, r *http.Request) {
 
 func handleAbout(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/about/" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		model := map[string]any{"Perf": *perf}
 		return render(ctx, w, "about.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 func handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
@@ -523,7 +532,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		return render(ctx, w, "browse.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 	_ = p
@@ -531,15 +540,15 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 func handleGallery(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/gallery/") {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 	rest := strings.TrimPrefix(r.URL.Path, "/gallery/")
 	if rest == "" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		parts := strings.Split(strings.TrimSuffix(rest, "/"), "/")
 		// Lookup album by /gallery/{ripper_host}/{gid}
 		var a Album
@@ -989,23 +998,23 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		return render(ctx, w, "file.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 func handleFile(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/file/") {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 	full := strings.TrimPrefix(r.URL.Path, "/file/")
 	if full == "" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		parts := strings.Split(strings.TrimSuffix(full, "/"), "/")
 
 		if len(parts) < 2 {
@@ -1188,26 +1197,27 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 		return render(ctx, w, "file.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/tag/") {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 	nameEncoded := strings.TrimPrefix(r.URL.Path, "/tag/")
 	if nameEncoded == "" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
 	name, err := url.QueryUnescape(nameEncoded)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		renderError(r.Context(), w, &Perf{}, 500, err)
+		return
 	}
-	_, err = perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		var t Tag
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
@@ -1369,17 +1379,17 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		return render(ctx, w, "tag.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 func handleTags(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/tags" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		imageTags := []Tag{}
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
@@ -1433,7 +1443,7 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		return render(ctx, w, "tags.gohtml", model)
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -1472,13 +1482,30 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 	return tpl.ExecuteTemplate(w, name, data)
 }
 
+func renderError(ctx context.Context, w http.ResponseWriter, perf *Perf, status int, err error) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if errors.Is(err, sql.ErrNoRows) {
+		status = http.StatusNotFound
+		err = nil
+	}
+	statusText := fmt.Sprintf("%d %s", status, http.StatusText(status))
+	model := ErrorPage{StatusText: statusText, Perf: *perf}
+	if err != nil {
+		model.Message = err.Error()
+	} else {
+		model.Message = statusText
+	}
+	_ = tpl.ExecuteTemplate(w, "error.gohtml", model)
+}
+
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/random/gallery" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		var ripperHost, gid string
 		if err := withSQL(ctx, func() error {
 			return db.QueryRowContext(ctx, `
@@ -1495,7 +1522,7 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -1503,10 +1530,10 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 // handleRandomFile selects a random available file and redirects to its file page.
 func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/random/file" {
-		http.NotFound(w, r)
+		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	_, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		var ripperHost string
 		var fileId int64
 		var gid sql.NullString
@@ -1560,7 +1587,7 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -1699,7 +1726,7 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.NotFound(w, r)
+	renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 }
 
 var filesystemSafeRe = regexp.MustCompile("[^a-zA-Z0-9-.,_ ]")

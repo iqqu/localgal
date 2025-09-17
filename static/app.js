@@ -226,6 +226,10 @@
         jumpEl.addEventListener('click', handleJump);
         const topEl = document.querySelector('a#top');
         topEl.addEventListener('click', handleTop);
+        const backEls = document.querySelectorAll('a.onclick-back');
+        backEls.forEach(el => {
+            el.addEventListener('click', () => history.back());
+        });
 
         autoJump();
         setupAutoJumpChangeListener();
