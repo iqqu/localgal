@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -44,112 +45,182 @@ var (
 	BuildDate = ""
 )
 
+type SqlJsonString struct {
+	sql.NullString
+}
+
+func (v SqlJsonString) IsZero() bool {
+	return !v.Valid
+}
+func (v SqlJsonString) MarshalJSON() ([]byte, error) {
+	if !v.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(v.String)
+}
+
+type SqlJsonInt64 struct {
+	sql.NullInt64
+}
+
+func (v SqlJsonInt64) IsZero() bool {
+	return !v.Valid
+}
+func (v SqlJsonInt64) MarshalJSON() ([]byte, error) {
+	if !v.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(v.Int64)
+}
+
 type Perf struct {
-	SQLCount int
-	SQLTime  time.Duration
-	PageTime time.Duration
-	Start    time.Time
+	SQLCount int           `json:"sqlCount"`
+	SQLTime  time.Duration `json:"sqlTime"`
+	PageTime time.Duration `json:"pageTime"`
+	Start    time.Time     `json:"-"`
+}
+
+// PerfJSON is used for populating PageTime when serializing Perf in JSON
+type PerfJSON struct {
+	SQLCount int            `json:"sqlCount"`
+	SQLTime  time.Duration  `json:"sqlTime"`
+	PageTime marshalElapsed `json:"pageTime"`
+	Start    time.Time      `json:"-"`
+}
+
+type marshalElapsed struct {
+	Start *time.Time
+}
+
+func (m marshalElapsed) MarshalJSON() ([]byte, error) {
+	if m.Start == nil || m.Start.IsZero() {
+		return json.Marshal(time.Duration(0))
+	}
+	elapsed := time.Since(*m.Start)
+	return json.Marshal(elapsed)
+}
+
+func (p Perf) MarshalJSON() ([]byte, error) {
+	if !p.Start.IsZero() {
+		p.PageTime = time.Since(p.Start)
+	}
+	return json.Marshal(PerfJSON{
+		SQLCount: p.SQLCount,
+		SQLTime:  p.SQLTime,
+		PageTime: marshalElapsed{Start: &p.Start},
+		Start:    p.Start,
+	})
 }
 
 type Album struct {
-	AlbumId     int64
-	RipperId    int64
-	RipperName  string
-	RipperHost  string
-	Gid         string
-	Uploader    sql.NullString
-	Title       sql.NullString
-	Description sql.NullString
-	CreatedTs   sql.NullInt64
-	ModifiedTs  sql.NullInt64
-	Hidden      bool
-	Removed     bool
-	LastFetchTs sql.NullInt64
-	InsertedTs  int64
-	FileCount   int
-	Thumb       File // representative file for album thumbnail tile
+	AlbumId     int64         `json:"-"`
+	RipperId    int64         `json:"-"`
+	RipperName  string        `json:"ripperName,omitempty,omitzero"`
+	RipperHost  string        `json:"ripperHost,omitempty,omitzero"`
+	Gid         string        `json:"gid,omitempty,omitzero"`
+	Uploader    SqlJsonString `json:"uploader,omitempty,omitzero"`
+	Title       SqlJsonString `json:"title,omitempty,omitzero"`
+	Description SqlJsonString `json:"description,omitempty,omitzero"`
+	CreatedTs   SqlJsonInt64  `json:"createdTs,omitempty,omitzero"`
+	ModifiedTs  SqlJsonInt64  `json:"modifiedTs,omitempty,omitzero"`
+	Hidden      bool          `json:"hidden,omitempty,omitzero"`
+	Removed     bool          `json:"removed,omitempty,omitzero"`
+	LastFetchTs SqlJsonInt64  `json:"lastFetchTs,omitempty,omitzero"`
+	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
+	FileCount   int           `json:"fileCount,omitempty,omitzero"`
+	Thumb       File          `json:"thumb,omitempty,omitzero"` // representative file for album thumbnail tile
 }
 
 type File struct {
-	FileId      int64
-	RipperName  string
-	RipperHost  string
-	Urlid       sql.NullString
-	Filename    sql.NullString
-	MimeType    sql.NullString
-	Title       sql.NullString
-	Description sql.NullString
-	UploadedTs  sql.NullInt64
-	Uploader    sql.NullString
-	Hidden      bool
-	Removed     bool
-	InsertedTs  int64
-	AlbumId     int64
+	FileId      int64         `json:"-"`
+	RipperName  string        `json:"ripperName,omitempty,omitzero"`
+	RipperHost  string        `json:"ripperHost,omitempty,omitzero"`
+	Urlid       SqlJsonString `json:"urlid,omitempty,omitzero"`
+	Filename    SqlJsonString `json:"filename,omitempty,omitzero"`
+	MimeType    SqlJsonString `json:"mimeType,omitempty,omitzero"`
+	Title       SqlJsonString `json:"title,omitempty,omitzero"`
+	Description SqlJsonString `json:"description,omitempty,omitzero"`
+	UploadedTs  SqlJsonInt64  `json:"uploadedTs,omitempty,omitzero"`
+	Uploader    SqlJsonString `json:"uploader,omitempty,omitzero"`
+	Hidden      bool          `json:"hidden,omitempty,omitzero"`
+	Removed     bool          `json:"removed,omitempty,omitzero"`
+	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
+	AlbumId     int64         `json:"-"`
 }
 
 type Tag struct {
-	TagId int64
-	Name  string
-	Count int // optional usage count for tag listings
+	TagId int64  `json:"-"`
+	Name  string `json:"name,omitempty,omitzero"`
+	Count int    `json:"count,omitempty,omitzero"` // optional usage count for tag listings
+}
+
+type BasePage struct {
+	Perf *Perf `json:"perf"`
 }
 
 type BrowsePage struct {
-	Albums   []Album
-	Page     int
-	PageSize int
-	Total    int
-	HasPrev  bool
-	HasNext  bool
-	Perf     Perf
+	Albums   []Album `json:"albums"`
+	Page     int     `json:"page"`
+	PageSize int     `json:"pageSize"`
+	Total    int     `json:"total"`
+	HasPrev  bool    `json:"hasPrev"`
+	HasNext  bool    `json:"hasNext"`
+	//Perf     Perf    `json:"perf"`
+	BasePage
 }
 
 type GalleryPage struct {
-	Album     Album
-	Files     []File
-	Page      int
-	PageSize  int
-	Total     int
-	HasPrev   bool
-	HasNext   bool
-	AlbumTags []Tag
-	FileTags  []Tag
-	Perf      Perf
+	Album     Album  `json:"album"`
+	Files     []File `json:"files"`
+	Page      int    `json:"page"`
+	PageSize  int    `json:"pageSize"`
+	Total     int    `json:"total"`
+	HasPrev   bool   `json:"hasPrev"`
+	HasNext   bool   `json:"hasNext"`
+	AlbumTags []Tag  `json:"albumTags"`
+	FileTags  []Tag  `json:"fileTags"`
+	//Perf      Perf   `json:"perf"`
+	BasePage
 }
 
 type FilePage struct {
-	File         File
-	Prev         []File
-	Next         []File
-	FileTags     []Tag
-	AsyncAlbums  bool
-	Albums       []Album
-	CurrentAlbum Album // album when viewing within an album; nil for standalone
-	ShowPrevNext bool  // whether to show prev/next rail
-	Perf         Perf
+	File         File    `json:"file"`
+	Prev         []File  `json:"prev"`
+	Next         []File  `json:"next"`
+	FileTags     []Tag   `json:"fileTags"`
+	AsyncAlbums  bool    `json:"-"`
+	Albums       []Album `json:"albums"`
+	CurrentAlbum Album   `json:"currentAlbum"` // album when viewing within an album; nil for standalone
+	ShowPrevNext bool    `json:"showPrevNext"` // whether to show prev/next rail
+	//Perf         Perf    `json:"perf"`
+	BasePage
 }
 
 type TagsPage struct {
-	ImageTags []Tag
-	AlbumTags []Tag
-	Perf      Perf
+	ImageTags []Tag `json:"imageTags"`
+	AlbumTags []Tag `json:"albumTags"`
+	//Perf      Perf  `json:"perf"`
+	BasePage
 }
 
 type TagDetailPage struct {
-	Tag      Tag
-	Albums   []Album
-	Files    []File
-	Page     int
-	PageSize int
-	Total    int
-	HasPrev  bool
-	HasNext  bool
-	Perf     Perf
+	Tag      Tag     `json:"tag"`
+	Albums   []Album `json:"albums"`
+	Files    []File  `json:"files"`
+	Page     int     `json:"page"`
+	PageSize int     `json:"pageSize"`
+	Total    int     `json:"total"`
+	HasPrev  bool    `json:"hasPrev"`
+	HasNext  bool    `json:"hasNext"`
+	//Perf     Perf    `json:"perf"`
+	BasePage
 }
 
 type ErrorPage struct {
-	StatusText string
-	Message    string
-	Perf       Perf
+	StatusText string `json:"statusText"`
+	Message    string `json:"message"`
+	//Perf       Perf   `json:"perf"`
+	BasePage
 }
 
 // perfTracker helps measure SQL and request timings
@@ -324,6 +395,21 @@ func main() {
 	http.HandleFunc("/random/gallery", handleRandomGallery)
 	http.HandleFunc("/random/file", handleRandomFile)
 
+	asApi := func(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			handler(w, withRenderMode(r, RenderJSON))
+		}
+	}
+	http.HandleFunc("GET /api/", asApi(handleBrowse))
+	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
+	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
+	http.HandleFunc("GET /api/file/{ripper_host}/{file_id}", asApi(handleFileStandalone))
+	http.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", asApi(handleFileGalleryFragment))
+	http.HandleFunc("GET /api/tags", asApi(handleTags))
+	http.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
+	http.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
+	http.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
+
 	// Media server: dynamic resolution using MEDIA_ROOT and known_files.log
 	mediaRoot = getEnv("MEDIA_ROOT", "./rips")
 	dfLog := getEnv("DFLOG", "./ripme.downloaded.files.log")
@@ -341,6 +427,26 @@ func main() {
 
 	log.Printf("LocalGal listening on %s", bind)
 	log.Fatal(http.ListenAndServe(bind, logMiddleware(http.DefaultServeMux)))
+}
+
+type renderModeKey struct{}
+type RenderMode int
+
+const (
+	RenderHTML RenderMode = iota
+	RenderJSON
+)
+
+func withRenderMode(r *http.Request, mode RenderMode) *http.Request {
+	ctx := context.WithValue(r.Context(), renderModeKey{}, mode)
+	return r.WithContext(ctx)
+}
+
+func getRenderMode(ctx context.Context) RenderMode {
+	if v, ok := ctx.Value(renderModeKey{}).(RenderMode); ok {
+		return v
+	}
+	return RenderHTML
 }
 
 func getDefaultDfLogRoot(path string) string {
@@ -435,7 +541,7 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBrowse(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
+	if !(r.URL.Path == "/" || r.URL.Path == "/api/") {
 		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
 		return
 	}
@@ -541,7 +647,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			}
 			list[i].Thumb = thumb
 		}
-		model := BrowsePage{Albums: list, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(list) < total, Perf: *perf}
+		model := BrowsePage{Albums: list, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(list) < total, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "browse.gohtml", model)
 	})
 	if err != nil {
@@ -719,7 +825,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		model := GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, Perf: *perf}
+		model := GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "gallery.gohtml", model)
 	})
 	if err != nil {
@@ -961,7 +1067,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 		asyncAlbums := isClientJsOn(r)
 		if asyncAlbums {
-			model := FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, AsyncAlbums: true, CurrentAlbum: a, ShowPrevNext: true, Perf: *perf}
+			model := FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, AsyncAlbums: true, CurrentAlbum: a, ShowPrevNext: true, BasePage: BasePage{Perf: perf}}
 			return render(ctx, w, "file.gohtml", model)
 		}
 		// Albums containing this file
@@ -969,7 +1075,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		model := FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, Albums: albums, CurrentAlbum: a, ShowPrevNext: true, Perf: *perf}
+		model := FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, Albums: albums, CurrentAlbum: a, ShowPrevNext: true, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "file.gohtml", model)
 	})
 	if err != nil {
@@ -1066,7 +1172,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Regular file page
-		model := FilePage{File: f, FileTags: fileTags, AsyncAlbums: asyncAlbums, Albums: albums, ShowPrevNext: false, Perf: *perf}
+		model := FilePage{File: f, FileTags: fileTags, AsyncAlbums: asyncAlbums, Albums: albums, ShowPrevNext: false, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "file.gohtml", model)
 	})
 	if err != nil {
@@ -1099,7 +1205,7 @@ func handleFileGalleryFragment(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		model := FilePage{File: f, Albums: albums, Perf: *perf}
+		model := FilePage{File: f, Albums: albums, BasePage: BasePage{Perf: perf}}
 		return renderFragment(ctx, w, "file_galleries.gohtml", model)
 	})
 	if err != nil {
@@ -1362,7 +1468,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		model := TagDetailPage{Tag: t, Albums: albums, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(albums) < total, Perf: *perf}
+		model := TagDetailPage{Tag: t, Albums: albums, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(albums) < total, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "tag.gohtml", model)
 	})
 	if err != nil {
@@ -1422,7 +1528,7 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		model := TagsPage{ImageTags: imageTags, AlbumTags: albumTags, Perf: *perf}
+		model := TagsPage{ImageTags: imageTags, AlbumTags: albumTags, BasePage: BasePage{Perf: perf}}
 		return render(ctx, w, "tags.gohtml", model)
 	})
 	if err != nil {
@@ -1450,6 +1556,14 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 		return ctx.Err()
 	default:
 	}
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "private, max-age=60")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(data)
+	}
 	jsCookie := &http.Cookie{
 		Name:   "js",
 		Value:  "",
@@ -1463,11 +1577,20 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 	return tpl.ExecuteTemplate(w, name, data)
 }
 
+// Same as render, but fragments shouldn't clear the JS cookie
 func renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
+	}
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "private, max-age=60")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(data)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
@@ -1481,19 +1604,27 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *Perf, status 
 		return
 	default:
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
 	if errors.Is(err, sql.ErrNoRows) {
 		status = http.StatusNotFound
 		err = nil
 	}
 	statusText := fmt.Sprintf("%d %s", status, http.StatusText(status))
-	model := ErrorPage{StatusText: statusText, Perf: *perf}
+	model := ErrorPage{StatusText: statusText, BasePage: BasePage{Perf: perf}}
 	if err != nil {
 		model.Message = err.Error()
 	} else {
 		model.Message = statusText
 	}
+	w.WriteHeader(status)
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(model)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tpl.ExecuteTemplate(w, "error.gohtml", model)
 }
 
