@@ -41,7 +41,7 @@
             {{ if and .Filename.Valid .MimeType.Valid }}
               {{ $fn := .Filename.String }}
               {{ $urlid := (or (and .Urlid.Valid .Urlid.String) .FileId) }}
-              {{ $src := mediaURL .RipperHost $.Album.Gid $fn $urlid }}
+              {{ $src := mediaURL $.Album.RipperHost $.Album.Gid $fn $urlid }}
               {{ if hasPrefix .MimeType.String "video/" }}
                 <div class="video-container">
                   <video preload="metadata" src="{{$src}}"></video>

@@ -617,8 +617,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
 				SELECT rf.remote_file_id
-				     , r.name AS ripper_name
-				     , r.host AS ripper_host
+				     --, r.name AS ripper_name
+				     --, r.host AS ripper_host
 				     , rf.urlid
 				     , rf.filename
 				     , mt.name AS mime_type
@@ -645,8 +645,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				var f File
 				if err := rows.Scan(
 					&f.FileId,
-					&f.RipperName, // TODO just take the value from the album we already fetched
-					&f.RipperHost, // TODO just take the value from the album we already fetched
+					//&f.RipperName, // TODO just take the value from the album we already fetched
+					//&f.RipperHost, // TODO just take the value from the album we already fetched
 					&f.Urlid,
 					&f.Filename,
 					&f.MimeType,
