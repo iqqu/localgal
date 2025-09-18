@@ -6,6 +6,10 @@
     // ['', 'file', 'host', 'fileId']
     // ['', 'gallery', 'host', 'gid', 'fileId']
     pathParts.shift(); // Remove empty first part
+    if (pathParts[pathParts.length - 1] === '') {
+        // Remove empty last part (happens with trailing slash)
+        pathParts.pop();
+    }
 
     let host;
     let fileId;

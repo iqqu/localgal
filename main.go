@@ -315,10 +315,12 @@ func main() {
 	}).ParseFS(templatesFS, "templates/*.gohtml"))
 
 	http.HandleFunc("/", handleBrowse)
-	http.HandleFunc("/gallery/", handleGallery)
-	http.HandleFunc("/file/", handleFile)
+	http.HandleFunc("/gallery/{ripper_host}/{gid}", handleGallery)
+	http.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", handleGalleryFile)
+	http.HandleFunc("/file/{ripper_host}/{file_id}", handleFileStandalone)
+	http.HandleFunc("/file/{ripper_host}/{file_id}/galleries", handleFileGalleryFragment)
 	http.HandleFunc("/tags", handleTags)
-	http.HandleFunc("/tag/", handleTagDetail)
+	http.HandleFunc("/tag/{tag_name}", handleTagDetail)
 	http.HandleFunc("/random/gallery", handleRandomGallery)
 	http.HandleFunc("/random/file", handleRandomFile)
 
@@ -549,26 +551,17 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 	_ = p
 }
 
+// handleGallery handles /gallery/{ripper_host}/{gid}
 func handleGallery(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/gallery/") {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
-	rest := strings.TrimPrefix(r.URL.Path, "/gallery/")
-	if rest == "" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
+	ripperHost := r.PathValue("ripper_host")
+	gid := r.PathValue("gid")
+	if ripperHost == "" || gid == "" {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}"))
 		return
 	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
-		parts := strings.Split(strings.TrimSuffix(rest, "/"), "/")
-		// Lookup album by /gallery/{ripper_host}/{gid}
 		var a Album
 		if err := withSQL(ctx, func() error {
-			if len(parts) < 2 {
-				return fmt.Errorf("invalid gallery path, expected /gallery/{ripper_host}/{gid}")
-			}
-			ripperHost := parts[0]
-			gid := parts[1]
 			return db.QueryRowContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
@@ -607,139 +600,189 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		// Render album (gallery) page
-		if len(parts) == 2 {
-			page, size := parsePageParams(r, 60)
-			offset := (page - 1) * size
-			var total int
-			if err := withSQL(ctx, func() error {
-				return db.QueryRowContext(ctx, `
-					SELECT COUNT(*)
-					  FROM map_album_remote_file m
-					  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
-					 WHERE m.album_id = ?
-				`, a.AlbumId).Scan(&total)
-			}); err != nil {
+		page, size := parsePageParams(r, 60)
+		offset := (page - 1) * size
+		var total int
+		if err := withSQL(ctx, func() error {
+			return db.QueryRowContext(ctx, `
+				SELECT COUNT(*)
+				  FROM map_album_remote_file m
+				  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
+				 WHERE m.album_id = ?
+			`, a.AlbumId).Scan(&total)
+		}); err != nil {
+			return err
+		}
+		files := []File{}
+		if err := withSQL(ctx, func() error {
+			rows, err := db.QueryContext(ctx, `
+				SELECT rf.remote_file_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				     , rf.inserted_ts
+				  FROM map_album_remote_file marf
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE marf.album_id = ?
+				 ORDER BY marf.remote_file_id
+				 LIMIT ? OFFSET ?
+			`, a.AlbumId, size, offset)
+			if err != nil {
 				return err
 			}
-			files := []File{}
-			if err := withSQL(ctx, func() error {
-				rows, err := db.QueryContext(ctx, `
-					SELECT rf.remote_file_id
-					     , r.name AS ripper_name
-					     , r.host AS ripper_host
-					     , rf.urlid
-					     , rf.filename
-					     , mt.name AS mime_type
-					     , rf.title
-					     , rf.description
-					     , rf.uploaded_ts
-					     , rf.uploader
-					     , rf.hidden
-					     , rf.removed
-					     , rf.inserted_ts
-					  FROM map_album_remote_file marf
-					  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-					  JOIN ripper r ON r.ripper_id = rf.ripper_id
-					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE marf.album_id = ?
-					 ORDER BY marf.remote_file_id
-					 LIMIT ? OFFSET ?
-				`, a.AlbumId, size, offset)
-				if err != nil {
+			defer rows.Close()
+			for rows.Next() {
+				var f File
+				if err := rows.Scan(
+					&f.FileId,
+					&f.RipperName, // TODO just take the value from the album we already fetched
+					&f.RipperHost, // TODO just take the value from the album we already fetched
+					&f.Urlid,
+					&f.Filename,
+					&f.MimeType,
+					&f.Title,
+					&f.Description,
+					&f.UploadedTs,
+					&f.Uploader,
+					&f.Hidden,
+					&f.Removed,
+					&f.InsertedTs,
+				); err != nil {
 					return err
 				}
-				defer rows.Close()
-				for rows.Next() {
-					var f File
-					if err := rows.Scan(
-						&f.FileId,
-						&f.RipperName, // TODO just take the value from the album we already fetched
-						&f.RipperHost, // TODO just take the value from the album we already fetched
-						&f.Urlid,
-						&f.Filename,
-						&f.MimeType,
-						&f.Title,
-						&f.Description,
-						&f.UploadedTs,
-						&f.Uploader,
-						&f.Hidden,
-						&f.Removed,
-						&f.InsertedTs,
-					); err != nil {
-						return err
-					}
-					f.AlbumId = a.AlbumId
-					files = append(files, f)
-				}
-				return rows.Err()
-			}); err != nil {
-				return err
+				f.AlbumId = a.AlbumId
+				files = append(files, f)
 			}
-			// Fetch tags for album and distinct tags from its files
-			var albumTags, fileTags []Tag
-			if err := withSQL(ctx, func() error {
-				rows, e := db.QueryContext(ctx, `
-					SELECT t.tag_id, t.name
-					  FROM map_album_tag mat
-					  JOIN tag t ON t.tag_id = mat.tag_id
-					 WHERE mat.album_id = ?
-					 ORDER BY t.name
-				`, a.AlbumId)
-				if e != nil {
-					return e
-				}
-				defer rows.Close()
-				for rows.Next() {
-					var t Tag
-					if err := rows.Scan(&t.TagId, &t.Name); err != nil {
-						return err
-					}
-					albumTags = append(albumTags, t)
-				}
-				return rows.Err()
-			}); err != nil {
-				return err
-			}
-			if err := withSQL(ctx, func() error {
-				rows, e := db.QueryContext(ctx, `
-					SELECT t.tag_id, t.name, COUNT(*) as count
-					  FROM tag t
-					  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
-					  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
-					  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-					 WHERE marf.album_id = ?
-					 GROUP BY t.tag_id, t.name
-					 ORDER BY count DESC
-					 LIMIT 100 -- some albums might have a million tags...
-				`, a.AlbumId)
-				if e != nil {
-					return e
-				}
-				defer rows.Close()
-				for rows.Next() {
-					var t Tag
-					if err := rows.Scan(&t.TagId, &t.Name, &t.Count); err != nil {
-						return err
-					}
-					fileTags = append(fileTags, t)
-				}
-				return rows.Err()
-			}); err != nil {
-				return err
-			}
-			model := GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, Perf: *perf}
-			return render(ctx, w, "gallery.gohtml", model)
+			return rows.Err()
+		}); err != nil {
+			return err
 		}
+		// Fetch tags for album and distinct tags from its files
+		var albumTags, fileTags []Tag
+		if err := withSQL(ctx, func() error {
+			rows, e := db.QueryContext(ctx, `
+				SELECT t.tag_id, t.name
+				  FROM map_album_tag mat
+				  JOIN tag t ON t.tag_id = mat.tag_id
+				 WHERE mat.album_id = ?
+				 ORDER BY t.name
+			`, a.AlbumId)
+			if e != nil {
+				return e
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var t Tag
+				if err := rows.Scan(&t.TagId, &t.Name); err != nil {
+					return err
+				}
+				albumTags = append(albumTags, t)
+			}
+			return rows.Err()
+		}); err != nil {
+			return err
+		}
+		if err := withSQL(ctx, func() error {
+			rows, e := db.QueryContext(ctx, `
+				SELECT t.tag_id, t.name, COUNT(*) as count
+				  FROM tag t
+				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
+				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				 WHERE marf.album_id = ?
+				 GROUP BY t.tag_id, t.name
+				 ORDER BY count DESC
+				 LIMIT 100 -- some albums might have a million tags...
+			`, a.AlbumId)
+			if e != nil {
+				return e
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var t Tag
+				if err := rows.Scan(&t.TagId, &t.Name, &t.Count); err != nil {
+					return err
+				}
+				fileTags = append(fileTags, t)
+			}
+			return rows.Err()
+		}); err != nil {
+			return err
+		}
+		model := GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, Perf: *perf}
+		return render(ctx, w, "gallery.gohtml", model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
 
-		// Album-scoped file view: /gallery/{ripper}/{gid}/{fileid}
-		if len(parts) < 3 {
-			return fmt.Errorf("missing fileid")
-		}
-		fileIdString := parts[2]
-		fileId, err := strconv.ParseInt(fileIdString, 10, 64)
-		if err != nil || fileId <= 0 {
-			return fmt.Errorf("fileid must be a positive integer")
+// handleGallery handles /gallery/{ripper_host}/{gid}/{file_id}
+func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	gid := r.PathValue("gid")
+	fileIdString := r.PathValue("file_id")
+	if ripperHost == "" || gid == "" || fileIdString == "" {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}/{file_id}"))
+		return
+	}
+	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
+	if err != nil || fileId <= 0 {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("file_id must be a positive integer"))
+		return
+	}
+
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+		var a Album
+		if err := withSQL(ctx, func() error {
+			return db.QueryRowContext(ctx, `
+				SELECT a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				  FROM album a
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 WHERE r.host = ?
+				   AND a.gid = ?
+			`, ripperHost, gid).Scan(
+				&a.AlbumId,
+				&a.RipperId,
+				&a.RipperName,
+				&a.RipperHost,
+				&a.Gid,
+				&a.Uploader,
+				&a.Title,
+				&a.Description,
+				&a.CreatedTs,
+				&a.ModifiedTs,
+				&a.Hidden,
+				&a.Removed,
+				&a.LastFetchTs,
+				&a.InsertedTs,
+			)
+		}); err != nil {
+			return err
 		}
 		var f File
 		if err := withSQL(ctx, func() error {
@@ -922,88 +965,9 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			return render(ctx, w, "file.gohtml", model)
 		}
 		// Albums containing this file
-		albums := []Album{}
-		if err := withSQL(ctx, func() error {
-			rows, e := db.QueryContext(ctx, `
-				SELECT a.album_id
-				     , a.ripper_id
-				     , r.name AS ripper_name
-				     , r.host AS ripper_host
-				     , a.gid
-				     , a.uploader
-				     , a.title
-				     , a.description
-				     , a.created_ts
-				     , a.modified_ts
-				     , a.hidden
-				     , a.removed
-				     , a.last_fetch_ts
-				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*) FROM map_album_remote_file marf WHERE marf.album_id = a.album_id
-				       ) AS file_count
-				     , (
-				    SELECT rf.remote_file_id
-				      FROM map_album_remote_file marf2
-				      JOIN remote_file rf ON rf.remote_file_id = marf2.remote_file_id
-				     WHERE marf2.album_id = a.album_id
-				       AND rf.fetched = 1
-				     ORDER BY marf2.remote_file_id
-				     LIMIT 1
-				       ) AS thumb
-				  FROM album a
-				  JOIN ripper r ON r.ripper_id = a.ripper_id
-				  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
-				 WHERE marf.remote_file_id = ?
-			`, f.FileId)
-			if e != nil {
-				return e
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var a2 Album
-				var f2 File
-				if err := rows.Scan(
-					&a2.AlbumId,
-					&a2.RipperId,
-					&a2.RipperName,
-					&a2.RipperHost,
-					&a2.Gid,
-					&a2.Uploader,
-					&a2.Title,
-					&a2.Description,
-					&a2.CreatedTs,
-					&a2.ModifiedTs,
-					&a2.Hidden,
-					&a2.Removed,
-					&a2.LastFetchTs,
-					&a2.InsertedTs,
-					&a2.FileCount,
-					&f2.FileId,
-				); err != nil {
-					return err
-				}
-				a2.Thumb = f2
-				albums = append(albums, a2)
-			}
-			return rows.Err()
-		}); err != nil {
+		albums, err := getRelatedAlbums(r.Context(), fileId)
+		if err != nil {
 			return err
-		}
-		for i := range albums {
-			thumb := albums[i].Thumb
-			if err := withSQL(ctx, func() error {
-				return db.QueryRowContext(ctx, `
-					SELECT rf.filename
-					     , mt.name AS mime_type
-					  FROM remote_file rf
-					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.remote_file_id = ?
-				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
-			}); err != nil {
-				return err
-			}
-			albums[i].Thumb = thumb
 		}
 		model := FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, Albums: albums, CurrentAlbum: a, ShowPrevNext: true, Perf: *perf}
 		return render(ctx, w, "file.gohtml", model)
@@ -1014,29 +978,21 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleFile(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/file/") {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
+// handleFileStandalone handles /file/{ripper_host}/{file_id}/
+func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	fileIdString := r.PathValue("file_id")
+	if ripperHost == "" || fileIdString == "" {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}"))
 		return
 	}
-	full := strings.TrimPrefix(r.URL.Path, "/file/")
-	if full == "" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
+	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
+	if err != nil || fileId <= 0 {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
 		return
 	}
 
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
-		parts := strings.Split(strings.TrimSuffix(full, "/"), "/")
-
-		if len(parts) < 2 {
-			return fmt.Errorf("invalid file path, expected /file/{ripper_host}/{file_id}")
-		}
-		ripperHost, fileIdString := parts[0], parts[1]
-		fileId, err := strconv.ParseInt(fileIdString, 10, 64)
-		if err != nil || fileId <= 0 {
-			return fmt.Errorf("invalid file id, must be a positive integer")
-		}
-
 		var f File
 		if err := withSQL(ctx, func() error {
 			f.RipperHost = ripperHost
@@ -1076,131 +1032,37 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var fileTags []Tag
-		// /file/{ripper_host}/{file_id}
-		if len(parts) == 2 {
-			// Standalone file view: no Prev/Next
-			if err := withSQL(ctx, func() error {
-				rows, e := db.QueryContext(ctx, `
+		// Standalone file view: no Prev/Next
+		if err := withSQL(ctx, func() error {
+			rows, e := db.QueryContext(ctx, `
 					SELECT t.tag_id, t.name
 					  FROM map_remote_file_tag m
 					  JOIN tag t ON t.tag_id = m.tag_id
 					 WHERE m.remote_file_id = ?
 					 ORDER BY t.name
 				`, f.FileId)
-				if e != nil {
-					return e
-				}
-				defer rows.Close()
-				for rows.Next() {
-					var t Tag
-					if err := rows.Scan(&t.TagId, &t.Name); err != nil {
-						return err
-					}
-					fileTags = append(fileTags, t)
-				}
-				return rows.Err()
-			}); err != nil {
-				return err
+			if e != nil {
+				return e
 			}
-		}
-		asyncAlbums := isClientJsOn(r)
-		isAsyncAlbumsRequest := len(parts) == 3 && parts[2] == "galleries"
-
-		// Albums containing this file
-		albums := []Album{}
-
-		if !asyncAlbums || isAsyncAlbumsRequest {
-			if err := withSQL(ctx, func() error {
-				rows, e := db.QueryContext(ctx, `
-					SELECT a.album_id
-					     , a.ripper_id
-					     , r.name AS ripper_name
-					     , r.host AS ripper_host
-					     , a.gid
-					     , a.uploader
-					     , a.title
-					     , a.description
-					     , a.created_ts
-					     , a.modified_ts
-					     , a.hidden
-					     , a.removed
-					     , a.last_fetch_ts
-					     , a.inserted_ts
-					     , (
-					    SELECT COUNT(*)
-					      FROM map_album_remote_file marf
-					      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-					     WHERE marf.album_id = a.album_id
-					       ) AS file_count
-					     , (
-					    SELECT rf.remote_file_id
-					      FROM map_album_remote_file marf
-					      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-					     WHERE marf.album_id = a.album_id
-					-- ORDER BY rf.remote_file_id ASC
-					     LIMIT 1
-					       ) AS thumb
-					  FROM album a
-					  JOIN ripper r ON r.ripper_id = a.ripper_id
-					  JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
-					 ORDER BY a.album_id
-				`, f.FileId)
-				if e != nil {
-					return e
-				}
-				defer rows.Close()
-				for rows.Next() {
-					var a2 Album
-					var f2 File
-					if err := rows.Scan(
-						&a2.AlbumId,
-						&a2.RipperId,
-						&a2.RipperName,
-						&a2.RipperHost,
-						&a2.Gid,
-						&a2.Uploader,
-						&a2.Title,
-						&a2.Description,
-						&a2.CreatedTs,
-						&a2.ModifiedTs,
-						&a2.Hidden,
-						&a2.Removed,
-						&a2.LastFetchTs,
-						&a2.InsertedTs,
-						&a2.FileCount,
-						&f2.FileId,
-					); err != nil {
-						return err
-					}
-					a2.Thumb = f2
-					albums = append(albums, a2)
-				}
-				return rows.Err()
-			}); err != nil {
-				return err
-			}
-			for i := range albums {
-				thumb := albums[i].Thumb
-				if err := withSQL(ctx, func() error {
-					return db.QueryRowContext(ctx, `
-						SELECT rf.filename
-						     , mt.name AS mime_type
-						  FROM remote_file rf
-						  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-						 WHERE rf.remote_file_id = ?
-					`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
-				}); err != nil {
+			defer rows.Close()
+			for rows.Next() {
+				var t Tag
+				if err := rows.Scan(&t.TagId, &t.Name); err != nil {
 					return err
 				}
-				albums[i].Thumb = thumb
+				fileTags = append(fileTags, t)
 			}
+			return rows.Err()
+		}); err != nil {
+			return err
 		}
-
-		// Related albums async HTML fragment
-		// /file/{ripper_host}/{file_id}/galleries
-		if isAsyncAlbumsRequest {
-			model := FilePage{File: f, Albums: albums, Perf: *perf}
-			return renderFragment(ctx, w, "file_galleries.gohtml", model)
+		asyncAlbums := isClientJsOn(r)
+		var albums []Album
+		if !asyncAlbums {
+			albums, err = getRelatedAlbums(ctx, f.FileId)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Regular file page
@@ -1213,17 +1075,131 @@ func handleFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleFileStandalone handles /file/{ripper_host}/{file_id}/galleries/
+func handleFileGalleryFragment(w http.ResponseWriter, r *http.Request) {
+	// ripperHost is not necessary for now, but want to keep to make replacing file_id with urlid easy in the future
+	ripperHost := r.PathValue("ripper_host")
+	fileIdString := r.PathValue("file_id")
+	if ripperHost == "" || fileIdString == "" {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}/galleries"))
+		return
+	}
+	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
+	if err != nil || fileId <= 0 {
+		renderError(r.Context(), w, &Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
+		return
+	}
+
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
+		f := File{FileId: fileId}
+
+		var albums []Album
+		albums, err = getRelatedAlbums(ctx, fileId)
+		if err != nil {
+			return err
+		}
+
+		model := FilePage{File: f, Albums: albums, Perf: *perf}
+		return renderFragment(ctx, w, "file_galleries.gohtml", model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+func getRelatedAlbums(ctx context.Context, fileId int64) ([]Album, error) {
+	var albums []Album
+	if err := withSQL(ctx, func() error {
+		rows, e := db.QueryContext(ctx, `
+			SELECT a.album_id
+			     , a.ripper_id
+			     , r.name AS ripper_name
+			     , r.host AS ripper_host
+			     , a.gid
+			     , a.uploader
+			     , a.title
+			     , a.description
+			     , a.created_ts
+			     , a.modified_ts
+			     , a.hidden
+			     , a.removed
+			     , a.last_fetch_ts
+			     , a.inserted_ts
+			     , (
+			    SELECT COUNT(*)
+			      FROM map_album_remote_file marf
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+			     WHERE marf.album_id = a.album_id
+			       ) AS file_count
+			     , (
+			    SELECT rf.remote_file_id
+			      FROM map_album_remote_file marf
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+			     WHERE marf.album_id = a.album_id
+			-- ORDER BY rf.remote_file_id ASC
+			     LIMIT 1
+			       ) AS thumb
+			  FROM album a
+			  JOIN ripper r ON r.ripper_id = a.ripper_id
+			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
+			 ORDER BY a.album_id
+		`, fileId)
+		if e != nil {
+			return e
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var a2 Album
+			var f2 File
+			if err := rows.Scan(
+				&a2.AlbumId,
+				&a2.RipperId,
+				&a2.RipperName,
+				&a2.RipperHost,
+				&a2.Gid,
+				&a2.Uploader,
+				&a2.Title,
+				&a2.Description,
+				&a2.CreatedTs,
+				&a2.ModifiedTs,
+				&a2.Hidden,
+				&a2.Removed,
+				&a2.LastFetchTs,
+				&a2.InsertedTs,
+				&a2.FileCount,
+				&f2.FileId,
+			); err != nil {
+				return err
+			}
+			a2.Thumb = f2
+			albums = append(albums, a2)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+	for i := range albums {
+		thumb := albums[i].Thumb
+		if err := withSQL(ctx, func() error {
+			return db.QueryRowContext(ctx, `
+				SELECT rf.filename
+				     , mt.name AS mime_type
+				  FROM remote_file rf
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE rf.remote_file_id = ?
+			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+		}); err != nil {
+			return nil, err
+		}
+		albums[i].Thumb = thumb
+	}
+	return albums, nil
+}
+
 func handleTagDetail(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/tag/") {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
-	nameEncoded := strings.TrimPrefix(r.URL.Path, "/tag/")
-	if nameEncoded == "" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
-	name, err := url.QueryUnescape(nameEncoded)
+	tag := r.PathValue("tag_name")
+	tag, err := url.QueryUnescape(tag)
 	if err != nil {
 		renderError(r.Context(), w, &Perf{}, 500, err)
 		return
@@ -1235,7 +1211,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				SELECT tag_id, name
 				  FROM tag
 				 WHERE name = ?
-			`, name).Scan(&t.TagId, &t.Name)
+			`, tag).Scan(&t.TagId, &t.Name)
 		}); err != nil {
 			return err
 		}
@@ -1396,10 +1372,6 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTags(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/tags" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		imageTags := []Tag{}
 		if err := withSQL(ctx, func() error {
@@ -1527,10 +1499,6 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *Perf, status 
 
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/random/gallery" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		var ripperHost, gid string
 		if err := withSQL(ctx, func() error {
@@ -1555,10 +1523,6 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 
 // handleRandomFile selects a random available file and redirects to its file page.
 func handleRandomFile(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/random/file" {
-		renderError(r.Context(), w, &Perf{}, http.StatusNotFound, nil)
-		return
-	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *Perf) error {
 		var ripperHost string
 		var fileId int64
