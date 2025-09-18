@@ -534,7 +534,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					     , mt.name AS mime_type
 					  FROM remote_file rf
 					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.remote_file_id = ?
+					 WHERE rf.remote_file_id = ? AND rf.fetched = 1
 			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 			}); err != nil {
 				return err
