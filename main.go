@@ -324,6 +324,41 @@ func forceReadOnlyDsn(dsn string) string {
 	return base + "?" + strings.Join(params, "&")
 }
 
+// loadKnownFiles builds knownFilePaths from a log file: each line is a relative or absolute path to a file.
+func loadKnownFiles(path string) {
+	log.Printf("Loading known files")
+	knownFilePaths = map[string][]string{}
+	dir := filepath.Dir(path)
+	f, err := os.Open(path)
+	if err != nil {
+		log.Printf("known file log open: %v", err)
+		return
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		p := strings.TrimSpace(s.Text())
+		if p == "" || strings.HasPrefix(p, "#") {
+			continue
+		}
+		base := filepath.Base(p)
+		target := filepath.Join(dir, p)
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(dfLogRoot, target)
+			target = filepath.Clean(target)
+			target, err = filepath.Rel(dfLogRoot, target)
+			if err != nil {
+				log.Printf("Not able to resolve clean relative path for %v: %v", p, err)
+			}
+		}
+		knownFilePaths[base] = append(knownFilePaths[base], target)
+	}
+	if err := s.Err(); err != nil {
+		log.Printf("known file log scan: %v", err)
+	}
+	log.Printf("known file log loaded %d filenames", len(knownFilePaths))
+}
+
 func atoiDefault(s string, def int) int {
 	n, err := strconv.Atoi(s)
 	if err != nil {
@@ -1386,84 +1421,6 @@ func isClientJsOn(r *http.Request) bool {
 	return true
 }
 
-func render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	renderMode := getRenderMode(ctx)
-	if renderMode == RenderJSON {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Cache-Control", "private, max-age=60")
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(data)
-	}
-	jsCookie := &http.Cookie{
-		Name:   "js",
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1, // Tell the client to instantly delete the cookie
-	}
-	http.SetCookie(w, jsCookie)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
-	w.Header().Set("Cache-Control", "private, max-age=60")
-	return tpl.ExecuteTemplate(w, name, data)
-}
-
-// Same as render, but fragments shouldn't clear the JS cookie
-func renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	renderMode := getRenderMode(ctx)
-	if renderMode == RenderJSON {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Cache-Control", "private, max-age=60")
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(data)
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
-	w.Header().Set("Cache-Control", "private, max-age=60")
-	return tpl.ExecuteTemplate(w, name, data)
-}
-
-func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
-	if errors.Is(err, sql.ErrNoRows) {
-		status = http.StatusNotFound
-		err = nil
-	}
-	statusText := fmt.Sprintf("%d %s", status, http.StatusText(status))
-	model := types.ErrorPage{StatusText: statusText, BasePage: types.BasePage{Perf: perf}}
-	if err != nil {
-		model.Message = err.Error()
-	} else {
-		model.Message = statusText
-	}
-	w.WriteHeader(status)
-	renderMode := getRenderMode(ctx)
-	if renderMode == RenderJSON {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(model)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = tpl.ExecuteTemplate(w, "error.gohtml", model)
-}
-
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
@@ -1547,41 +1504,6 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
-}
-
-// loadKnownFiles builds knownFilePaths from a log file: each line is a relative or absolute path to a file.
-func loadKnownFiles(path string) {
-	log.Printf("Loading known files")
-	knownFilePaths = map[string][]string{}
-	dir := filepath.Dir(path)
-	f, err := os.Open(path)
-	if err != nil {
-		log.Printf("known file log open: %v", err)
-		return
-	}
-	defer f.Close()
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		p := strings.TrimSpace(s.Text())
-		if p == "" || strings.HasPrefix(p, "#") {
-			continue
-		}
-		base := filepath.Base(p)
-		target := filepath.Join(dir, p)
-		if !filepath.IsAbs(target) {
-			target = filepath.Join(dfLogRoot, target)
-			target = filepath.Clean(target)
-			target, err = filepath.Rel(dfLogRoot, target)
-			if err != nil {
-				log.Printf("Not able to resolve clean relative path for %v: %v", p, err)
-			}
-		}
-		knownFilePaths[base] = append(knownFilePaths[base], target)
-	}
-	if err := s.Err(); err != nil {
-		log.Printf("known file log scan: %v", err)
-	}
-	log.Printf("known file log loaded %d filenames", len(knownFilePaths))
 }
 
 func cleanJoin(elem ...string) string {
@@ -1704,6 +1626,84 @@ var sanitizedFilenameRe = regexp.MustCompile("[\\\\:*?\"<>|]")
 func sanitizedFilename(filename string) string {
 	filename = sanitizedFilenameRe.ReplaceAllString(filename, "_")
 	return filename
+}
+
+func render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "private, max-age=60")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(data)
+	}
+	jsCookie := &http.Cookie{
+		Name:   "js",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1, // Tell the client to instantly delete the cookie
+	}
+	http.SetCookie(w, jsCookie)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	return tpl.ExecuteTemplate(w, name, data)
+}
+
+// Same as render, but fragments shouldn't clear the JS cookie
+func renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "private, max-age=60")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(data)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	return tpl.ExecuteTemplate(w, name, data)
+}
+
+func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		status = http.StatusNotFound
+		err = nil
+	}
+	statusText := fmt.Sprintf("%d %s", status, http.StatusText(status))
+	model := types.ErrorPage{StatusText: statusText, BasePage: types.BasePage{Perf: perf}}
+	if err != nil {
+		model.Message = err.Error()
+	} else {
+		model.Message = statusText
+	}
+	w.WriteHeader(status)
+	renderMode := getRenderMode(ctx)
+	if renderMode == RenderJSON {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(model)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = tpl.ExecuteTemplate(w, "error.gohtml", model)
 }
 
 func logMiddleware(next http.Handler) http.Handler {
