@@ -93,7 +93,7 @@
     <h1>{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}{{if .File.Hidden}} <span class="muted" title="This file is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
 
     <p class="muted" style="margin-top:0.5rem;">
-      {{if .CurrentAlbum}}
+      {{if not (eq .CurrentAlbum.AlbumId 0) }}
         In album: <a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>
       {{end}}
     </p>
