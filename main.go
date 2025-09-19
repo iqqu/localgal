@@ -1486,11 +1486,16 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		imageTags := []Tag{}
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
-				SELECT t.tag_id, t.name, COUNT(*) as cnt
+				SELECT t.tag_id
+				     , t.name
+				     , (
+				    SELECT COUNT(*)
+				      FROM map_remote_file_tag mrft
+				      --JOIN remote_file rf ON rf.remote_file_id = mrft.remote_file_id
+				     WHERE t.tag_id = mrft.tag_id -- AND rf.fetched = 1
+				    -- filtering on fetched here is quite slow
+				       ) AS cnt
 				  FROM tag t
-				  JOIN map_remote_file_tag m ON m.tag_id = t.tag_id
-				  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
-				 GROUP BY t.tag_id, t.name
 				 ORDER BY cnt DESC, t.name ASC
 			`)
 			if err != nil {
@@ -1511,10 +1516,12 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		albumTags := []Tag{}
 		if err := withSQL(ctx, func() error {
 			rows, err := db.QueryContext(ctx, `
-				SELECT t.tag_id, t.name, COUNT(*) as cnt
-				  FROM tag t
-				  JOIN map_album_tag m ON m.tag_id = t.tag_id
-				 GROUP BY t.tag_id, t.name
+				SELECT t.tag_id
+				     , t.name
+				     , COUNT(t.tag_id) AS cnt
+				  FROM map_album_tag mat
+				  JOIN tag t ON t.tag_id = mat.tag_id
+				 GROUP BY mat.tag_id, t.name
 				 ORDER BY cnt DESC, t.name ASC
 			`)
 			if err != nil {
