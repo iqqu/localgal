@@ -10,6 +10,8 @@ BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS    := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)' -X 'main.BuildDate=$(BUILD_DATE)'
 
+HOST_GOOS := $(shell go env GOOS)
+
 # target platforms for cross compilation
 PLATFORMS := \
 	linux/amd64 \

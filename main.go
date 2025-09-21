@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	_ "golocalgal/types"
 )
@@ -136,7 +136,7 @@ func main() {
 	}
 
 	var err error
-	db, err = sql.Open("sqlite3", dsn)
+	db, err = sql.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
 	}
