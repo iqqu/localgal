@@ -24,7 +24,7 @@ PLATFORMS := \
 all: build
 
 build:
-	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN) $(PKG)
+	GO111MODULE=on go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN) $(PKG)
 
 build-cross:
 	@mkdir -p $(DISTDIR)
@@ -37,7 +37,7 @@ build-cross:
 	    out="$(DISTDIR)/$(APP)-$$os-$$arch$$ext"; \
 	    echo "Building $$out"; \
 	    GOOS=$$os GOARCH=$$arch GO111MODULE=on \
-	        go build -ldflags "$(LDFLAGS)" -o "$$out" $(PKG); \
+	        go build -trimpath -ldflags "$(LDFLAGS)" -o "$$out" $(PKG); \
 	done
 
 run: build
