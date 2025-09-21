@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/mem"
 	_ "modernc.org/sqlite"
 
 	_ "golocalgal/types"
@@ -142,7 +143,8 @@ func main() {
 	}
 	db.SetMaxOpenConns(1) // sqlite preferred in many cases
 
-	if err = initDB(db); err != nil {
+	dbFilename := getFileFromDsn(dsn)
+	if err = initDB(db, dbFilename); err != nil {
 		log.Fatalf("init db: %v", err)
 	}
 
@@ -292,15 +294,35 @@ func getEnv(k, def string) string {
 	return def
 }
 
-func initDB(db *sql.DB) error {
-	// Set pragmas for large DBs
-	pragmas := []string{
-		//"PRAGMA journal_mode=WAL;", // attempts a write, but we're opening the db read-only
-		//"PRAGMA synchronous=NORMAL;",
-		"PRAGMA temp_store=MEMORY;",
-		//"PRAGMA mmap_size=268435456;", // 256MB
-		"PRAGMA cache_size=2097152;", // kibibytes; 2GiB
+func getFileFromDsn(dsn string) string {
+	_, afterFile, _ := strings.Cut(dsn, "file:")
+	filename, _, _ := strings.Cut(afterFile, "?")
+	return filename
+}
+
+func initDB(db *sql.DB, filename string) error {
+	var pragmas []string
+
+	// Not sure why anyone would try :memory:, but handle it anyway
+	if ":memory:" != filename {
+		stat, err := os.Stat(filename)
+		if err != nil {
+			return err
+		}
+		vm, _ := mem.VirtualMemory()
+		statKib := max(0, stat.Size()/1024)
+		availableKib := vm.Available / 1024
+		maxCacheKib := min(uint64(statKib), availableKib, 2097152)
+		pragmas = append(pragmas, fmt.Sprintf("PRAGMA cache_size=%d", maxCacheKib))
+		//pragmas = append(pragmas, "PRAGMA cache_size=2097152;")  // kibibytes; 2GiB
 	}
+
+	// Set pragmas for large DBs
+	//pragmas = append(pragmas, "PRAGMA journal_mode=WAL;")
+	//pragmas = append(pragmas, "PRAGMA synchronous=NORMAL;")
+	pragmas = append(pragmas, "PRAGMA temp_store=MEMORY;")
+	//pragmas = append(pragmas, "PRAGMA mmap_size=268435456;") // 256MB
+
 	for _, p := range pragmas {
 		if _, err := db.Exec(p); err != nil {
 			log.Printf("pragma error %q: %v", p, err)
