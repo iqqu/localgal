@@ -68,5 +68,3 @@ Non-goals:
 
 TODO:
 * Improve code organization
-* Simplify HTML template links
-* Add media links to JSON API
