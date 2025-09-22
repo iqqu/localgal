@@ -190,22 +190,6 @@ func main() {
 			}
 			return p.PageTime.Round(time.Millisecond).String()
 		},
-		"mediaURL": func(ripperName string, gid string, filename string, urlid string) string {
-			name := filename
-			if name == "" {
-				name = urlid
-			}
-			if ripperName != "" && gid != "" && name != "" {
-				return "/media/" + ripperName + "/" + gid + "/" + name
-			}
-			if gid != "" && name != "" {
-				return "/media/" + gid + "/" + name
-			}
-			if name != "" {
-				return "/media/" + name
-			}
-			return "/media/"
-		},
 		// Version info helpers for templates
 		"appVersion":   func() string { return Version },
 		"appCommit":    func() string { return Commit },

@@ -33,17 +33,14 @@
       {{range .Albums}}
         <div class="grid-tile">
           <div class="card thumb">
-            <a class="card-link" href="/gallery/{{.RipperHost}}/{{.Gid}}">
-              {{ if and .Thumb.Filename.Valid .Thumb.MimeType.Valid }}
-                {{- $fn := .Thumb.Filename.String }}
-                {{- $urlid := (or (and .Thumb.Urlid.Valid .Thumb.Urlid.String) "") }}
-                {{- $src := mediaURL .RipperHost .Gid $fn "" }}
+            <a class="card-link" href="{{.HrefPage}}">
+              {{ if .Thumb.MimeType.Valid }}
                 {{- if hasPrefix .Thumb.MimeType.String "video/" }}
                   <div class="video-container">
-                    <video preload="metadata" src="{{$src}}" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
+                    <video preload="metadata" src="{{.Thumb.HrefMedia}}" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
                   </div>
                 {{- else }}{{- /* assume image */ -}}
-                  <img src="{{ $src }}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
+                  <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
                 {{- end }}
               {{- else }}
                 <p>[no thumbnail]</p>

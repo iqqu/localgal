@@ -7,18 +7,15 @@
         <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
           {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">Start</div></div>{{end}}
           {{range .Prev}}
-            <a class="card-link" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+            <a class="card-link" href="{{.HrefPage}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
               <div class="card thumb">
-                {{ if and .Filename.Valid .MimeType.Valid }}
-                  {{ $fn := .Filename.String }}
-                  {{ $urlid := (or (and .Urlid.Valid .Urlid.String) "") }}
-                  {{ $src := mediaURL $.File.RipperHost $.CurrentAlbum.Gid $fn $urlid }}
+                {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}
                     <div class="video-container">
-                      <video preload="metadata" src="{{$src}}"></video>
+                      <video preload="metadata" src="{{.HrefMedia}}"></video>
                     </div>
                   {{ else }}{{/* assume image */}}
-                    <img src="{{$src}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                    <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
                   {{ end }}
                 {{ else }}
                   <p>[no thumbnail]</p>
@@ -30,25 +27,22 @@
       </div>
       <div class="muted" style="width:80px; display: flex; flex-direction:column; text-align: center; justify-content:space-around;">
         {{if .CurrentAlbum}}
-          <div><a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}"><span style="display: block">&uparrow;</span>Back to Gallery</a></div>
+          <div><a href="{{.CurrentAlbum.HrefPage}}"><span style="display: block">&uparrow;</span>Back to Gallery</a></div>
         {{end}}
         <div>&larr;&nbsp;Browse&nbsp;&rarr;</div>
       </div>
       <div style="flex:1; overflow:hidden;">
         <div class="pv-next" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-start;">
           {{range .Next}}
-            <a class="card-link" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+            <a class="card-link" href="{{.HrefPage}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
               <div class="card thumb">
-                {{ if and .Filename.Valid .MimeType.Valid }}
-                  {{ $fn := .Filename.String }}
-                  {{ $urlid := (or (and .Urlid.Valid .Urlid.String) "") }}
-                  {{ $src := mediaURL $.File.RipperHost $.CurrentAlbum.Gid $fn $urlid }}
+                {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}
                     <div class="video-container">
-                      <video preload="metadata" src="{{$src}}"></video>
+                      <video preload="metadata" src="{{.HrefMedia}}"></video>
                     </div>
                   {{ else }}{{/* assume image */}}
-                    <img src="{{$src}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                    <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
                   {{ end }}
                 {{ else }}
                   <p>[no thumbnail]</p>
@@ -64,10 +58,7 @@
 
   <a id="main-content"></a>
   <div class="card">
-    {{ if and .File.Filename.Valid .File.MimeType.Valid }}
-      {{ $fn := .File.Filename.String }}
-      {{ $urlid := (or (and .File.Urlid.Valid .File.Urlid.String) "") }}
-      {{ $src := mediaURL .File.RipperHost .CurrentAlbum.Gid $fn $urlid }}
+    {{ if .File.MimeType.Valid }}
       <div class="full-bleed">
         <input type="checkbox" id="fb-expand" hidden />
         <div class="fb-wrap">
@@ -76,21 +67,21 @@
               <span class="cell-media">
                 {{ if hasPrefix .File.MimeType.String "video/" }}
                   <span class="video-container">
-                    <video class="fb-content main-content-resource" loop controls src="{{$src}}"></video>
+                    <video class="fb-content main-content-resource" loop controls src="{{.File.HrefMedia}}"></video>
                   </span>
                 {{ else }}
-                  <img class="fb-content main-content-resource" src="{{$src}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
+                  <img class="fb-content main-content-resource" src="{{.File.HrefMedia}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
                 {{ end }}
               </span>
               {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
-              <a class="cell-nav prev" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}">
+              <a class="cell-nav prev" href="{{.HrefPage}}">
                 <span class="cell-nav-btn">
                   <img src="/static/prev.svg" alt="Previous">
                 </span>
               </a>
               {{end}}{{end}}
               {{if gt (len .Next) 0}}{{with index .Next 0}}
-              <a class="cell-nav next" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}">
+              <a class="cell-nav next" href="{{.HrefPage}}">
                 <span class="cell-nav-btn">
                   <img src="/static/next.svg" alt="Next">
                 </span>
@@ -112,7 +103,7 @@
 
     <p class="muted" style="margin-top:0.5rem;">
       {{if not (eq .CurrentAlbum.AlbumId 0) }}
-        In album: <a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>{{if .CurrentAlbum.Title.Valid}} <a href="/gallery/{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}">{{.CurrentAlbum.Title.String}}</a>{{end}}
+        In album: <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>{{if .CurrentAlbum.Title.Valid}} <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.Title.String}}</a>{{end}}
       {{end}}
     </p>
     {{if .File.Filename.Valid}}
