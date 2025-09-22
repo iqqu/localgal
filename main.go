@@ -1181,6 +1181,7 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 				  FROM remote_file rf
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE rf.remote_file_id = ?
+				   AND fetched = 1
 			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 		}); err != nil {
 			return nil, err
