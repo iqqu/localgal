@@ -1048,7 +1048,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		asyncAlbums := isClientJsOn(r)
+		asyncAlbums := isClientJsOn(r) || getRenderMode(ctx) == RenderJSON
 		var albums []types.Album
 		if !asyncAlbums {
 			albums, err = getRelatedAlbums(ctx, f.FileId)
