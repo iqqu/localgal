@@ -28,6 +28,18 @@ Pages:
 * `/about`: About page
 * `/healthz`
 
+JSON API Pages:
+(accepts the same query parameters used by the HTML pages)
+* `/api/galleries`: Browse galleries
+* `/api/gallery/{ripper}/{gid}`: View gallery
+* `/api/gallery/{ripper}/{gid}/{urlid}`: View file of gallery
+* `/api/file/{ripper}/{urlid}`: View individual file
+* `/api/file/{ripper}/{urlid}/galleries`: View galleries associated with an individual file
+* `/api/tags`: View all tags
+* `/api/tag/{tag}`: View tag
+* `/api/random/gallery`: Redirect to random gallery
+* `/api/random/file`: Redirect to random file
+
 Hotkeys:
 * f: random file
 * g: random gallery
@@ -40,9 +52,11 @@ Hotkeys:
 
 Environment variables:
 * `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
-* `SQLITE_DSN`: sqlite data source name (connection string), default `file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON`
+* `SQLITE_DSN`: sqlite data source name (connection string), default `file:ripme.sqlite`
 * `MEDIA_ROOT`: rip base directory, default: `./rips`
 * `SLOW_SQL_MS`: duration threshold to log slow sql queries, milliseconds, default `100`
+* `DFLOG`: downloaded file log, default `./ripme.downloaded.files.log`
+* `DFLOG_ROOT`: base directory to resolve relative paths in DFLOG from, default directory that DFLOG is in
 
 Goals:
 * Be simple
@@ -53,4 +67,6 @@ Non-goals:
 * User accounts
 
 TODO:
-* Refactor, clean up duplicate code
+* Improve code organization
+* Simplify HTML template links
+* Add media links to JSON API
