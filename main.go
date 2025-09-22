@@ -227,6 +227,7 @@ func main() {
 			handler(w, withRenderMode(r, RenderJSON))
 		}
 	}
+	http.HandleFunc("GET /api/", asApi(handle404))
 	http.HandleFunc("GET /api/galleries", asApi(handleBrowse))
 	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
 	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
@@ -400,6 +401,10 @@ func parsePageParams(r *http.Request, defSize int) (page, size int) {
 		size = defSize
 	}
 	return
+}
+
+func handle404(w http.ResponseWriter, r *http.Request) {
+	renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
 }
 
 func handleStatic(w http.ResponseWriter, r *http.Request) {
