@@ -8,6 +8,7 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 
 * Browse galleries of image and video files
 * Completely self-contained; does not make external web requests
+* Browsable with just keyboard or just mouse
 * Works with JS disabled
 * If JS enabled:
   * Hotkeys enabled
