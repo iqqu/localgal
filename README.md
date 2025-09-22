@@ -69,3 +69,8 @@ Non-goals:
 
 TODO:
 * Improve code organization
+
+Wishlist (help welcome):
+* Better icon
+* Native sqlite driver (for performance) with cross-compilation (for release job)
+* Faster SQL query for /tags
