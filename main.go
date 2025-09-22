@@ -534,6 +534,14 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			}
 			list[i].Thumb = thumb
 		}
+		// Populate href
+		for i := range list {
+			list[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", list[i].RipperHost, list[i].Gid)
+			list[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", list[i].RipperHost, list[i].Gid, list[i].Thumb.FileId)
+			if list[i].Thumb.Filename.Valid {
+				list[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", list[i].RipperHost, list[i].Gid, list[i].Thumb.Filename.String)
+			}
+		}
 		model := types.BrowsePage{Albums: list, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(list) < total, BasePage: types.BasePage{Perf: perf}}
 		return render(ctx, w, "browse.gohtml", model)
 	})
@@ -711,6 +719,14 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			return rows.Err()
 		}); err != nil {
 			return err
+		}
+		// Populate href
+		a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
+		for i := range files {
+			files[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, files[i].FileId)
+			if files[i].Filename.Valid {
+				files[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, files[i].Filename.String)
+			}
 		}
 		model := types.GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, BasePage: types.BasePage{Perf: perf}}
 		return render(ctx, w, "gallery.gohtml", model)
@@ -952,6 +968,26 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
+
+		// Populate href
+		a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
+		f.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, f.FileId)
+		if f.Filename.Valid {
+			f.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, f.Filename.String)
+		}
+		for i := range prev {
+			prev[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, prev[i].FileId)
+			if prev[i].Filename.Valid {
+				prev[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, prev[i].Filename.String)
+			}
+		}
+		for i := range next {
+			next[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, next[i].FileId)
+			if next[i].Filename.Valid {
+				next[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, next[i].Filename.String)
+			}
+		}
+
 		asyncAlbums := isClientJsOn(r)
 		if asyncAlbums {
 			model := types.FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, AsyncAlbums: true, CurrentAlbum: a, ShowPrevNext: true, BasePage: types.BasePage{Perf: perf}}
@@ -1056,6 +1092,11 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return err
 			}
+		}
+
+		// Populate href
+		if f.Filename.Valid {
+			f.HrefMedia = fmt.Sprintf("/media/%s/%s", ripperHost, f.Filename.String)
 		}
 
 		// Regular file page
@@ -1187,6 +1228,14 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 			return nil, err
 		}
 		albums[i].Thumb = thumb
+	}
+	// Populate href
+	for i := range albums {
+		albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
+		albums[i].Thumb.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
+		if albums[i].Thumb.Filename.Valid {
+			albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
+		}
 	}
 	return albums, nil
 }
@@ -1355,6 +1404,19 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			return rows.Err()
 		}); err != nil {
 			return err
+		}
+		// Populate href
+		for i := range albums {
+			albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
+			albums[i].Thumb.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
+			if albums[i].Thumb.Filename.Valid {
+				albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
+			}
+		}
+		for i := range files {
+			if files[i].Filename.Valid {
+				files[i].HrefMedia = fmt.Sprintf("/media/%s/%s", files[i].RipperHost, files[i].Filename.String)
+			}
 		}
 		model := types.TagDetailPage{Tag: t, Albums: albums, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(albums) < total, BasePage: types.BasePage{Perf: perf}}
 		return render(ctx, w, "tag.gohtml", model)

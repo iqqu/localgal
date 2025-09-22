@@ -22,6 +22,7 @@ type Album struct {
 	LastFetchTs SqlJsonInt64  `json:"lastFetchTs,omitempty,omitzero"`
 	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
 	FileCount   int           `json:"fileCount,omitempty,omitzero"`
+	HrefPage    string        `json:"hrefPage,omitempty,omitzero"`
 	Thumb       File          `json:"thumb,omitempty,omitzero"` // representative file for album thumbnail tile
 }
 
@@ -39,6 +40,8 @@ type File struct {
 	Hidden      bool          `json:"hidden,omitempty,omitzero"`
 	Removed     bool          `json:"removed,omitempty,omitzero"`
 	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
+	HrefPage    string        `json:"hrefPage,omitempty,omitzero"`
+	HrefMedia   string        `json:"hrefMedia,omitempty,omitzero"`
 	AlbumId     int64         `json:"-"`
 }
 
