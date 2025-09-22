@@ -227,7 +227,7 @@ func main() {
 			handler(w, withRenderMode(r, RenderJSON))
 		}
 	}
-	http.HandleFunc("GET /api/", asApi(handleBrowse))
+	http.HandleFunc("GET /api/galleries", asApi(handleBrowse))
 	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
 	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
 	http.HandleFunc("GET /api/file/{ripper_host}/{file_id}", asApi(handleFileStandalone))
@@ -423,7 +423,7 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBrowse(w http.ResponseWriter, r *http.Request) {
-	if !(r.URL.Path == "/" || r.URL.Path == "/api/") {
+	if !(r.URL.Path == "/" || r.URL.Path == "/api/galleries") {
 		renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
 		return
 	}
