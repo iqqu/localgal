@@ -7,7 +7,7 @@ import (
 )
 
 type Album struct {
-	AlbumId     int64         `json:"-"`
+	AlbumId     int64         `json:"albumId,omitempty,omitzero"`
 	RipperId    int64         `json:"-"`
 	RipperName  string        `json:"ripperName,omitempty,omitzero"`
 	RipperHost  string        `json:"ripperHost,omitempty,omitzero"`
@@ -26,7 +26,7 @@ type Album struct {
 }
 
 type File struct {
-	FileId      int64         `json:"-"`
+	FileId      int64         `json:"fileId,omitempty,omitzero"`
 	RipperName  string        `json:"ripperName,omitempty,omitzero"`
 	RipperHost  string        `json:"ripperHost,omitempty,omitzero"`
 	Urlid       SqlJsonString `json:"urlid,omitempty,omitzero"`
