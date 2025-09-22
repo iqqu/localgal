@@ -3,6 +3,7 @@
     --grid-gap: 0.5rem;
     --header-height: 35px;
     --main-margin: var(--base-padding);
+    --full-bleed-margin: 1rem;
     --thumb-padding: 0.25rem;
     --thumb-border-width: 1px;
     --card-padding: 0.75rem;
@@ -69,7 +70,7 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
 .fb-wrap {display: block;text-align: center;}
 .fb-wrap label {display: inline-block;}
 /*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
-.full-bleed .fb-wrap {width: calc(100vw - 2rem);position: relative;left: 50%;right: 50%;margin-left: calc(1rem - 50vw);margin-right: calc(1rem - 50vw);}
+.full-bleed .fb-wrap {width: calc(100vw - var(--full-bleed-margin) * 2);position: relative;left: 50%;right: 50%;margin-left: calc(var(--full-bleed-margin) - 50vw);margin-right: calc(var(--full-bleed-margin) - 50vw);}
 /* simpler to use !important than to add specificity for each case */
 .full-bleed input:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
 
@@ -96,6 +97,28 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
     max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
 }
 
+.stack-cell {position: relative;display: grid;place-items: center;}
+.stack-cell > * {grid-area: 1 / 1;position: relative;}
+
+.stack-cell .cell-media {min-width: 180px;} /* ensure there is space for next/prev buttons */
+
+.cell-nav {
+    --width: 80px;
+    position: absolute;
+    width: var(--width);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin: 0 calc((100% - min(100% + var(--width), 100vw - 2rem)) / 2);
+
+    /* alt: */
+    /*margin: 0 calc((100% - min(100% + var(--width) * 2, 100vw - 2rem)) / 2);*/
+}
+.cell-nav.prev {left: 0;align-items: start;}
+.cell-nav.next {right: 0;align-items: end;}
+.cell-nav:hover .cell-nav-btn {visibility: visible;}
+.cell-nav-btn {width: 40px;visibility: hidden;position: sticky;top: 50%;}
+
 /* No full bleed for video; expand/contract would be too annoying with click-to-play */
 .fit-to-view video {
     max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
@@ -109,6 +132,7 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
 .shortcuts kbd {border-radius: 3px;border: 1px solid #bbb;box-shadow: 0 2px 2px rgba(0,0,0,0.2);padding: .1rem .2rem;margin:-.1rem 0;min-width: 1.3rem;display: inline-block;text-align: center;font-family: sans-serif;}
 .shortcuts kbd.alpha {font-family: monospace;}
 
+.video-container { display: block; }
 
 /* Video thumbnail indicator */
 .thumb .video-container {position: relative;}

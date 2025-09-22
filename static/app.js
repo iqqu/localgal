@@ -221,6 +221,33 @@
         });
     }
 
+    function setupCellNavBtnTrackPointer() {
+        const cellNavEls = document.querySelectorAll('.cell-nav');
+        cellNavEls.forEach(cellNavEl => {
+            const cellNavBtnEl = cellNavEl.querySelector('.cell-nav-btn');
+            if (cellNavBtnEl) {
+                let overrideStylesSet = false;
+
+                cellNavEl.addEventListener('pointermove', event => {
+                    // works with display: sticky, but translate is supposed to be better for performance / battery
+                    // cellNavBtnEl.style.top = Math.max(0, event.clientY - cellNavBtnEl.clientHeight / 2) + 'px';
+
+                    if (!overrideStylesSet) {
+                        // needed for the translate approach
+                        cellNavBtnEl.style.position = 'relative';
+                        cellNavBtnEl.style.top = '0';
+                        overrideStylesSet = true;
+                    }
+                    let layerY = event.clientY - cellNavEl.getBoundingClientRect().top;
+                    let y = Math.max(0,
+                        Math.min(cellNavEl.clientHeight - cellNavBtnEl.clientHeight,
+                            layerY - cellNavBtnEl.clientHeight / 2));
+                    cellNavBtnEl.style.transform = `translateY(${y}px)`;
+                });
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const jumpEl = document.querySelector('a#jump-to-content-link');
         jumpEl.addEventListener('click', handleJump);
@@ -230,6 +257,8 @@
         backEls.forEach(el => {
             el.addEventListener('click', () => history.back());
         });
+
+        setupCellNavBtnTrackPointer();
 
         autoJump();
         setupAutoJumpChangeListener();

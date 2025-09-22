@@ -72,13 +72,31 @@
         <input type="checkbox" id="fb-expand" hidden />
         <div class="fb-wrap">
           <label for="fb-expand">
-            {{ if hasPrefix .File.MimeType.String "video/" }}
-              <div class="video-container">
-                <video class="fb-content main-content-resource" loop controls src="{{$src}}"></video>
-              </div>
-            {{ else }}
-              <img class="fb-content main-content-resource" src="{{$src}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
-            {{ end }}
+            <span class="stack-cell">
+              <span class="cell-media">
+                {{ if hasPrefix .File.MimeType.String "video/" }}
+                  <span class="video-container">
+                    <video class="fb-content main-content-resource" loop controls src="{{$src}}"></video>
+                  </span>
+                {{ else }}
+                  <img class="fb-content main-content-resource" src="{{$src}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
+                {{ end }}
+              </span>
+              {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
+              <a class="cell-nav prev" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}">
+                <span class="cell-nav-btn">
+                  <img src="/static/prev.svg" alt="Previous">
+                </span>
+              </a>
+              {{end}}{{end}}
+              {{if gt (len .Next) 0}}{{with index .Next 0}}
+              <a class="cell-nav next" href="{{if $.CurrentAlbum}}/gallery/{{$.File.RipperHost}}/{{$.CurrentAlbum.Gid}}/{{.FileId}}{{else}}/file/{{.FileId}}{{end}}">
+                <span class="cell-nav-btn">
+                  <img src="/static/next.svg" alt="Next">
+                </span>
+              </a>
+              {{end}}{{end}}
+            </span>
           </label>
         </div>
       </div>
