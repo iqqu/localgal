@@ -1704,6 +1704,9 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 		return
 	default:
 	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		status = http.StatusNotFound
 		err = nil
