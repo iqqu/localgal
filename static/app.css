@@ -97,10 +97,14 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
     max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
 }
 
-.stack-cell {position: relative;display: grid;place-items: center;}
+.stack-cell {position: relative;display: grid;}
 .stack-cell > * {grid-area: 1 / 1;position: relative;}
 
 .stack-cell .cell-media {min-width: 180px;} /* ensure there is space for next/prev buttons */
+.stack-cell:has(.video-container) .cell-nav {
+    /* allow video controls to be clicked without clicking nav links */
+    height: calc(100% - 100px);
+}
 
 .cell-nav {
     --width: 80px;
