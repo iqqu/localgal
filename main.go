@@ -413,10 +413,6 @@ func handleStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAbout(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/about/" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
-		return
-	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		model := map[string]any{"Perf": *perf}
 		return render(ctx, w, "about.gohtml", model)
