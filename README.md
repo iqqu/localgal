@@ -59,6 +59,10 @@ Environment variables:
 * `DFLOG`: downloaded file log, default `./ripme.downloaded.files.log`
 * `DFLOG_ROOT`: base directory to resolve relative paths in DFLOG from, default directory that DFLOG is in
 
+Notes:
+* If queries take abnormally long, run `localgal --optimize`. The command could take some minutes when optimization is needed on large databases, so do not run it while the database is being actively used.
+  * Alternatively, manually execute `PRAGMA optimize;` on the database
+
 Goals:
 * Be simple
 * Be more convenient for browsing RipMe3 galleries than a file manager
