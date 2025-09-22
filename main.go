@@ -1660,6 +1660,9 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, max-age=60")
+		w.Header().Set("X-App-Version", Version)
+		w.Header().Set("X-App-Commit", Commit)
+		w.Header().Set("X-App-Build-Date", BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		return enc.Encode(data)
@@ -1688,6 +1691,9 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, max-age=60")
+		w.Header().Set("X-App-Version", Version)
+		w.Header().Set("X-App-Commit", Commit)
+		w.Header().Set("X-App-Build-Date", BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		return enc.Encode(data)
@@ -1722,6 +1728,9 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 	renderMode := getRenderMode(ctx)
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("X-App-Version", Version)
+		w.Header().Set("X-App-Commit", Commit)
+		w.Header().Set("X-App-Build-Date", BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(model)
