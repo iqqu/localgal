@@ -62,9 +62,27 @@
       <div class="full-bleed">
         <input type="checkbox" id="fb-expand" hidden />
         <div class="fb-wrap">
-          <label for="fb-expand">
-            <span class="stack-cell">
-              <span class="cell-media">
+          <span class="stack-cell">
+            {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
+            <span class="fb-wrap" style="display: inline-flex;align-items: start;flex-direction: column;">
+              <span class="sticky-prev-next-container">
+                <a class="sticky-prev" href="{{.HrefPage}}">
+                  <img src="/static/prev.svg" alt="Previous">
+                </a>
+              </span>
+            </span>
+            {{end}}{{end}}
+            {{if gt (len .Next) 0}}{{with index .Next 0}}
+            <span class="fb-wrap" style="display: inline-flex;align-items: end;flex-direction: column;">
+              <span class="sticky-prev-next-container">
+                <a class="sticky-prev" href="{{.HrefPage}}">
+                  <img src="/static/next.svg" alt="Next">
+                </a>
+              </span>
+            </span>
+            {{end}}{{end}}
+            <span class="cell-media">
+              <label for="fb-expand">
                 {{ if hasPrefix .File.MimeType.String "video/" }}
                   <span class="video-container">
                     <video class="fb-content main-content-resource" loop controls src="{{.File.HrefMedia}}"></video>
@@ -72,23 +90,23 @@
                 {{ else }}
                   <img class="fb-content main-content-resource" src="{{.File.HrefMedia}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
                 {{ end }}
-              </span>
-              {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
-              <a class="cell-nav prev" href="{{.HrefPage}}">
-                <span class="cell-nav-btn">
-                  <img src="/static/prev.svg" alt="Previous">
-                </span>
-              </a>
-              {{end}}{{end}}
-              {{if gt (len .Next) 0}}{{with index .Next 0}}
-              <a class="cell-nav next" href="{{.HrefPage}}">
-                <span class="cell-nav-btn">
-                  <img src="/static/next.svg" alt="Next">
-                </span>
-              </a>
-              {{end}}{{end}}
+              </label>
             </span>
-          </label>
+            {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
+            <a class="cell-nav prev" href="{{.HrefPage}}">
+              <span class="cell-nav-btn">
+                <img src="/static/prev.svg" alt="Previous">
+              </span>
+            </a>
+            {{end}}{{end}}
+            {{if gt (len .Next) 0}}{{with index .Next 0}}
+            <a class="cell-nav next" href="{{.HrefPage}}">
+              <span class="cell-nav-btn">
+                <img src="/static/next.svg" alt="Next">
+              </span>
+            </a>
+            {{end}}{{end}}
+          </span>
         </div>
       </div>
       <div class="fb-label">

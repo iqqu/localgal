@@ -97,8 +97,12 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
     max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
 }
 
-.stack-cell {position: relative;display: grid;}
+.stack-cell {position: relative;display: inline-grid;}
 .stack-cell > * {grid-area: 1 / 1;position: relative;}
+
+.sticky-prev-next-container {z-index: 1;position: sticky; top: 0;width: 40px; display: block;}
+.sticky-prev, .sticky-next {visibility: hidden;}
+.sticky-prev-next-container:hover .sticky-prev, .sticky-prev-next-container:hover .sticky-next {visibility: visible;}
 
 .stack-cell .cell-media {min-width: 180px;} /* ensure there is space for next/prev buttons */
 .stack-cell:has(.video-container) .cell-nav {
