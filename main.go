@@ -246,7 +246,7 @@ func main() {
 	http.HandleFunc("/media/", handleMedia)
 
 	http.HandleFunc("/static/", handleStatic)
-	http.HandleFunc("/about/", handleAbout)
+	http.HandleFunc("/about", handleAbout)
 	//http.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
 	//	renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
 	//})
