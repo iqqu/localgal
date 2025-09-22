@@ -123,14 +123,6 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
 .cell-nav:hover .cell-nav-btn {visibility: visible;}
 .cell-nav-btn {width: 40px;visibility: hidden;position: sticky;top: 50%;}
 
-/* No full bleed for video; expand/contract would be too annoying with click-to-play */
-.fit-to-view video {
-    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
-}
-#main-content:target + * .fit-to-view video {
-    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
-}
-
 .shortcuts td {padding: .2rem;}
 .shortcuts td:first-child {text-align: right;}
 .shortcuts kbd {border-radius: 3px;border: 1px solid #bbb;box-shadow: 0 2px 2px rgba(0,0,0,0.2);padding: .1rem .2rem;margin:-.1rem 0;min-width: 1.3rem;display: inline-block;text-align: center;font-family: sans-serif;}
