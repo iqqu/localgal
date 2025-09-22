@@ -108,6 +108,8 @@ func main() {
 	var help bool
 	flag.BoolVar(&help, "h", false, "show help")
 	flag.BoolVar(&help, "help", false, "show help")
+	var optimize bool
+	flag.BoolVar(&optimize, "optimize", false, "optimize sqlite database (may be very slow)")
 	flag.Parse()
 	if help {
 		flag.CommandLine.SetOutput(os.Stdout)
@@ -124,7 +126,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Printf("Starting golocalml")
+	startServer := !optimize
+
+	if startServer {
+		log.Printf("Starting golocalml")
+	}
 	bind := getEnv("BIND", "127.0.0.1:5037")
 	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON")
 	dsn = forceReadOnlyDsn(dsn)
@@ -142,6 +148,16 @@ func main() {
 		log.Fatalf("open db: %v", err)
 	}
 	db.SetMaxOpenConns(1) // sqlite preferred in many cases
+
+	if optimize {
+		err := optimizeDb(db)
+		if err != nil {
+			os.Exit(1)
+			return
+		}
+		os.Exit(0)
+		return
+	}
 
 	dbFilename := getFileFromDsn(dsn)
 	if err = initDB(db, dbFilename); err != nil {
@@ -329,6 +345,20 @@ func forceReadOnlyDsn(dsn string) string {
 		params = append(params, "_foreign_keys=ON")
 	}
 	return base + "?" + strings.Join(params, "&")
+}
+
+func optimizeDb(db *sql.DB) error {
+	start := time.Now()
+	log.Printf("db optimize started")
+	_, err := db.Exec("PRAGMA optimize")
+	elapsed := time.Since(start)
+	log.Printf("db optimize took: %v\n", elapsed)
+	if err != nil {
+		log.Printf("db optimize failed: %v", err)
+		return err
+	}
+	log.Printf("db optimize succeeded")
+	return nil
 }
 
 // loadKnownFiles builds knownFilePaths from a log file: each line is a relative or absolute path to a file.
