@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type BuildInfo struct {
+	Version   string
+	Commit    string
+	BuildDate string
+}
+
 type Album struct {
 	AlbumId     int64         `json:"albumId,omitempty,omitzero"`
 	RipperId    int64         `json:"-"`
