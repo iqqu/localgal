@@ -14,11 +14,11 @@ import (
 
 	"github.com/shirou/gopsutil/v4/mem"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func GetDb(cfg Config) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", cfg.Dsn)
+	db, err := sql.Open("sqlite3", cfg.Dsn)
 	if err != nil {
 		log.Printf("open db: %v", err)
 		return nil, err
