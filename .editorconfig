@@ -11,6 +11,11 @@ tab_width = 4
 indent_size = 2
 tab_width = 2
 
+[*.yml]
+indent_size = 2
+indent_style = space
+tab_width = 2
+
 [{*.htm,*.html,*.sht,*.shtm,*.shtml,*.gohtml}]
 indent_size = 2
 indent_style = space
