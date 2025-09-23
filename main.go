@@ -25,8 +25,6 @@ import (
 
 	"github.com/shirou/gopsutil/v4/mem"
 	_ "modernc.org/sqlite"
-
-	_ "golocalgal/types"
 )
 
 //go:embed templates/*
@@ -126,14 +124,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	startServer := !optimize
 
-	if startServer {
-		log.Printf("Starting golocalml")
-	}
-	bind := getEnv("BIND", "127.0.0.1:5037")
-	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?mode=ro&_query_only=1&_busy_timeout=10000&_foreign_keys=ON")
-	dsn = forceReadOnlyDsn(dsn)
+	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?_busy_timeout=10000")
+	dsn = forceForeignKeysDsn(dsn)
+	dsnReadOnly := forceReadOnlyDsn(dsn)
 
 	slowSqlMs = 100
 	if v := os.Getenv("SLOW_SQL_MS"); v != "" {
@@ -142,15 +136,26 @@ func main() {
 		}
 	}
 
-	var err error
-	db, err = sql.Open("sqlite", dsn)
-	if err != nil {
-		log.Fatalf("open db: %v", err)
+	dfLog := getEnv("DFLOG", "./ripme.downloaded.files.log")
+	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
+	dfLogRoot := getEnv("DFLOG_ROOT", defaultDfLogRoot)
+
+	serverConfig := ServerConfig{
+		Bind:      getEnv("BIND", "127.0.0.1:5037"),
+		Dsn:       dsnReadOnly,
+		MediaRoot: getEnv("MEDIA_ROOT", "./rips"),
+		DfLog:     dfLog,
+		DfLogRoot: dfLogRoot,
+		SlowSqlMs: slowSqlMs,
 	}
-	db.SetMaxOpenConns(1) // sqlite preferred in many cases
 
 	if optimize {
-		err := optimizeDb(db)
+		serverConfig.Dsn = dsn
+		db, err := getDb(serverConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = optimizeDb(db)
 		if err != nil {
 			os.Exit(1)
 			return
@@ -159,102 +164,15 @@ func main() {
 		return
 	}
 
-	dbFilename := getFileFromDsn(dsn)
-	if err = initDB(db, dbFilename); err != nil {
-		log.Fatalf("init db: %v", err)
+	ctrl, err := startServer(serverConfig)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	tpl = template.Must(template.New("").Funcs(template.FuncMap{
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, errors.New("dict must have key-value pairs")
-			}
-			m := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				k, _ := values[i].(string)
-				m[k] = values[i+1]
-			}
-			return m, nil
-		},
-		"add":       func(a, b int) int { return a + b },
-		"sub":       func(a, b int) int { return a - b },
-		"hasPrefix": func(s, pre string) bool { return strings.HasPrefix(strings.ToLower(s), strings.ToLower(pre)) },
-		"hasSuffix": func(s, suf string) bool { return strings.HasSuffix(strings.ToLower(s), strings.ToLower(suf)) },
-		"fmtDateMillis": func(ms int64) string {
-			if ms <= 0 {
-				return ""
-			}
-			return time.UnixMilli(ms).Format("2006-01-02")
-		},
-		"calcPages": func(total, size int) int {
-			if size <= 0 {
-				return 1
-			}
-			pages := total / size
-			if total%size != 0 {
-				pages++
-			}
-			if pages == 0 {
-				pages = 1
-			}
-			return pages
-		},
-		"fmtMillis": func(d time.Duration) string { return d.Round(time.Millisecond).String() },
-		"finalPageMillis": func(p types.Perf) string {
-			if !p.Start.IsZero() {
-				return time.Since(p.Start).Round(time.Millisecond).String()
-			}
-			return p.PageTime.Round(time.Millisecond).String()
-		},
-		// Version info helpers for templates
-		"appVersion":   func() string { return Version },
-		"appCommit":    func() string { return Commit },
-		"appBuildDate": func() string { return BuildDate },
-	}).ParseFS(templatesFS, "templates/*.gohtml"))
-
-	http.HandleFunc("/", handleBrowse)
-	http.HandleFunc("/gallery/{ripper_host}/{gid}", handleGallery)
-	http.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", handleGalleryFile)
-	http.HandleFunc("/file/{ripper_host}/{file_id}", handleFileStandalone)
-	http.HandleFunc("/file/{ripper_host}/{file_id}/galleries", handleFileGalleryFragment)
-	http.HandleFunc("/tags", handleTags)
-	http.HandleFunc("/tag/{tag_name}", handleTagDetail)
-	http.HandleFunc("/random/gallery", handleRandomGallery)
-	http.HandleFunc("/random/file", handleRandomFile)
-
-	asApi := func(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-		return func(w http.ResponseWriter, r *http.Request) {
-			handler(w, withRenderMode(r, RenderJSON))
-		}
+	<-ctrl.Done()
+	if err := ctrl.Err(); err != nil {
+		log.Fatalf("server error: %v", err)
 	}
-	http.HandleFunc("GET /api/", asApi(handle404))
-	http.HandleFunc("GET /api/galleries", asApi(handleBrowse))
-	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
-	http.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
-	http.HandleFunc("GET /api/file/{ripper_host}/{file_id}", asApi(handleFileStandalone))
-	http.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", asApi(handleFileGalleryFragment))
-	http.HandleFunc("GET /api/tags", asApi(handleTags))
-	http.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
-	http.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
-	http.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
-
-	// Media server: dynamic resolution using MEDIA_ROOT and known_files.log
-	mediaRoot = getEnv("MEDIA_ROOT", "./rips")
-	dfLog := getEnv("DFLOG", "./ripme.downloaded.files.log")
-	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
-	dfLogRoot = getEnv("DFLOG_ROOT", defaultDfLogRoot)
-	loadKnownFiles(dfLog)
-	http.HandleFunc("/media/", handleMedia)
-
-	http.HandleFunc("/static/", handleStatic)
-	http.HandleFunc("/about", handleAbout)
-	//http.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
-	//	renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
-	//})
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
-
-	log.Printf("LocalGal listening on %s", bind)
-	log.Fatal(http.ListenAndServe(bind, logMiddleware(http.DefaultServeMux)))
 }
 
 type renderModeKey struct{}
@@ -341,6 +259,12 @@ func forceReadOnlyDsn(dsn string) string {
 	if !slices.Contains(params, "_query_only=1") {
 		params = append(params, "_query_only=1")
 	}
+	return base + "?" + strings.Join(params, "&")
+}
+
+func forceForeignKeysDsn(dsn string) string {
+	base, query, _ := strings.Cut(dsn, "?")
+	params := strings.Split(query, "&")
 	if !slices.Contains(params, "_foreign_keys=ON") {
 		params = append(params, "_foreign_keys=ON")
 	}
@@ -1825,4 +1749,188 @@ func logMiddleware(next http.Handler) http.Handler {
 		dur := time.Since(start)
 		log.Printf("%s %s %v", r.Method, r.URL.Path, dur.Round(time.Millisecond))
 	})
+}
+
+// ServerConfig holds configuration for starting the HTTP server.
+type ServerConfig struct {
+	Bind      string
+	Dsn       string
+	MediaRoot string
+	DfLog     string
+	DfLogRoot string
+	SlowSqlMs int
+}
+
+// ServerController controls a running server instance for the GUI
+type ServerController struct {
+	srv    *http.Server
+	ctx    context.Context
+	cancel context.CancelCauseFunc
+}
+
+func (c *ServerController) Context() context.Context {
+	if c == nil || c.ctx == nil {
+		return context.Background()
+	}
+	return c.ctx
+}
+func (c *ServerController) Done() <-chan struct{} {
+	return c.Context().Done()
+}
+func (c *ServerController) Err() error {
+	return context.Cause(c.Context())
+}
+
+func startServer(cfg ServerConfig) (*ServerController, error) {
+	var err error
+
+	log.Printf("Starting golocalml")
+
+	db, err = getDb(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	dbFilename := getFileFromDsn(cfg.Dsn)
+	if err = initDB(db, dbFilename); err != nil {
+		log.Printf("init db: %v", err)
+		return nil, err
+	}
+
+	tpl = template.Must(template.New("").Funcs(template.FuncMap{
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, errors.New("dict must have key-value pairs")
+			}
+			m := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				k, _ := values[i].(string)
+				m[k] = values[i+1]
+			}
+			return m, nil
+		},
+		"add":       func(a, b int) int { return a + b },
+		"sub":       func(a, b int) int { return a - b },
+		"hasPrefix": func(s, pre string) bool { return strings.HasPrefix(strings.ToLower(s), strings.ToLower(pre)) },
+		"hasSuffix": func(s, suf string) bool { return strings.HasSuffix(strings.ToLower(s), strings.ToLower(suf)) },
+		"fmtDateMillis": func(ms int64) string {
+			if ms <= 0 {
+				return ""
+			}
+			return time.UnixMilli(ms).Format("2006-01-02")
+		},
+		"calcPages": func(total, size int) int {
+			if size <= 0 {
+				return 1
+			}
+			pages := total / size
+			if total%size != 0 {
+				pages++
+			}
+			if pages == 0 {
+				pages = 1
+			}
+			return pages
+		},
+		"fmtMillis": func(d time.Duration) string { return d.Round(time.Millisecond).String() },
+		"finalPageMillis": func(p types.Perf) string {
+			if !p.Start.IsZero() {
+				return time.Since(p.Start).Round(time.Millisecond).String()
+			}
+			return p.PageTime.Round(time.Millisecond).String()
+		},
+		// Version info helpers for templates
+		"appVersion":   func() string { return Version },
+		"appCommit":    func() string { return Commit },
+		"appBuildDate": func() string { return BuildDate },
+	}).ParseFS(templatesFS, "templates/*.gohtml"))
+
+	mediaRoot = cfg.MediaRoot
+	loadKnownFiles(cfg.DfLog)
+
+	mux := newMux()
+	srv := &http.Server{
+		Addr:    cfg.Bind,
+		Handler: logMiddleware(mux),
+	}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	go func() {
+		log.Printf("LocalGal listening on %s", cfg.Bind)
+		err := srv.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		if err != nil {
+			log.Printf("Error starting server: %v", err)
+		}
+		cancel(err)
+	}()
+	return &ServerController{srv: srv, ctx: ctx, cancel: cancel}, nil
+}
+
+func (c *ServerController) Stop(ctx context.Context) error {
+	var firstErr error
+	if c != nil && c.srv != nil {
+		if err := c.srv.Shutdown(ctx); err != nil {
+			firstErr = err
+		}
+	}
+	if db != nil {
+		if err := db.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+		db = nil
+	}
+	return firstErr
+}
+
+func newMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleBrowse)
+	mux.HandleFunc("/gallery/{ripper_host}/{gid}", handleGallery)
+	mux.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", handleGalleryFile)
+	mux.HandleFunc("/file/{ripper_host}/{file_id}", handleFileStandalone)
+	mux.HandleFunc("/file/{ripper_host}/{file_id}/galleries", handleFileGalleryFragment)
+	mux.HandleFunc("/tags", handleTags)
+	mux.HandleFunc("/tag/{tag_name}", handleTagDetail)
+	mux.HandleFunc("/random/gallery", handleRandomGallery)
+	mux.HandleFunc("/random/file", handleRandomFile)
+
+	mux.HandleFunc("GET /api/", asApi(handle404))
+	mux.HandleFunc("GET /api/galleries", asApi(handleBrowse))
+	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
+	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
+	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}", asApi(handleFileStandalone))
+	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", asApi(handleFileGalleryFragment))
+	mux.HandleFunc("GET /api/tags", asApi(handleTags))
+	mux.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
+	mux.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
+	mux.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
+
+	mux.HandleFunc("/media/", handleMedia)
+
+	mux.HandleFunc("/static/", handleStatic)
+	mux.HandleFunc("/about", handleAbout)
+	//mux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+	//	renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
+	//})
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
+
+	return mux
+}
+
+func asApi(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handler(w, withRenderMode(r, RenderJSON))
+	}
+}
+
+func getDb(cfg ServerConfig) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", cfg.Dsn)
+	if err != nil {
+		log.Printf("open db: %v", err)
+		return nil, err
+	}
+	db.SetMaxOpenConns(1) // sqlite preferred in many cases
+	return db, nil
 }
