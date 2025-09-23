@@ -5,6 +5,7 @@ DISTDIR := ./dist/
 BIN := $(APP)
 
 HOST_GOOS := $(shell go env GOOS)
+HOST_GOARCH := $(shell go env GOARCH)
 EXT := $(if $(filter $(HOST_GOOS),windows),.exe,)
 
 # gather metadata
@@ -22,7 +23,7 @@ build:
 
 build-dist:
 	@mkdir -p $(DISTDIR)
-	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -ldflags "-s -w $(LDFLAGS)" -o $(DISTDIR)/$(BIN)-$(HOST_GOOS)$(EXT) $(PKG)
+	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -ldflags "-s -w $(LDFLAGS)" -o $(DISTDIR)/$(BIN)-$(HOST_GOOS)-$(HOST_GOARCH)$(EXT) $(PKG)
 
 run: build
 	./$(BINDIR)/$(BIN)
