@@ -54,8 +54,8 @@ Hotkeys:
 Environment variables:
 * `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
 * `SQLITE_DSN`: sqlite data source name (connection string), default `file:ripme.sqlite`
-* `MEDIA_ROOT`: rip base directory, default: `./rips`
 * `SLOW_SQL_MS`: duration threshold to log slow sql queries, milliseconds, default `100`
+* `MEDIA_ROOT`: rip base directory, default: `./rips`
 * `DFLOG`: downloaded file log, default `./ripme.downloaded.files.log`
 * `DFLOG_ROOT`: base directory to resolve relative paths in DFLOG from, default directory that DFLOG is in
 
