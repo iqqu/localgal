@@ -70,6 +70,19 @@ func ForceReadOnlyDsn(dsn string) string {
 	return base + "?" + strings.Join(params, "&")
 }
 
+func ForceReadWriteDsn(dsn string) string {
+	base, query, _ := strings.Cut(dsn, "?")
+	params := strings.Split(query, "&")
+	newParams := make([]string, len(params))
+	excluded := []string{"mode=ro", "_query_only=1"}
+	for _, param := range params {
+		if !slices.Contains(excluded, param) {
+			newParams = append(newParams, param)
+		}
+	}
+	return base + "?" + strings.Join(newParams, "&")
+}
+
 func ForceForeignKeysDsn(dsn string) string {
 	base, query, _ := strings.Cut(dsn, "?")
 	params := strings.Split(query, "&")

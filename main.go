@@ -10,8 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strconv"
 )
 
 // Version metadata populated via -ldflags at build time
@@ -64,32 +62,10 @@ func main() {
 	}
 
 
-	dsn := vars.EnvSqliteDsn.GetValueDefault("file:ripme.sqlite?_busy_timeout=10000")
-	dsn = server.ForceForeignKeysDsn(dsn)
-	dsnReadOnly := server.ForceReadOnlyDsn(dsn)
-
-	slowSqlMs := 100
-	if v := vars.EnvSlowSqlMs.GetValue(); v != "" {
-		if n, e := strconv.Atoi(v); e == nil && n >= -1 {
-			slowSqlMs = n
-		}
-	}
-
-	dfLog := vars.EnvDflog.GetValueDefault("./ripme.downloaded.files.log")
-	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
-	dfLogRoot := vars.EnvDflogRoot.GetValueDefault(defaultDfLogRoot)
-
-	serverConfig := server.Config{
-		Bind:      vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
-		Dsn:       dsnReadOnly,
-		MediaRoot: vars.EnvMediaRoot.GetValueDefault("./rips"),
-		DfLog:     dfLog,
-		DfLogRoot: dfLogRoot,
-		SlowSqlMs: slowSqlMs,
-	}
+	serverConfig := server.GetServerConfig()
 
 	if optimize {
-		serverConfig.Dsn = dsn
+		serverConfig.Dsn = server.ForceReadWriteDsn(serverConfig.Dsn)
 		db, err := server.GetDb(serverConfig)
 		if err != nil {
 			log.Fatal(err)
@@ -112,16 +88,5 @@ func main() {
 	if err := ctrl.Err(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-}
-
-func getDefaultDfLogRoot(path string) string {
-	if filepath.IsAbs(path) {
-		return filepath.Clean(filepath.Dir(path))
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Unable to get cwd: %w", err)
-	}
-	return filepath.Clean(filepath.Dir(filepath.Join(wd, path)))
 }
 

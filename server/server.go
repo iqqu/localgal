@@ -11,6 +11,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -43,6 +46,44 @@ func (c *Controller) Done() <-chan struct{} {
 }
 func (c *Controller) Err() error {
 	return context.Cause(c.Context())
+}
+
+func GetServerConfig() Config {
+	dsn := vars.EnvSqliteDsn.GetValueDefault("file:ripme.sqlite?_busy_timeout=10000")
+	dsn = ForceForeignKeysDsn(dsn)
+	dsnReadOnly := ForceReadOnlyDsn(dsn)
+
+	slowSqlMs := 100
+	if v := vars.EnvSlowSqlMs.GetValue(); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n >= -1 {
+			slowSqlMs = n
+		}
+	}
+
+	dfLog := vars.EnvDflog.GetValueDefault("./ripme.downloaded.files.log")
+	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
+	dfLogRoot := vars.EnvDflogRoot.GetValueDefault(defaultDfLogRoot)
+
+	serverConfig := Config{
+		Bind:      vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
+		Dsn:       dsnReadOnly,
+		MediaRoot: vars.EnvMediaRoot.GetValueDefault("./rips"),
+		DfLog:     dfLog,
+		DfLogRoot: dfLogRoot,
+		SlowSqlMs: slowSqlMs,
+	}
+	return serverConfig
+}
+
+func getDefaultDfLogRoot(path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(filepath.Dir(path))
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Unable to get cwd: %w", err)
+	}
+	return filepath.Clean(filepath.Dir(filepath.Join(wd, path)))
 }
 
 func StartServer(cfg Config) (*Controller, error) {
