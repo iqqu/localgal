@@ -10,21 +10,67 @@ permissions:
 
 jobs:
   build-release:
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    env:
+      GOTOOLCHAIN: auto
+      CGO_ENABLED: 1
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25.x'
+          go-version-file: go.mod
           check-latest: true
           cache: true
 
+      - name: Show environment
+        run: |
+          go version
+          go env
+
+      - name: Install dependencies
+        run: |
+          go mod download
+
+      - name: Run tests
+        run: |
+          make test
+
       - name: Build
         run: |
-          make build-cross
+          make build-dist
+
+      - name: List dist
+        shell: bash # Required for Windows runner
+        run: ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: localgal-${{ matrix.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Create release
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: localgal-*
+          merge-multiple: 'true'
+          path: dist
 
       - name: Generate checksums
         run: |
