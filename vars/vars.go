@@ -6,6 +6,29 @@ import (
 	"golocalgal/types"
 	"html/template"
 	"net/http"
+	"os"
+)
+
+type Env string
+
+func (key Env) GetValue() string {
+	return os.Getenv(string(key))
+}
+func (key Env) GetValueDefault(def string) string {
+	v := os.Getenv(string(key))
+	if v == "" {
+		return def
+	}
+	return v
+}
+
+const (
+	EnvBind      Env = "BIND"
+	EnvSqliteDsn Env = "SQLITE_DSN"
+	EnvSlowSqlMs Env = "SLOW_SQL_MS"
+	EnvMediaRoot Env = "MEDIA_ROOT"
+	EnvDflog     Env = "DFLOG"
+	EnvDflogRoot Env = "DFLOG_ROOT"
 )
 
 // Global variables

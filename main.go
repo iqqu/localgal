@@ -64,25 +64,25 @@ func main() {
 	}
 
 
-	dsn := getEnv("SQLITE_DSN", "file:ripme.sqlite?_busy_timeout=10000")
+	dsn := vars.EnvSqliteDsn.GetValueDefault("file:ripme.sqlite?_busy_timeout=10000")
 	dsn = server.ForceForeignKeysDsn(dsn)
 	dsnReadOnly := server.ForceReadOnlyDsn(dsn)
 
 	slowSqlMs := 100
-	if v := os.Getenv("SLOW_SQL_MS"); v != "" {
+	if v := vars.EnvSlowSqlMs.GetValue(); v != "" {
 		if n, e := strconv.Atoi(v); e == nil && n >= -1 {
 			slowSqlMs = n
 		}
 	}
 
-	dfLog := getEnv("DFLOG", "./ripme.downloaded.files.log")
+	dfLog := vars.EnvDflog.GetValueDefault("./ripme.downloaded.files.log")
 	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
-	dfLogRoot := getEnv("DFLOG_ROOT", defaultDfLogRoot)
+	dfLogRoot := vars.EnvDflogRoot.GetValueDefault(defaultDfLogRoot)
 
 	serverConfig := server.Config{
-		Bind:      getEnv("BIND", "127.0.0.1:5037"),
+		Bind:      vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
 		Dsn:       dsnReadOnly,
-		MediaRoot: getEnv("MEDIA_ROOT", "./rips"),
+		MediaRoot: vars.EnvMediaRoot.GetValueDefault("./rips"),
 		DfLog:     dfLog,
 		DfLogRoot: dfLogRoot,
 		SlowSqlMs: slowSqlMs,
@@ -125,9 +125,3 @@ func getDefaultDfLogRoot(path string) string {
 	return filepath.Clean(filepath.Dir(filepath.Join(wd, path)))
 }
 
-func getEnv(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return def
-}
