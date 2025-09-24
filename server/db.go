@@ -104,7 +104,7 @@ func OptimizeDb(db *sql.DB) error {
 	log.Printf("db optimize started")
 	_, err := db.Exec("PRAGMA optimize")
 	elapsed := time.Since(start)
-	log.Printf("db optimize took: %v\n", elapsed)
+	log.Printf("db optimize took: %v\n", elapsed.Round(time.Millisecond))
 	if err != nil {
 		log.Printf("db optimize failed: %v", err)
 		return err
