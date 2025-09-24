@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"fmt"
 	"golocalgal/vars"
@@ -113,18 +114,23 @@ func OptimizeDb(db *sql.DB) error {
 }
 
 // loadKnownFiles builds knownFilePaths from a log file: each line is a relative or absolute path to a file.
-func loadKnownFiles(path string) {
+func loadKnownFiles(ctx context.Context, path string) error {
 	log.Printf("Loading known files")
-	vars.KnownFilePaths = map[string][]string{}
+	knownFilePaths := map[string][]string{}
 	dir := filepath.Dir(path)
 	f, err := os.Open(path)
 	if err != nil {
 		log.Printf("known file log open: %v", err)
-		return
+		return err
 	}
 	defer f.Close()
 	s := bufio.NewScanner(f)
 	for s.Scan() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		p := strings.TrimSpace(s.Text())
 		if p == "" || strings.HasPrefix(p, "#") {
 			continue
@@ -139,10 +145,17 @@ func loadKnownFiles(path string) {
 				log.Printf("Not able to resolve clean relative path for %v: %v", p, err)
 			}
 		}
-		vars.KnownFilePaths[base] = append(vars.KnownFilePaths[base], target)
+		knownFilePaths[base] = append(knownFilePaths[base], target)
 	}
 	if err := s.Err(); err != nil {
 		log.Printf("known file log scan: %v", err)
 	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	vars.KnownFilePaths = knownFilePaths
 	log.Printf("known file log loaded %d filenames", len(vars.KnownFilePaths))
+	return nil
 }

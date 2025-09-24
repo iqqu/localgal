@@ -10,6 +10,7 @@ import (
 	"golocalgal/vars"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type Controller struct {
 	srv    *http.Server
 	ctx    context.Context
 	cancel context.CancelCauseFunc
+	ready  chan struct{}
 }
 
 func (c *Controller) Context() context.Context {
@@ -40,6 +42,14 @@ func (c *Controller) Context() context.Context {
 		return context.Background()
 	}
 	return c.ctx
+}
+func (c *Controller) Ready() <-chan struct{} {
+	if c == nil || c.ready == nil {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return c.ready
 }
 func (c *Controller) Done() <-chan struct{} {
 	return c.Context().Done()
@@ -154,17 +164,39 @@ func StartServer(cfg Config) (*Controller, error) {
 	}).ParseFS(vars.TemplatesFS, "templates/*.gohtml"))
 
 	vars.MediaRoot = cfg.MediaRoot
-	loadKnownFiles(cfg.DfLog)
 
 	mux := newMux()
 	srv := &http.Server{
 		Addr:    cfg.Bind,
 		Handler: logMiddleware(mux),
 	}
+
 	ctx, cancel := context.WithCancelCause(context.Background())
+	ctrl := Controller{srv: srv, ctx: ctx, cancel: cancel, ready: make(chan struct{})}
+
 	go func() {
-		log.Printf("LocalGal listening on %s", cfg.Bind)
-		err := srv.ListenAndServe()
+		if err := loadKnownFiles(ctx, cfg.DfLog); err != nil {
+			if ctx.Err() != nil {
+				log.Println("startup canceled while loading known files")
+				cancel(ctx.Err())
+				return
+			}
+			log.Printf("loading known files error: %v", err)
+		}
+		if err := ctx.Err(); err != nil {
+			// Canceled before starting server; do not attempt to listen
+			cancel(err)
+			return
+		}
+		ln, err := net.Listen("tcp", cfg.Bind)
+		if err != nil {
+			cancel(err)
+			log.Printf("listen error: %v", err)
+			return
+		}
+		close(ctrl.ready)
+		log.Printf("LocalGal listening on %s", ln.Addr())
+		err = srv.Serve(ln)
 		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		}
@@ -173,11 +205,14 @@ func StartServer(cfg Config) (*Controller, error) {
 		}
 		cancel(err)
 	}()
-	return &Controller{srv: srv, ctx: ctx, cancel: cancel}, nil
+	return &ctrl, nil
 }
 
 func (c *Controller) Stop(ctx context.Context) error {
 	var firstErr error
+	if c != nil {
+		c.cancel(context.Canceled)
+	}
 	if c != nil && c.srv != nil {
 		if err := c.srv.Shutdown(ctx); err != nil {
 			firstErr = err
