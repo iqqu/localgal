@@ -70,23 +70,24 @@ type teeWriter struct {
 }
 
 func (t *teeWriter) Write(p []byte) (int, error) {
-	// forward to base writer first
-	n, err := t.w.Write(p)
-	// also append to buffer line-wise
-	// ensure we only append the bytes that were written
-	buf := p[:n]
-	// Normalize to UTF-8 lines; if binary, it's fine to append as-is
-	// Accumulate and split by newlines
-	lines := bytes.Split(buf, []byte("\n"))
-	for i, ln := range lines {
-		// Avoid dropping a trailing empty segment when the chunk ends with \n;
-		// append empty only if it's not the last segment.
-		if len(ln) == 0 && i == len(lines)-1 {
-			continue
+	// Append to the in-memory log buffer independently of the underlying writer result.
+	if len(p) > 0 {
+		lines := bytes.Split(p, []byte("\n"))
+		for i, ln := range lines {
+			// Avoid dropping a trailing empty segment when the chunk ends with \n;
+			// append empty only if it's not the last segment.
+			if len(ln) == 0 && i == len(lines)-1 {
+				continue
+			}
+			t.lb.append(string(ln))
 		}
-		t.lb.append(string(ln))
 	}
-	return n, err
+	// Then try to forward to the base writer, if present.
+	if t.w != nil {
+		return t.w.Write(p)
+	}
+	// If no base writer, pretend all bytes were written so log package proceeds.
+	return len(p), nil
 }
 
 var (
