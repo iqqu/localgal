@@ -20,7 +20,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/mattn/go-isatty"
 )
 
 func ShouldStartGui() bool {
@@ -36,11 +35,7 @@ func ShouldStartGui() bool {
 	case "0", "false", "no", "cli":
 		return false
 	}
-	// Fallback: detect if started in terminal
-	tty := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) ||
-		isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) ||
-		isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())
-	return !tty
+	return shouldStartGuiPlatform()
 }
 
 func Run() {
