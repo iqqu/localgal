@@ -209,6 +209,7 @@ func StartServer(cfg Config) (*Controller, error) {
 }
 
 func (c *Controller) Stop(ctx context.Context) error {
+	log.Println("LocalGal stopping")
 	var firstErr error
 	if c != nil {
 		c.cancel(context.Canceled)
