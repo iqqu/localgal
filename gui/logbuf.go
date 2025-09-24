@@ -45,17 +45,22 @@ func (b *logBuffer) append(line string) {
 func (b *logBuffer) last(n int) []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if n <= 0 || n > b.cap {
-		n = b.cap
+	if n <= 0 {
+		return b.lines[:0]
 	}
-	if len(b.lines) <= n {
-		out := make([]string, len(b.lines))
-		copy(out, b.lines)
-		return out
+	size := len(b.lines)
+	if n > size {
+		return b.lines[:size]
 	}
-	out := make([]string, n)
-	copy(out, b.lines[len(b.lines)-n:])
-	return out
+	return b.lines[size-n:]
+	//if len(b.lines) <= n {
+	//	out := make([]string, len(b.lines))
+	//	copy(out, b.lines)
+	//	return out
+	//}
+	//out := make([]string, n)
+	//copy(out, b.lines[len(b.lines)-n:])
+	//return out
 }
 
 // teeWriter writes to an underlying writer and to the global log buffer.

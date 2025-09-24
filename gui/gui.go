@@ -9,7 +9,9 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gioui.org/app"
 	"gioui.org/io/event"
@@ -47,26 +49,26 @@ func Run() {
 }
 
 type MainWindow struct {
-	w           *app.Window
-	ops         *op.Ops
-	th          *material.Theme
-	cwd         string
-	bindEd      widget.Editor
-	dsnEd       widget.Editor
-	slowSqlEd   widget.Editor
-	mediaRootEd widget.Editor
-	dflogEd     widget.Editor
-	dflogRootEd widget.Editor
-	logEd       widget.Editor
-	logList     widget.List
-	startBtn    widget.Clickable
-	stopBtn     widget.Clickable
-	optimizeBtn widget.Clickable
-	status      string
-	running     bool
-	optimizing  bool
-	ctrl        *server.Controller
-	lastLogText string
+	w            *app.Window
+	ops          *op.Ops
+	th           *material.Theme
+	cwd          string
+	bindEd       widget.Editor
+	dsnEd        widget.Editor
+	slowSqlEd    widget.Editor
+	mediaRootEd  widget.Editor
+	dflogEd      widget.Editor
+	dflogRootEd  widget.Editor
+	logEd        widget.Editor
+	logList      widget.List
+	startBtn     widget.Clickable
+	stopBtn      widget.Clickable
+	optimizeBtn  widget.Clickable
+	status       string
+	running      bool
+	optimizing   bool
+	ctrl         *server.Controller
+	lastLogLines []string
 }
 
 func newMainWindow() *MainWindow {
@@ -214,10 +216,44 @@ func handleEvent(e event.Event, mw *MainWindow) {
 		mw.dflogRootEd.ReadOnly = readOnly
 
 		// Update log view content each frame
-		newLog := getLastLogLines(100)
-		if newLog != mw.lastLogText {
-			mw.logEd.SetText(newLog)
-			mw.lastLogText = newLog
+		newLogLines := globalLogBuffer.last(100)
+		logLinesAreSame := len(newLogLines) == len(mw.lastLogLines)
+		if logLinesAreSame {
+			for i := range newLogLines {
+				if newLogLines[i] != mw.lastLogLines[i] {
+					logLinesAreSame = false
+					break
+				}
+			}
+		}
+
+		// Find the first shared log line
+		runeStartOffset := 0
+		if !logLinesAreSame {
+			for i := range mw.lastLogLines {
+				if mw.lastLogLines[i] != newLogLines[0] {
+					runeStartOffset += utf8.RuneCountInString(mw.lastLogLines[i]) + 1 // +1 for \n
+				} else {
+					break
+				}
+			}
+		}
+
+		// Preserve as much of the selection/caret as possible across text refreshes
+		if !logLinesAreSame {
+			startOld, endOld := mw.logEd.Selection()
+
+			newLogText := strings.Join(newLogLines, "\n")
+			mw.logEd.SetText(newLogText)
+
+			newRuneLen := utf8.RuneCountInString(newLogText)
+			// Map the old offsets onto new offsets
+			startNew, endNew := startOld-runeStartOffset, endOld-runeStartOffset
+			startNew, endNew = clamp(0, startNew, newRuneLen), clamp(0, endNew, newRuneLen)
+
+			// Commit the new text
+			mw.logEd.SetCaret(startNew, endNew)
+			mw.lastLogLines = newLogLines
 		}
 
 		layout.Inset{Top: unit.Dp(8), Right: unit.Dp(8), Bottom: unit.Dp(8), Left: unit.Dp(8)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -356,4 +392,15 @@ func labeledEditor(theme *material.Theme, label string, ed *widget.Editor, help 
 			}),
 		)
 	}
+}
+
+// clamp x within [min, max]
+func clamp(min, x, max int) int {
+	if x < min {
+		return min
+	}
+	if x > max {
+		return max
+	}
+	return x
 }
