@@ -56,8 +56,14 @@ jobs:
           make build-dist
 
       - name: List dist
+        id: list_dist
         shell: bash # Required for Windows runner
-        run: ls -la dist
+        run: |
+          ls -la dist
+          echo "built_exe=$(find ./dist -type f -print -quit)" >>"$GITHUB_OUTPUT"
+
+      - name: Sanity check
+        run: ${{steps.list_dist.outputs.built_exe}} --help
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
