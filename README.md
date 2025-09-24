@@ -14,9 +14,21 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
   * Hotkeys enabled
   * Auto jump to content enabled
 
-[Screenshots](https://github.com/iqqu/localgal/wiki/Screenshots)
+## Screenshots
 
-Pages:
+[Screenshots on wiki](https://github.com/iqqu/localgal/wiki/Screenshots)
+
+## Getting Started
+
+1. Rip a gallery with [RipMe3](https://github.com/RipMeApp3/ripme)
+   * After the rip completes, new files will be created: `ripme.sqlite` and `ripme.downloaded.files.log`. LocalGal reads those files.
+2. Download the localgal executable from the release page to the folder containing `ripme.sqlite` and `ripme.downloaded.files.log`
+3. Run the localgal executable that you downloaded.
+   * Double-click the executable to show the Server Control GUI and click the Start button, or
+   * Run the executable in a terminal to start the server without the GUI
+4. Open `http://127.0.0.1:5037` in your web browser
+
+## Pages
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery
 * `/gallery/{ripper}/{gid}/{urlid}`: View file of gallery
@@ -29,7 +41,8 @@ Pages:
 * `/about`: About page
 * `/healthz`
 
-JSON API Pages:
+### JSON API
+In case somebody wants to develop a different UI.  
 (accepts the same query parameters used by the HTML pages)
 * `/api/galleries`: Browse galleries
 * `/api/gallery/{ripper}/{gid}`: View gallery
@@ -41,7 +54,7 @@ JSON API Pages:
 * `/api/random/gallery`: Redirect to random gallery
 * `/api/random/file`: Redirect to random file
 
-Hotkeys:
+## Hotkeys
 * f: random file
 * g: random gallery
 * h or Arrow Left: previous item
@@ -51,30 +64,33 @@ Hotkeys:
 * l or Arrow Right: next item
 * Shift+j: Toggle autojump
 
-Environment variables:
+## Environment variables
 * `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
 * `SQLITE_DSN`: sqlite data source name (connection string), default `file:ripme.sqlite`
 * `SLOW_SQL_MS`: duration threshold to log slow sql queries, milliseconds, default `100`
 * `MEDIA_ROOT`: rip base directory, default: `./rips`
 * `DFLOG`: downloaded file log, default `./ripme.downloaded.files.log`
 * `DFLOG_ROOT`: base directory to resolve relative paths in DFLOG from, default directory that DFLOG is in
+* `GUI`: force GUI mode with `1` or CLI mode with `0`
 
-Notes:
-* If queries take abnormally long, run `localgal --optimize`. The command could take some minutes when optimization is needed on large databases, so do not run it while the database is being actively used.
+## Notes
+* If queries take abnormally long, click the "Optimize" button in the Server Control GUI, or run `localgal --optimize`. The command could take some minutes when optimization is needed on large databases, so do not run it while the database is being actively used.
   * Alternatively, manually execute `PRAGMA optimize;` on the database
 
-Goals:
+## Goals
 * Be simple
 * Be more convenient for browsing RipMe3 galleries than a file manager
 * Perform well on large databases
 
-Non-goals:
+## Non-goals
 * User accounts
 
-TODO:
-* Improve code organization
+## TODO
+* Simplify Server Control GUI layout code
+* ???
 
-Wishlist (help welcome):
+## Wishlist (help welcome)
 * Better icon
-* Native sqlite driver (for performance) with cross-compilation (for release job)
-* Faster SQL query for /tags
+* Faster SQL queries
+* Periodic SQLite optimization that won't interfere with RipMe3 performance while actively ripping (possible with PRAGMA analysis_limit=400, not sure about the best number)
+* Use cancelable PRAGMA optimize
