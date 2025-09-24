@@ -41,6 +41,8 @@ func init() {
 }
 
 func main() {
+	gui.TryAttachParentConsole()
+
 	var help bool
 	flag.BoolVar(&help, "h", false, "show help")
 	flag.BoolVar(&help, "help", false, "show help")
