@@ -65,16 +65,13 @@ func main() {
 	serverConfig := server.GetServerConfig()
 
 	if optimize {
-		serverConfig.Dsn = server.ForceReadWriteDsn(serverConfig.Dsn)
-		db, err := server.GetDb(serverConfig)
+		err := server.OptimizeDbFromDsn(serverConfig.Dsn)
 		if err != nil {
-			log.Fatal(err)
-		}
-		err = server.OptimizeDb(db)
-		if err != nil {
+			log.Printf("Unable to optimize db: %v", err)
 			os.Exit(1)
 			return
 		}
+		log.Println("Successfully optimized db")
 		os.Exit(0)
 		return
 	}

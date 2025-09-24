@@ -18,8 +18,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func GetDb(cfg Config) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", cfg.Dsn)
+func GetDb(dsn string) (*sql.DB, error) {
+	log.Printf("Using SQLite DSN: %s", dsn)
+
+	// Verify that file exists to avoid creating empty db with mistyped filename
+	filename := getFileFromDsn(dsn)
+	_, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	// Open the db
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		log.Printf("open db: %v", err)
 		return nil, err
@@ -59,7 +69,7 @@ func initDB(db *sql.DB, filename string) error {
 	return nil
 }
 
-func ForceReadOnlyDsn(dsn string) string {
+func DsnWithReadOnly(dsn string) string {
 	base, query, _ := strings.Cut(dsn, "?")
 	params := strings.Split(query, "&")
 	if !slices.Contains(params, "mode=ro") {
@@ -71,32 +81,73 @@ func ForceReadOnlyDsn(dsn string) string {
 	return base + "?" + strings.Join(params, "&")
 }
 
-func ForceReadWriteDsn(dsn string) string {
+func DsnWithReadWrite(dsn string) string {
 	base, query, _ := strings.Cut(dsn, "?")
 	params := strings.Split(query, "&")
-	newParams := make([]string, len(params))
+	newParams := params[:0]
 	excluded := []string{"mode=ro", "_query_only=1"}
 	for _, param := range params {
+		if param == "" {
+			continue
+		}
 		if !slices.Contains(excluded, param) {
 			newParams = append(newParams, param)
 		}
 	}
+	if len(newParams) == 0 {
+		return base
+	}
 	return base + "?" + strings.Join(newParams, "&")
 }
 
-func ForceForeignKeysDsn(dsn string) string {
+func DsnWithForeignKeys(dsn string) string {
 	base, query, _ := strings.Cut(dsn, "?")
 	params := strings.Split(query, "&")
 	if !slices.Contains(params, "_foreign_keys=ON") {
 		params = append(params, "_foreign_keys=ON")
 	}
-	return base + "?" + strings.Join(params, "&")
+	newParams := params[:0]
+	for _, v := range params {
+		if v != "" {
+			newParams = append(newParams, v)
+		}
+	}
+	return base + "?" + strings.Join(newParams, "&")
+}
+
+func DsnWithDefaultTimeout(dsn string) string {
+	base, query, _ := strings.Cut(dsn, "?")
+	params := strings.Split(query, "&")
+	if !slices.ContainsFunc(params, func(param string) bool {
+		return strings.HasPrefix(param, "_busy_timeout=")
+	}) {
+		params = append(params, "_busy_timeout=10000")
+	}
+	newParams := params[:0]
+	for _, v := range params {
+		if v != "" {
+			newParams = append(newParams, v)
+		}
+	}
+	return base + "?" + strings.Join(newParams, "&")
 }
 
 func getFileFromDsn(dsn string) string {
 	_, afterFile, _ := strings.Cut(dsn, "file:")
 	filename, _, _ := strings.Cut(afterFile, "?")
 	return filename
+}
+
+func OptimizeDbFromDsn(dsn string) error {
+	dsn = DsnWithReadWrite(dsn)
+	dsn = DsnWithDefaultTimeout(dsn)
+	dsn = DsnWithForeignKeys(dsn)
+	db, err := GetDb(dsn)
+	if err != nil {
+		return err
+	}
+	err = OptimizeDb(db)
+	return err
 }
 
 func OptimizeDb(db *sql.DB) error {

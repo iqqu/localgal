@@ -59,10 +59,6 @@ func (c *Controller) Err() error {
 }
 
 func GetServerConfig() Config {
-	dsn := vars.EnvSqliteDsn.GetValueDefault("file:ripme.sqlite?_busy_timeout=10000")
-	dsn = ForceForeignKeysDsn(dsn)
-	dsnReadOnly := ForceReadOnlyDsn(dsn)
-
 	slowSqlMs := 100
 	if v := vars.EnvSlowSqlMs.GetValue(); v != "" {
 		if n, e := strconv.Atoi(v); e == nil && n >= -1 {
@@ -76,7 +72,7 @@ func GetServerConfig() Config {
 
 	serverConfig := Config{
 		Bind:      vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
-		Dsn:       dsnReadOnly,
+		Dsn:       vars.EnvSqliteDsn.GetValueDefault("file:ripme.sqlite"),
 		MediaRoot: vars.EnvMediaRoot.GetValueDefault("./rips"),
 		DfLog:     dfLog,
 		DfLogRoot: dfLogRoot,
@@ -104,7 +100,11 @@ func StartServer(cfg Config) (*Controller, error) {
 	vars.SlowSqlMs = cfg.SlowSqlMs
 	vars.DfLogRoot = cfg.DfLogRoot
 
-	vars.Db, err = GetDb(cfg)
+	cfg.Dsn = DsnWithReadOnly(cfg.Dsn)
+	cfg.Dsn = DsnWithDefaultTimeout(cfg.Dsn)
+	cfg.Dsn = DsnWithForeignKeys(cfg.Dsn)
+
+	vars.Db, err = GetDb(cfg.Dsn)
 	if err != nil {
 		return nil, err
 	}
