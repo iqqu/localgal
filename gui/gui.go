@@ -40,6 +40,7 @@ func ShouldStartGui() bool {
 
 func Run() {
 	go guiMain()
+	log.Print("LocalGal Server Control GUI Ready")
 	app.Main()
 }
 
