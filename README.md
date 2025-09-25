@@ -90,6 +90,7 @@ In case somebody wants to develop a different UI.
 * ???
 
 ## Wishlist (help welcome)
+* Fix GitHub pipeline compilation for amd64 mac
 * Better icon
 * Faster SQL queries
 * Periodic SQLite optimization that won't interfere with RipMe3 performance while actively ripping (possible with PRAGMA analysis_limit=400, not sure about the best number)
