@@ -23,6 +23,9 @@ func GetDb(dsn string) (*sql.DB, error) {
 
 	// Verify that file exists to avoid creating empty db with mistyped filename
 	filename := getFileFromDsn(dsn)
+	if filename == "" {
+		log.Printf("Empty sqlite filename. Did you forget \"file:\"?")
+	}
 	_, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
