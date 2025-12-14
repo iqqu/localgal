@@ -26,7 +26,7 @@ func shouldStartGuiPlatform() bool {
 	case ConsoleRedirected:
 		return false
 	case ConsoleOwn, ConsoleNone:
-		// not “really” in a console: hide/detach and launch GUI
+		// not "really" in a console: hide/detach and launch GUI
 		_ = freeConsole() // avoid flashing a console if Windows created one
 		return true
 	}
@@ -63,7 +63,7 @@ func detectConsoleKind() ConsoleKind {
 		return ConsoleRedirected
 	}
 
-	// No console and not redirected → likely launched from GUI context
+	// No console and not redirected: likely launched from GUI context
 	return ConsoleNone
 }
 
