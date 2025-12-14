@@ -1207,7 +1207,14 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func cleanJoin(elem ...string) string {
-	joined := filepath.Join(elem...)
+	// absolute paths can't be joined; discard all paths prior to the last absolute path
+	lastAbsoluteIndex := 0
+	for i := 0; i < len(elem); i++ {
+		if strings.HasPrefix(elem[i], "/") {
+			lastAbsoluteIndex = i
+		}
+	}
+	joined := filepath.Join(elem[lastAbsoluteIndex:]...)
 	// prevent path traversal by resolving and ensuring it stays under mediaRoot
 	absRoot, _ := filepath.Abs(vars.MediaRoot)
 	absJoined, _ := filepath.Abs(joined)
