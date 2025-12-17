@@ -11,28 +11,31 @@
   <h2>Galleries</h2>
   {{- if .Albums }}
     <div class="pager">
-      <div>
-        {{- if .HasPrev }}
-          <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
-        {{- else }}
-          <span class="muted">&larr; Previous</span>
-        {{- end }}
-      </div>
-      <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
-      <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
-        <label class="muted">
-          <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
-        </label>
-        <input type="hidden" name="size" value="{{.PageSize}}">
-        <input type="hidden" name="q" value="{{.Query | urlquery}}">
-        <button type="submit">Go</button>
-      </form>
-      <div>
-        {{- if .HasNext }}
-          <a class="pager-next" href="/search/galleries?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
-        {{- else }}
-          <span class="muted">Next &rarr;</span>
-        {{- end }}
+      <div class="pager-total muted">{{.AlbumsTotal}} items</div>
+      <div class="pager-controls">
+        <div>
+          {{- if .HasPrev }}
+            <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+          {{- else }}
+            <span class="muted">&larr; Previous</span>
+          {{- end }}
+        </div>
+        <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
+        <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
+          <label class="muted">
+            <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
+          </label>
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <button type="submit">Go</button>
+        </form>
+        <div>
+          {{- if .HasNext }}
+            <a class="pager-next" href="/search/galleries?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+          {{- else }}
+            <span class="muted">Next &rarr;</span>
+          {{- end }}
+        </div>
       </div>
     </div>
     <div class="grid">
@@ -73,28 +76,31 @@
       {{end}}
     </div>
     <div class="pager">
-      <div>
-        {{- if .HasPrev }}
-          <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
-        {{- else }}
-          <span class="muted">&larr; Previous</span>
-        {{- end }}
-      </div>
-      <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
-      <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
-        <label class="muted">
-          <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
-        </label>
-        <input type="hidden" name="size" value="{{.PageSize}}">
-        <input type="hidden" name="q" value="{{.Query | urlquery}}">
-        <button type="submit">Go</button>
-      </form>
-      <div>
-        {{- if .HasNext}}
-          <a class="pager-next" href="/search/galleries?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
-        {{- else}}
-          <span class="muted">Next &rarr;</span>
-        {{- end}}
+      <div class="pager-total muted">{{.AlbumsTotal}} items</div>
+      <div class="pager-controls">
+        <div>
+          {{- if .HasPrev }}
+            <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+          {{- else }}
+            <span class="muted">&larr; Previous</span>
+          {{- end }}
+        </div>
+        <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
+        <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
+          <label class="muted">
+            <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
+          </label>
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <button type="submit">Go</button>
+        </form>
+        <div>
+          {{- if .HasNext}}
+            <a class="pager-next" href="/search/galleries?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+          {{- else}}
+            <span class="muted">Next &rarr;</span>
+          {{- end}}
+        </div>
       </div>
     </div>
   {{- else }}
