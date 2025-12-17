@@ -51,7 +51,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			return vars.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
 				  FROM album
-				 WHERE fetch_count > 0
+				  -- Technically correct, but practically insignificant, and I don't want to add an index for it
+				  -- WHERE fetch_count > 0
 			`).Scan(&total)
 		}); err != nil {
 			return err
