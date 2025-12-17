@@ -35,6 +35,10 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 * `/file/{ripper}/{urlid}`: View individual file
 * `/tags`: View all tags
 * `/tag/{tag}`: View tag
+* `/search`: Search result summary
+* `/search/galleries`: Search galleries
+* `/search/files`: Search files
+* `/search/tags`: Search tags
 * `/random/gallery`: Redirect to random gallery
 * `/random/file`: Redirect to random file
 * `/media/`: Direct file links
@@ -51,6 +55,10 @@ In case somebody wants to develop a different UI.
 * `/api/file/{ripper}/{urlid}/galleries`: View galleries associated with an individual file
 * `/api/tags`: View all tags
 * `/api/tag/{tag}`: View tag
+* `/api/search`: Search result summary
+* `/api/search/galleries`: Search galleries
+* `/api/search/files`: Search files
+* `/api/search/tags`: Search tags
 * `/api/random/gallery`: Redirect to random gallery
 * `/api/random/file`: Redirect to random file
 
@@ -89,7 +97,6 @@ In case somebody wants to develop a different UI.
 ## TODO
 * Simplify Server Control GUI layout code
 * Make header bar prettier
-* Add search box
 * Sorting options
 * Show file size / total gallery size
 * Show file dimensions (width/height/duration) if available
