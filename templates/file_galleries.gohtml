@@ -7,7 +7,7 @@
           <a href="{{.HrefPage}}/{{$.File.FileId}}"><strong>{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</strong></a>
           <span class="muted">- {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}</span>
           {{if .Hidden}}<span class="muted hidden" title="This gallery is hidden">Hidden</span>{{end}}
-          {{if .Removed}}<span class="muted removed" title="This gallery is hidden">Removed</span>{{end}}
+          {{if .Removed}}<span class="muted removed" title="This gallery is removed">Removed</span>{{end}}
         </li>
       {{end}}
     </ul>
