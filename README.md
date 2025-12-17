@@ -102,6 +102,7 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * User accounts
 
 ## TODO
+* Improve keyboard accessibility (tabindex, etc)
 * Simplify Server Control GUI layout code
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
