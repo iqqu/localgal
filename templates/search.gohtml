@@ -93,7 +93,7 @@
       {{- end }}
       <p class="chips">
         {{range .Tags}}
-          <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+          <a class="chip" href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
         {{end}}
       </p>
     {{- else }}

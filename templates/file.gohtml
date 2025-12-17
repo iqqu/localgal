@@ -205,7 +205,7 @@
       <h3>Tags</h3>
       <p class="chips">
         {{range .FileTags}}
-          <a href="/tag/{{.Name | urlquery}}">{{.Name}}</a>
+          <a class="chip" href="/tag/{{.Name | urlquery}}">{{.Name}}</a>
         {{end}}
       </p>
     {{end}}
