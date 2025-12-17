@@ -1,13 +1,10 @@
 {{define "gallery.gohtml"}}
 {{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
 {{template "base_start" (dict "title" $title)}}
-  <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}} <span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
-
-  {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
-    <div class="card">
-      <div class="muted">{{.Album.Description.String}}</div>
-    </div>
-  {{- end }}
+  <div style="display: grid; grid-template-columns: auto auto">
+    <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}} <span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
+    <a href="#detail" style="align-self: end; justify-self: end;">[scroll to detail]</a>
+  </div>
   {{if .Files}}
     <div class="pager">
       <div class="pager-total muted">{{.Total}} items</div>
@@ -87,7 +84,15 @@
     <p class="muted">This gallery has no items.</p>
   {{end}}
 
-  <p>Total gallery size on disk: <code>{{bytesToHumanReadable .AlbumBytes}}</code></p>
+  <div id="detail" class="card">
+    <h2>Detail: <span style="font-weight: normal;">{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}}<span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</span></h2>
+
+    {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
+      <p>{{.Album.Description.String}}</p>
+    {{- end }}
+    <p>Total gallery size on disk: <code>{{bytesToHumanReadable .AlbumBytes}}</code></p>
+  </div>
+
   {{if .AlbumTags}}
     <h3>Tags</h3>
     <p class="chips">

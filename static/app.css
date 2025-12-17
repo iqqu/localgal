@@ -69,6 +69,30 @@ footer { max-width: /*960px*/1200px; margin: 0 auto 0.75rem; padding: 0 1rem; co
 .pushup {background-image: radial-gradient(circle, rgba(0,0,0,.1) 20%, transparent 20%, transparent 80%, rgba(0,0,0,.1) 80%);background-size: 10px 10px;background-position: center;height: 300px;width: 100%; }
 .js-required {display: none;}
 
+a[href="#detail"] { color: rgb(0, 0, 238); }
+a[href="#detail"]:visited { color: rgb(0, 0, 238); }
+.pager-controls a { color: rgb(0, 0, 238); }
+.pager-controls a:visited { color: rgb(0, 0, 238); }
+
+#detail:target h2 {
+    animation: flashBg 1s ease-in-out;
+}
+:root {
+    --flash-color: rgb(255, 161, 161);
+}
+@keyframes flashBg {
+    /*0%   { color: #222; }*/
+    0%   { background: rgba(255,255,255,0); }
+    /*25%  { color: #f498b6; }*/
+    25%  { background: var(--flash-color); }
+    /*50%  { color: #222; }*/
+    50%  { background: rgba(255,255,255,0); }
+    /*75%  { color: #f498b6; }*/
+    75%  { background: var(--flash-color); }
+    /*100% { color: #222; }*/
+    100% { background: rgba(255,255,255,0); }
+}
+
 /****** File page ******/
 .pv-rail {
     max-height: var(--pv-rail-height);
