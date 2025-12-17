@@ -87,10 +87,23 @@ In case somebody wants to develop a different UI.
 
 ## TODO
 * Simplify Server Control GUI layout code
+* Make header bar prettier
+* Add search box
+* Sorting options
+* Show file size / total gallery size
+* Show file dimensions (width/height/duration) if available
+* Distinguish local user-defined tags from remote tags
 * ???
 
 ## Wishlist (help welcome)
 * Fix GitHub pipeline compilation for amd64 mac
 * Better icon
+* Button & key for "random file within this gallery" (if viewing file) or "random page within this gallery" (if viewing page)
+  * Not decided on implementation yet
 * Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
+* Read-write functionality:
+  * Ignored files
+  * Local user-defined tags
+  * Local user ratings (1=worst, 5=best)
+    <table> <tr> <td>&#128169;</td> <td>&#128078;</td> <td>&#11093;</td> <td>&#128077;</td> <td>&#10084;&#65039;</td> </tr> </table>
