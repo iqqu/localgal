@@ -37,6 +37,10 @@ type SearchPage struct {
 	FilesTotal  int     `json:"filesTotal"`
 	Tags        []Tag   `json:"tags"`
 	TagsTotal   int     `json:"tagsTotal"`
+	HasNext     bool    `json:"hasNext"`
+	HasPrev     bool    `json:"hasPrev"`
+	Page        int     `json:"page"`
+	PageSize    int     `json:"pageSize"`
 	//Perf      Perf   `json:"perf"`
 	BasePage
 }

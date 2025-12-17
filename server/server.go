@@ -115,6 +115,11 @@ func StartServer(cfg Config) (*Controller, error) {
 		return nil, err
 	}
 
+	vars.CacheDb, err = GetCacheDb()
+	if err != nil {
+		return nil, err
+	}
+
 	vars.Tpl = template.Must(template.New("").Funcs(template.FuncMap{
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
@@ -237,7 +242,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("/tags", handleTags)
 	mux.HandleFunc("/tag/{tag_name}", handleTagDetail)
 	mux.HandleFunc("/search", handleSearch)
-	//mux.HandleFunc("/search/galleries", handleSearchGalleries)
+	mux.HandleFunc("/search/galleries", handleSearchGalleries)
 	//mux.HandleFunc("/search/files", handleSearchFiles)
 	//mux.HandleFunc("/search/tags", handleSearchTags)
 	mux.HandleFunc("/random/gallery", handleRandomGallery)
@@ -252,6 +257,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("GET /api/tags", asApi(handleTags))
 	mux.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
 	mux.HandleFunc("GET /api/search", asApi(handleSearch))
+	mux.HandleFunc("GET /api/search/galleries", asApi(handleSearchGalleries))
 	mux.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
 	mux.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
 

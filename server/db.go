@@ -41,6 +41,41 @@ func GetDb(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+// GetCacheDb gets an in-memory cache to temporarily store repeated expensive query results
+func GetCacheDb() (*sql.DB, error) {
+	var err error
+	cacheDb, err := sql.Open("sqlite3", "file:cachedb?mode=memory&cache=shared&_foreign_keys=ON")
+	if err != nil {
+		log.Printf("failed to open cache db: %v", err)
+		return nil, err
+	}
+	cacheDb.SetMaxOpenConns(1)
+	_, err = cacheDb.Exec(`
+		CREATE TEMP TABLE search_results
+		(
+		    query_hash  TEXT    NOT NULL,
+		    table_name  TEXT    NOT NULL,
+		    table_rowid INTEGER NOT NULL,
+		    score       REAL    NOT NULL,
+		    inserted_ts INTEGER NOT NULL DEFAULT (UNIXEPOCH('subsec') * 1000),
+		    PRIMARY KEY (query_hash, table_name, table_rowid)
+		);
+		CREATE TEMP TABLE search_hits
+		(
+		    query_hash  TEXT    NOT NULL,
+		    table_name  TEXT    NOT NULL,
+		    hits        INTEGER NOT NULL,
+		    inserted_ts INTEGER NOT NULL DEFAULT (UNIXEPOCH('subsec') * 1000),
+		    PRIMARY KEY (query_hash, table_name)
+		);
+	`)
+	if err != nil {
+		log.Printf("failed to create temp table: %v", err)
+		return nil, err
+	}
+	return cacheDb, nil
+}
+
 func initDB(db *sql.DB, filename string) error {
 	var pragmas []string
 

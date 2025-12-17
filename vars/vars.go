@@ -59,6 +59,7 @@ var TemplatesFS embed.FS
 var StaticFSHandler http.Handler
 
 var Db *sql.DB
+var CacheDb *sql.DB
 
 var Tpl *template.Template
 
