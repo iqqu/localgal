@@ -1530,22 +1530,18 @@ func getSearchTagsPage(ctx context.Context, searchQuery string, limit int) ([]ty
 
 // handleSearch handles /search
 func handleSearch(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	searchQuery := q.Get("q")
-	if len(searchQuery) == 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search?q=foo"))
-		return
-	}
-	page, size := parsePageParams(r, 60)
-	offset := (page - 1) * size
-	size = 10
-	offset = 0
-
-	// 1: Search albums
-	// 2: Search files
-	// 3: Search tags
-
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		q := r.URL.Query()
+		searchQuery := q.Get("q")
+		size := 10
+		offset := 0
+		if len(searchQuery) == 0 {
+			model := types.SearchPage{
+				BasePage: types.BasePage{Perf: perf},
+			}
+			return render(r.Context(), w, "search_noquery.gohtml", model)
+		}
+
 		// 1: Search albums
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
@@ -1602,16 +1598,18 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 // handleSearchGalleries handles /search/galleries
 func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	searchQuery := q.Get("q")
-	if len(searchQuery) == 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search/galleries?q=foo"))
-		return
-	}
-	page, size := parsePageParams(r, 60)
-	offset := (page - 1) * size
-
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		q := r.URL.Query()
+		searchQuery := q.Get("q")
+		if len(searchQuery) == 0 {
+			model := types.SearchPage{
+				BasePage: types.BasePage{Perf: perf},
+			}
+			return render(r.Context(), w, "search_noquery.gohtml", model)
+		}
+		page, size := parsePageParams(r, 60)
+		offset := (page - 1) * size
+
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
@@ -1655,16 +1653,18 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 
 // handleSearchFiles handles /search/files
 func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	searchQuery := q.Get("q")
-	if len(searchQuery) == 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search/files?q=foo"))
-		return
-	}
-	page, size := parsePageParams(r, 60)
-	offset := (page - 1) * size
-
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		q := r.URL.Query()
+		searchQuery := q.Get("q")
+		if len(searchQuery) == 0 {
+			model := types.SearchPage{
+				BasePage: types.BasePage{Perf: perf},
+			}
+			return render(r.Context(), w, "search_noquery.gohtml", model)
+		}
+		page, size := parsePageParams(r, 60)
+		offset := (page - 1) * size
+
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
@@ -1708,14 +1708,16 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 
 // handleSearchTags handles /search/tags
 func handleSearchTags(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	searchQuery := q.Get("q")
-	if len(searchQuery) == 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search/tags?q=foo"))
-		return
-	}
-
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		q := r.URL.Query()
+		searchQuery := q.Get("q")
+		if len(searchQuery) == 0 {
+			model := types.SearchPage{
+				BasePage: types.BasePage{Perf: perf},
+			}
+			return render(r.Context(), w, "search_noquery.gohtml", model)
+		}
+
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
