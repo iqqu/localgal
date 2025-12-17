@@ -33,8 +33,8 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 ## Pages
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery
-* `/gallery/{ripper}/{gid}/{urlid}`: View file of gallery
-* `/file/{ripper}/{urlid}`: View individual file
+* `/gallery/{ripper}/{gid}/{fileid}`: View file of gallery
+* `/file/{ripper}/{fileid}`: View individual file
 * `/tags`: View all tags
 * `/tag/{tag}`: View tag
 * `/search`: Search result summary
@@ -52,9 +52,9 @@ In case somebody wants to develop a different UI.
 (accepts the same query parameters used by the HTML pages)
 * `/api/galleries`: Browse galleries
 * `/api/gallery/{ripper}/{gid}`: View gallery
-* `/api/gallery/{ripper}/{gid}/{urlid}`: View file of gallery
-* `/api/file/{ripper}/{urlid}`: View individual file
-* `/api/file/{ripper}/{urlid}/galleries`: View galleries associated with an individual file
+* `/api/gallery/{ripper}/{gid}/{fileid}`: View file of gallery
+* `/api/file/{ripper}/{fileid}`: View individual file
+* `/api/file/{ripper}/{fileid}/galleries`: View galleries associated with an individual file
 * `/api/tags`: View all tags
 * `/api/tag/{tag}`: View tag
 * `/api/search`: Search result summary
