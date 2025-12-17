@@ -30,6 +30,18 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 
 For notes on compiling from source, see [docs/developing.md](./docs/developing.md)
 
+## Hotkeys
+* f: random file
+* g: random gallery
+* h or Arrow Left: previous item
+* i: toggle fullscreen image
+* j: jump to content
+* k: jump to top
+* l or Arrow Right: next item
+* Shift+j: Toggle autojump
+* Shift+p: Toggle autoplay
+* Ctrl+/: Focus search box
+
 ## Pages
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery
@@ -66,18 +78,6 @@ In case somebody wants to develop a different UI.
 * `/api/random/file`: Redirect to random file
 
 Note: there is no `/api/random/page` for now, because that endpoint doesn't work nicely for JSON APIs.
-
-## Hotkeys
-* f: random file
-* g: random gallery
-* h or Arrow Left: previous item
-* i: toggle fullscreen image
-* j: jump to content
-* k: jump to top
-* l or Arrow Right: next item
-* Shift+j: Toggle autojump
-* Shift+p: Toggle autoplay
-* Ctrl+/: Focus search box
 
 ## Environment variables
 * `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
