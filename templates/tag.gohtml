@@ -5,7 +5,7 @@
   <h1>{{.Tag.Name}}</h1>
 
   {{if .Albums}}
-    <h2>Albums</h2>
+    <h2>Galleries</h2>
     <div class="card">
       <ul>
         {{range .Albums}}
@@ -66,7 +66,7 @@
   {{end}}
 
   {{if and (eq (len .Albums) 0) (eq (len .Files) 0)}}
-    <p class="muted">No albums or files for this tag.</p>
+    <p class="muted">No galleries or files for this tag.</p>
   {{end}}
 {{template "base_end" .}}
 {{end}}

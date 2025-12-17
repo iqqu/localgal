@@ -121,7 +121,7 @@
 
     <p class="muted" style="margin-top:0.5rem;">
       {{if not (eq .CurrentAlbum.AlbumId 0) }}
-        In album: <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>{{if .CurrentAlbum.Title.Valid}} <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.Title.String}}</a>{{end}}
+        In gallery: <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>{{if .CurrentAlbum.Title.Valid}} <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.Title.String}}</a>{{end}}
       {{end}}
     </p>
     {{if .File.Filename.Valid}}
