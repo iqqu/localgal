@@ -1,7 +1,6 @@
 {{define "tag.gohtml"}}
 {{$title := printf "Tag: %s" .Tag.Name }}
 {{template "base_start" (dict "title" $title)}}
-  <p><a href="/tags">&larr; Back to Tags</a></p>
   <h1>{{.Tag.Name}}</h1>
 
   {{if .Albums}}
