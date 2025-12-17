@@ -13,36 +13,53 @@
 <body>
   <a id="top" href="#top" style="visibility: collapse"></a>
   <header>
-    <div style="max-width: 960px; width: 100%; margin: 0 auto; display:flex; justify-content:space-between; align-items:center;">
+    <nav>
       <div style="display: flex; align-items:center; gap: .1rem;">
-        <a href="/">LocalGal</a>
+        <a href="/">
+          <span class="nav-icon">&#x1F3E0;</span>
+          LocalGal
+        </a>
         <span class="muted"> | </span>
-        <a href="/tags">Tags</a>
+        <a href="/tags">
+          <span class="nav-icon">&#x1F3F7;&#xFE0F;</span>
+          <span class="nav-label">Tags</span>
+        </a>
+      </div>
+      <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 1ch;">
+        <form method="get" action="/search" style="flex: 1; display: flex;">
+          <label style="flex: 1; display: flex;">
+            <input type="search" placeholder="Search" name="q" style="flex: 1; width: 7ch;" />
+            <span class="nav-icon">&#x1F50D;</span>
+          </label>
+        </form>
       </div>
       <div style="display: flex; align-items:center; gap: .1rem;">
-        <a id="jump-to-content-link" href="#main-content">Jump to Content</a>
+        <a id="jump-to-content-link" href="#main-content">
+          <span class="nav-icon">&#x1F53D;</span><span class="nav-label">Jump to Content</span>
+        </a>
         <span class="js-required">
           <span class="muted"> | </span>
           <label>
-            <input type="checkbox" id="auto-jump-checkbox"> Autojump
+            <input type="checkbox" id="auto-jump-checkbox">
+            <span class="nav-label">Autojump</span><span class="nav-icon">&#x23EC;</span>
           </label>
         </span>
       </div>
-      <div class="muted" style="display: flex; align-items:center; gap: .1rem; font-size:0.95rem;">
+      <div style="display: flex; align-items:center; gap: .1rem;">
         <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery">
-          <span style="font-size: 1.2rem;">&#x2684;{{/*die 5-face*/}}</span>
-          Gallery
+          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F4C1;{{/*folder*/}}</span>
+          <span class="nav-label">Gallery</span>
         </a>
         <span class="muted"> | </span>
         <a id="random-file-link" href="/random/file" title="Go to a random file">
-          <span style="font-size: 1.2rem;">&#x2684;{{/*die 5-face*/}}</span>
-          File
+          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F5BC;&#xFE0F;{{/*framed picture*/}}</span>
+          <span class="nav-label">File</span>
         </a>
       </div>
       <div style="display: flex; align-items:center; gap: .1rem;">
         <a href="/about" title="About">?</a>
       </div>
-    </div>
+    </nav>
   </header>
   <main>
 {{end}}

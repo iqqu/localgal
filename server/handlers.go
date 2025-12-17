@@ -252,7 +252,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , rf.inserted_ts
 				  FROM map_album_remote_file marf
 				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  -- JOIN ripper r ON r.ripper_id = rf.ripper_id
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE marf.album_id = ?
 				 ORDER BY marf.remote_file_id
@@ -637,6 +637,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}"))
 		return
 	}
+	// TODO enable visiting a page by File urlid (need to handle related galleries fragment too)
 	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
 	if err != nil || fileId <= 0 {
 		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
@@ -974,6 +975,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			albums[i].Thumb = thumb
 		}
+		// TODO: Add albums containing files for tag
+
 		// Files for tag
 		var files []types.File
 		if err := withSQL(ctx, func() error {
@@ -997,6 +1000,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE rf.fetched = 1
 				 ORDER BY m.remote_file_id
+				 LIMIT 100 -- TODO paginate files too
 			`, t.TagId)
 			if e != nil {
 				return e
@@ -1109,6 +1113,364 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 		}
 		model := types.TagsPage{ImageTags: imageTags, AlbumTags: albumTags, BasePage: types.BasePage{Perf: perf}}
 		return render(ctx, w, "tags.gohtml", model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+// handleSearch handles /search
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
+	if len(searchQuery) == 0 {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search?q=foo"))
+		return
+	}
+	page, size := parsePageParams(r, 60)
+	offset := (page - 1) * size
+	size = 10
+	offset = 0
+
+	// 1: Search albums
+	// 2: Search files
+	// 3: Search tags
+
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		// 1: Search albums
+		var albumsTotal int
+		if err := withSQL(ctx, func() error {
+			return vars.Db.QueryRowContext(ctx, `
+				SELECT COUNT(*)
+				  FROM album_fts5 af5
+				 WHERE album_fts5 MATCH ?
+				   AND EXISTS(
+				     SELECT 1
+				       FROM map_album_remote_file marf
+				       JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				      WHERE marf.album_id = af5.ROWID
+				        AND rf.fetched = 1
+				        AND rf.ignored = 0
+				             )
+			`, searchQuery).Scan(&albumsTotal)
+		}); err != nil {
+			return err
+		}
+
+		var albums []types.Album
+
+		// Failed idea: writing to an attached db locks all dbs in the connection,
+		// which is bad if ripme is running, because searches may be slow.
+		//if err := withSQL(ctx, func() error {
+		//	result, err := vars.Db.ExecContext(ctx, `
+		//		INSERT INTO memdb.search_results (query_hash, table_name, table_rowid, score)
+		//		SELECT ?
+		//		     , 'album'
+		//		     , ROWID
+		//		     , BM25(album_fts5, 9.0, 6.0) AS score
+		//		  FROM album_fts5
+		//		 WHERE album_fts5 MATCH ?
+		//		 ORDER BY score
+		//		-- No LIMIT; we need every result to get the number of hits
+		//		-- LIMIT 20 OFFSET 0
+		//	`)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	albumsTotal, err = result.RowsAffected()
+		//	_ = albumsTotal
+		//	if err != nil {
+		//		return err
+		//	}
+		//	return nil
+		//}); err != nil {
+		//	return err
+		//}
+
+		if err := withSQL(ctx, func() error {
+			rows, err := vars.Db.QueryContext(ctx, `
+				  WITH matches AS (
+				      SELECT ROWID
+				           , BM25(album_fts5, 9.0, 6.0) AS score
+				        FROM album_fts5 af5
+				       WHERE album_fts5 MATCH ?
+				         AND EXISTS(
+				           SELECT 1
+				             FROM map_album_remote_file marf
+				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				            WHERE marf.album_id = af5.ROWID
+				              AND rf.fetched = 1
+				              AND rf.ignored = 0
+				                   )
+				       ORDER BY score
+				       LIMIT ? OFFSET ?
+				                  )
+				SELECT m.score
+				     , a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.local_rating
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , (
+				    SELECT COUNT(*)
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				       ) AS file_count
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				     ORDER BY marf.remote_file_id
+				     LIMIT 1
+				       ) AS thumb_remote_file_id
+				  FROM matches m
+				  JOIN album a ON a.album_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 ORDER BY m.score
+			`, searchQuery, size, offset)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var a types.Album
+				var f types.File
+				var thumbFileId sql.NullInt64
+				var score *float64
+				if err := rows.Scan(
+					&score,
+					&a.AlbumId,
+					&a.RipperId,
+					&a.RipperName,
+					&a.RipperHost,
+					&a.Gid,
+					&a.Uploader,
+					&a.Title,
+					&a.Description,
+					&a.CreatedTs,
+					&a.ModifiedTs,
+					&a.Hidden,
+					&a.Removed,
+					&a.LocalRating,
+					&a.LastFetchTs,
+					&a.InsertedTs,
+					&a.FileCount,
+					&thumbFileId,
+				); err != nil {
+					return err
+				}
+				// If an album has no fetched files, thumb_remote_file_id will be null
+				if thumbFileId.Valid {
+					f.FileId = thumbFileId.Int64
+					a.Thumb = f
+					albums = append(albums, a)
+				}
+			}
+			return rows.Err()
+		}); err != nil {
+			return err
+		}
+		for i := range albums {
+			thumb := albums[i].Thumb
+			if err := withSQL(ctx, func() error {
+				return vars.Db.QueryRowContext(ctx, `
+					SELECT rf.filename
+					     , mt.name AS mime_type
+					  FROM remote_file rf
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.remote_file_id = ? AND rf.fetched = 1
+				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+			}); err != nil {
+				return err
+			}
+			albums[i].Thumb = thumb
+		}
+		// Populate href
+		for i := range albums {
+			albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
+			albums[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
+			if albums[i].Thumb.Filename.Valid {
+				albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
+			}
+		}
+
+		// 2: Search files
+		var filesTotal int
+		if err := withSQL(ctx, func() error {
+			return vars.Db.QueryRowContext(ctx, `
+				  SELECT COUNT(*)
+				        FROM remote_file_fts5 rff5
+				        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
+				       WHERE remote_file_fts5 MATCH ?
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+			`, searchQuery).Scan(&filesTotal)
+		}); err != nil {
+			return err
+		}
+
+		var files []types.File
+		if err := withSQL(ctx, func() error {
+			rows, err := vars.Db.QueryContext(ctx, `
+				  WITH matches AS (
+				      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
+				        FROM remote_file_fts5 rff5
+				        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
+				       WHERE remote_file_fts5 MATCH ?
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				       ORDER BY score
+				       LIMIT ? OFFSET ?
+				                  )
+				SELECT m.score
+				     , rf.remote_file_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				     , rf.bytes
+				     , rf.local_rating
+				     , rf.inserted_ts
+				  FROM matches m
+				  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 ORDER BY m.score
+			`, searchQuery, size, offset)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var f types.File
+				var score *float64
+				if err := rows.Scan(
+					&score,
+					&f.FileId,
+					&f.RipperName,
+					&f.RipperHost,
+					&f.Urlid,
+					&f.Filename,
+					&f.MimeType,
+					&f.Title,
+					&f.Description,
+					&f.UploadedTs,
+					&f.Uploader,
+					&f.Hidden,
+					&f.Removed,
+					&f.Bytes,
+					&f.LocalRating,
+					&f.InsertedTs,
+				); err != nil {
+					return err
+				}
+				files = append(files, f)
+			}
+			return rows.Err()
+		}); err != nil {
+			return err
+		}
+		for i := range files {
+			files[i].HrefPage = fmt.Sprintf("/file/%s/%d", files[i].RipperHost, files[i].FileId)
+			if files[i].Filename.Valid {
+				files[i].HrefMedia = fmt.Sprintf("/media/%s/%s", files[i].RipperHost, files[i].Filename.String)
+			}
+		}
+
+		// 3: Search tags
+		var tagsTotal int
+		if err := withSQL(ctx, func() error {
+			return vars.Db.QueryRowContext(ctx, `
+				  SELECT COUNT(*)
+				        FROM tag_fts5
+				       WHERE tag_fts5 MATCH ?
+			`, searchQuery).Scan(&tagsTotal)
+		}); err != nil {
+			return err
+		}
+
+		var tags []types.Tag
+		if err := withSQL(ctx, func() error {
+			rows, err := vars.Db.QueryContext(ctx, `
+				  WITH matches AS (
+				      SELECT tf5.ROWID, BM25(tag_fts5) AS score
+				        FROM tag_fts5 tf5
+				        JOIN tag t ON t.tag_id = tf5.ROWID
+				       WHERE tag_fts5 MATCH ?
+				         AND t.local = 0 -- TODO show local tags separately
+				       ORDER BY score
+				       LIMIT ?
+				                  )
+				SELECT m.score
+				     , t.name
+				     , (
+				    SELECT COUNT(*)
+				      FROM map_remote_file_tag mrft
+				     WHERE t.tag_id = mrft.tag_id
+				       --AND rf.fetched = 1
+				    -- filtering on fetched here is quite slow
+				       ) AS cnt
+				  FROM matches m
+				  JOIN tag t ON t.tag_id = m.ROWID
+				 WHERE t.local = 0 -- TODO show local tags separately
+				 ORDER BY cnt DESC, m.score
+			`, searchQuery, 100)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var t types.Tag
+				var score *float64
+				if err := rows.Scan(
+					&score,
+					&t.Name,
+					&t.Count,
+				); err != nil {
+					return err
+				}
+				tags = append(tags, t)
+			}
+			return rows.Err()
+		}); err != nil {
+			return err
+		}
+
+		model := types.SearchPage{
+			Query:       searchQuery,
+			Albums:      albums,
+			AlbumsTotal: albumsTotal,
+			Files:       files,
+			FilesTotal:  filesTotal,
+			Tags:        tags,
+			TagsTotal:   tagsTotal,
+			BasePage:    types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "search.gohtml", model)
 	})
 	if err != nil {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)

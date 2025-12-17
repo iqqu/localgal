@@ -21,11 +21,11 @@ LDFLAGS    := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)' -X 'ma
 all: build
 
 build:
-	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags gio -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN)$(EXT) $(PKG)
+	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags fts5,gio -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN)$(EXT) $(PKG)
 
 build-dist:
 	@mkdir -p $(DISTDIR)
-	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags gio -ldflags "-s -w $(LDFLAGS)" -o $(DISTBIN) $(PKG)
+	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags fts5,gio -ldflags "-s -w $(LDFLAGS)" -o $(DISTBIN) $(PKG)
 
 run: build
 	./$(BINDIR)/$(BIN)

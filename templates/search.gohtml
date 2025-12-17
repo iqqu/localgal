@@ -1,0 +1,104 @@
+{{ define "search.gohtml" }}
+{{$title := printf "Search: %s" .Query}}
+{{ template "base_start" (dict "title" $title ) }}
+  <h1>Search: {{.Query}}</h1>
+  <div class="tabs">
+    <a class="tab tab-selected">Top Results</a>
+    <a class="tab" href="/search/galleries?q={{.Query | urlquery}}">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab" href="/search/files?q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
+    <a class="tab" href="/search/tags?q={{.Query | urlquery}}">Tags ({{.TagsTotal}})</a>
+  </div>
+  <h2>Galleries</h2>
+  <div class="card">
+    {{- if .Albums }}
+      {{- if (gt .AlbumsTotal (len .Albums)) }}
+        <p class="muted">Showing {{ len .Albums }} of {{ .AlbumsTotal }} total albums.</p>
+      {{- end }}
+      <div class="grid">
+        {{range .Albums}}
+          <div class="grid-tile">
+            <div class="card thumb">
+              <a class="card-link" href="{{.HrefPage}}">
+                {{ if .Thumb.MimeType.Valid }}
+                  {{- if hasPrefix .Thumb.MimeType.String "video/" }}
+                    <div class="video-container">
+                      <video preload="metadata" src="{{.Thumb.HrefMedia}}" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
+                    </div>
+                  {{- else }}{{- /* assume image */ -}}
+                    <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
+                  {{- end }}
+                {{- else }}
+                  <p>[no thumbnail]</p>
+                {{- end }}
+                <h2 style="margin: 0.1rem 0">{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
+              </a>
+              {{ if .Hidden }}<span class="muted hidden" title="This album is hidden" style="">Hidden</span>{{ end }}
+              {{- if .Removed }}<span class="muted removed" title="This album is removed" style="">Removed</span>{{ end }}
+              {{ if .Description.Valid }}
+                <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
+              {{- end -}}
+              <div class="muted">
+                {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}
+                {{- if .CreatedTs.Valid }} | <span title="Created">{{fmtDateMillis .CreatedTs.Int64}}</span>{{ end }}
+                | <span title="Host">{{.RipperHost}}</span>
+                {{- if .Uploader.Valid }} | <span title="Uploader">{{.Uploader.String}}</span>{{ end }}
+  {{/*              {{- if .ModifiedTs.Valid }} | Updated {{fmtDateMillis .ModifiedTs.Int64}}{{ end }}*/}}
+  {{/*              {{- if .LastFetchTs.Valid }} | Last Fetched {{fmtDateMillis .LastFetchTs.Int64}}{{ end }}*/}}
+  {{/*              | First Fetched {{fmtDateMillis .InsertedTs}}*/}}
+  {{/*              | {{.Gid}}*/}}
+              </div>
+            </div>
+          </div>
+        {{end}}
+      </div>
+    {{- else }}
+      <p class="muted">No albums to show.</p>
+    {{- end}}
+  </div>
+  <h2>Files</h2>
+  <div class="card">
+    {{- if .Files }}
+      {{- if gt .FilesTotal (len .Files) }}
+        <p class="muted">Showing {{ len .Files }} of {{ .FilesTotal }} total files.</p>
+      {{- end }}
+      <div class="masonry">
+        {{range .Files}}
+          <a class="card-link masonry-item" href="{{.HrefPage}}" title="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}">
+            <div class="card thumb">
+              {{ if .MimeType.Valid }}
+                {{ if hasPrefix .MimeType.String "video/" }}
+                  <div class="video-container">
+                    <video preload="metadata" src="{{.HrefMedia}}"></video>
+                  </div>
+                {{ else }}{{/* assume image */}}
+                <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                {{ end }}
+              {{ else }}
+                <p>[no thumbnail]</p>
+              {{ end }}
+              <div class="muted" style="margin-top: 0.5rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span title="This file is hidden" style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
+            </div>
+          </a>
+        {{end}}
+      </div>
+    {{- else }}
+      <p class="muted">No files to show.</p>
+    {{- end}}
+  </div>
+  <h2>Tags</h2>
+  <div class="card">
+    {{- if .Tags }}
+      {{- if gt .TagsTotal (len .Tags) }}
+        <p class="muted">Showing {{ len .Tags }} of {{ .TagsTotal }} total tags.</p>
+      {{- end }}
+      <p class="chips">
+        {{range .Tags}}
+          <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+        {{end}}
+      </p>
+    {{- else }}
+      <p class="muted">No tags to show.</p>
+    {{- end}}
+  </div>
+{{template "base_end" .}}
+{{end}}

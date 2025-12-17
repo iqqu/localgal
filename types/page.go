@@ -29,6 +29,18 @@ type GalleryPage struct {
 	BasePage
 }
 
+type SearchPage struct {
+	Query       string  `json:"query"`
+	Albums      []Album `json:"albums"`
+	AlbumsTotal int     `json:"albumsTotal"`
+	Files       []File  `json:"files"`
+	FilesTotal  int     `json:"filesTotal"`
+	Tags        []Tag   `json:"tags"`
+	TagsTotal   int     `json:"tagsTotal"`
+	//Perf      Perf   `json:"perf"`
+	BasePage
+}
+
 type FilePage struct {
 	File         File    `json:"file"`
 	Prev         []File  `json:"prev"`
