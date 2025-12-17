@@ -60,39 +60,57 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		var list []types.Album
 		if err := withSQL(ctx, func() error {
 			rows, err := vars.Db.QueryContext(ctx, `
-				SELECT a.album_id
-				     , a.ripper_id
+				  WITH page AS (
+				      SELECT a.album_id
+				           , a.ripper_id
+				           , a.gid
+				           , a.uploader
+				           , a.title
+				           , a.description
+				           , a.created_ts
+				           , a.modified_ts
+				           , a.hidden
+				           , a.removed
+				           , a.local_rating
+				           , a.last_fetch_ts
+				           , a.inserted_ts
+				        FROM album a
+				               )
+				     , agg AS (
+				      SELECT marf.album_id
+				           , COUNT(*) AS file_count
+				           , MIN(rf.remote_file_id) AS thumb_remote_file_id
+				        FROM map_album_remote_file marf
+				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				       WHERE marf.album_id IN (
+				           SELECT album_id
+				             FROM page
+				                              )
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				       GROUP BY marf.album_id
+				               )
+				SELECT p.album_id
+				     , p.ripper_id
 				     , r.name AS ripper_name
 				     , r.host AS ripper_host
-				     , a.gid
-				     , a.uploader
-				     , a.title
-				     , a.description
-				     , a.created_ts
-				     , a.modified_ts
-				     , a.hidden
-				     , a.removed
-				     , a.local_rating
-				     , a.last_fetch_ts
-				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       ) AS file_count
-				     , (
-				    SELECT MIN(rf.remote_file_id)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       ) AS thumb_remote_file_id
-				  FROM album a
-				  JOIN ripper r ON r.ripper_id = a.ripper_id
-				-- WHERE a.fetch_count > 0 -- not as important as remote_file.fetched=1
-				 ORDER BY a.album_id
+				     , p.gid
+				     , p.uploader
+				     , p.title
+				     , p.description
+				     , p.created_ts
+				     , p.modified_ts
+				     , p.hidden
+				     , p.removed
+				     , p.local_rating
+				     , p.last_fetch_ts
+				     , p.inserted_ts
+				     , COALESCE(agg.file_count, 0)
+				     , agg.thumb_remote_file_id
+				  FROM page p
+				  JOIN ripper r ON r.ripper_id = p.ripper_id
+				  LEFT JOIN agg ON agg.album_id = p.album_id
+				 ORDER BY p.album_id
 				 LIMIT ? OFFSET ?
 			`, size, offset)
 			if err != nil {
