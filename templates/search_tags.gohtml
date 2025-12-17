@@ -1,0 +1,22 @@
+{{ define "search_tags.gohtml" }}
+{{$title := printf "Search Tags: %s" .Query}}
+{{ template "base_start" (dict "title" $title ) }}
+  <h1>Search Tags: {{.Query}}</h1>
+  <div class="tabs">
+    <a class="tab" href="/search?q={{.Query | urlquery}}">Top Results</a>
+    <a class="tab" href="/search/galleries?q={{.Query | urlquery}}">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab" href="/search/files?q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
+    <a class="tab tab-selected" href="/search/tags?q={{.Query | urlquery}}">Tags ({{.TagsTotal}})</a>
+  </div>
+  <h2>Tags</h2>
+  {{- if .Tags }}
+    <p class="chips">
+      {{range .Tags}}
+        <a href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+      {{end}}
+    </p>
+  {{- else }}
+    <p class="muted">No tags to show.</p>
+  {{- end}}
+{{template "base_end" .}}
+{{end}}

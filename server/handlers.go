@@ -1473,7 +1473,12 @@ func getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
 	return tagsTotal, err
 }
 
-func getSearchTagsPage(ctx context.Context, searchQuery string) ([]types.Tag, error) {
+// getSearchTagsPage searches for tags. If limit is -1, sqlite returns unlimited matches
+func getSearchTagsPage(ctx context.Context, searchQuery string, limit int) ([]types.Tag, error) {
+	//limitString := "ALL"
+	//if limit > 0 {
+	//	limitString = strconv.Itoa(limit)
+	//}
 	var tags []types.Tag
 	if err := withSQL(ctx, func() error {
 		rows, err := vars.Db.QueryContext(ctx, `
@@ -1499,7 +1504,7 @@ func getSearchTagsPage(ctx context.Context, searchQuery string) ([]types.Tag, er
 			  JOIN tag t ON t.tag_id = m.ROWID
 			 WHERE t.local = 0 -- TODO show local tags separately
 			 ORDER BY cnt DESC, m.score
-		`, searchQuery, 100)
+		`, searchQuery, limit)
 		if err != nil {
 			return err
 		}
@@ -1572,7 +1577,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		tags, err := getSearchTagsPage(ctx, searchQuery)
+		tags, err := getSearchTagsPage(ctx, searchQuery, 100)
 		if err != nil {
 			return err
 		}
@@ -1694,6 +1699,53 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			BasePage:    types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "search_files.gohtml", model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+// handleSearchTags handles /search/tags
+func handleSearchTags(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
+	if len(searchQuery) == 0 {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search/tags?q=foo"))
+		return
+	}
+
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		var albumsTotal int
+		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+		var filesTotal int
+		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+		var tagsTotal int
+		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		if err != nil {
+			return err
+		}
+
+		tags, err := getSearchTagsPage(ctx, searchQuery, -1)
+		if err != nil {
+			return err
+		}
+
+		model := types.SearchPage{
+			Query:       searchQuery,
+			Tags:        tags,
+			AlbumsTotal: albumsTotal,
+			FilesTotal:  filesTotal,
+			TagsTotal:   tagsTotal,
+			BasePage:    types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "search_tags.gohtml", model)
 	})
 	if err != nil {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
