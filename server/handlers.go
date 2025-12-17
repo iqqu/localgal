@@ -50,13 +50,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
 
-		var total int
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
-				SELECT COUNT(*)
-				  FROM album
-			`).Scan(&total)
-		}); err != nil {
+		total, err := getTotalAlbumCount(ctx)
+		if err != nil {
 			return err
 		}
 		var list []types.Album
@@ -224,6 +219,17 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = p
+}
+
+func getTotalAlbumCount(ctx context.Context) (int, error) {
+	var total int
+	err := withSQL(ctx, func() error {
+		return vars.Db.QueryRowContext(ctx, `
+				SELECT COUNT(*)
+				  FROM album
+			`).Scan(&total)
+	})
+	return total, err
 }
 
 // handleGallery handles /gallery/{ripper_host}/{gid}
@@ -1785,6 +1791,7 @@ var matchGallery = regexp.MustCompile(`^/gallery/([^/]+)/(.+)/?$`)
 var matchFile = regexp.MustCompile(`^/file/`)
 var matchSearchGalleries = regexp.MustCompile(`^/search/galleries/?$`)
 var matchSearchFiles = regexp.MustCompile(`^/search/files/?$`)
+var matchBrowse = regexp.MustCompile(`^/[^/]*$`)
 
 // handleRandomPage selects a random page within the current set of pages.
 func handleRandomPage(w http.ResponseWriter, r *http.Request) {
@@ -1865,6 +1872,16 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/files?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			return nil
+		}
+		if matchBrowse.MatchString(path) {
+			page, size := getPageParams(w, r, parsedUrl)
+			sort := getUrlSortGalleries(parsedUrl)
+			nextPage, err := getRandomBrowsePage(ctx, page, size)
+			if err != nil {
+				return err
+			}
+			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/?page=%d&size=%d&sort=%s", nextPage, size, sort), http.StatusTemporaryRedirect)
 			return nil
 		}
 		// Not supported on this URL. Go back
@@ -1967,6 +1984,23 @@ func getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page in
 
 func getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
 	totalHits, err := getSearchFileHits(ctx, searchQuery, false)
+	if err != nil {
+		return 0, err
+	}
+	pageCount := getPageCount(int64(totalHits), int64(size))
+	if pageCount <= 1 {
+		return 1, nil
+	}
+	n := rand.Int64N(pageCount - 1)
+	nextPage := n + 1
+	if nextPage >= int64(page) {
+		nextPage += 1
+	}
+	return nextPage, nil
+}
+
+func getRandomBrowsePage(ctx context.Context, page int, size int) (int64, error) {
+	totalHits, err := getTotalAlbumCount(ctx)
 	if err != nil {
 		return 0, err
 	}
