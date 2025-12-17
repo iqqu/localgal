@@ -98,7 +98,6 @@ In case somebody wants to develop a different UI.
 
 ## TODO
 * Simplify Server Control GUI layout code
-* Make header bar prettier
 * Sorting options
 * Show file size / total gallery size
 * Show file dimensions (width/height/duration) if available
@@ -106,6 +105,7 @@ In case somebody wants to develop a different UI.
 * ???
 
 ## Wishlist (help welcome)
+* Make header bar prettier
 * Fix GitHub pipeline compilation for amd64 mac
 * Better icon
 * Button & key for "random file within this gallery" (if viewing file) or "random page within this gallery" (if viewing page)
