@@ -172,6 +172,12 @@
           <td>{{.File.Urlid.String}}</td>
         </tr>
       {{end}}
+      {{if .File.Bytes.Valid}}
+        <tr>
+          <td>File size</td>
+          <td><code>{{bytesToHumanReadable .File.Bytes.Int64}}</code></td>
+        </tr>
+      {{end}}
       {{if .CurrentAlbum}}
         {{if .CurrentAlbum.Gid}}
           <tr>

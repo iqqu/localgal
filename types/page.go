@@ -16,15 +16,16 @@ type BrowsePage struct {
 }
 
 type GalleryPage struct {
-	Album     Album  `json:"album"`
-	Files     []File `json:"files"`
-	Page      int    `json:"page"`
-	PageSize  int    `json:"pageSize"`
-	Total     int    `json:"total"`
-	HasPrev   bool   `json:"hasPrev"`
-	HasNext   bool   `json:"hasNext"`
-	AlbumTags []Tag  `json:"albumTags"`
-	FileTags  []Tag  `json:"fileTags"`
+	Album      Album  `json:"album"`
+	Files      []File `json:"files"`
+	Page       int    `json:"page"`
+	PageSize   int    `json:"pageSize"`
+	Total      int    `json:"total"`
+	HasPrev    bool   `json:"hasPrev"`
+	HasNext    bool   `json:"hasNext"`
+	AlbumTags  []Tag  `json:"albumTags"`
+	FileTags   []Tag  `json:"fileTags"`
+	AlbumBytes int64  `json:"albumBytes"`
 	//Perf      Perf   `json:"perf"`
 	BasePage
 }

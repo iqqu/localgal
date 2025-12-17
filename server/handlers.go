@@ -222,13 +222,17 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		page, size := parsePageParams(r, 60)
 		offset := (page - 1) * size
 		var total int
+		var albumBytes int64
 		if err := withSQL(ctx, func() error {
 			return vars.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
-				  FROM map_album_remote_file m
-				  JOIN remote_file rf ON rf.remote_file_id = m.remote_file_id AND rf.fetched = 1
-				 WHERE m.album_id = ?
-			`, a.AlbumId).Scan(&total)
+				     , SUM(rf.bytes)
+				  FROM map_album_remote_file marf
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				 WHERE marf.album_id = ?
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
+			`, a.AlbumId).Scan(&total, &albumBytes)
 		}); err != nil {
 			return err
 		}
@@ -350,7 +354,20 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				files[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, files[i].Filename.String)
 			}
 		}
-		model := types.GalleryPage{Album: a, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(files) < total, AlbumTags: albumTags, FileTags: fileTags, BasePage: types.BasePage{Perf: perf}}
+
+		model := types.GalleryPage{
+			Album:      a,
+			Files:      files,
+			Page:       page,
+			PageSize:   size,
+			Total:      total,
+			HasPrev:    page > 1,
+			HasNext:    offset+len(files) < total,
+			AlbumTags:  albumTags,
+			FileTags:   fileTags,
+			AlbumBytes: albumBytes,
+			BasePage:   types.BasePage{Perf: perf},
+		}
 		return render(ctx, w, "gallery.gohtml", model)
 	})
 	if err != nil {
@@ -424,6 +441,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				     , rf.urlid
 				     , rf.filename
 				     , mt.name AS mime_type
+				     , rf.bytes
 				     , rf.title
 				     , rf.description
 				     , rf.uploaded_ts
@@ -445,6 +463,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				&f.Urlid,
 				&f.Filename,
 				&f.MimeType,
+				&f.Bytes,
 				&f.Title,
 				&f.Description,
 				&f.UploadedTs,
@@ -653,6 +672,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 				     , rf.urlid
 				     , rf.filename
 				     , mt.name AS mime_type
+				     , rf.bytes
 				     , rf.title
 				     , rf.description
 				     , rf.uploaded_ts
@@ -671,6 +691,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 				&f.Urlid,
 				&f.Filename,
 				&f.MimeType,
+				&f.Bytes,
 				&f.Title,
 				&f.Description,
 				&f.UploadedTs,

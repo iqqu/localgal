@@ -87,6 +87,7 @@
     <p class="muted">This gallery has no items.</p>
   {{end}}
 
+  <p>Total gallery size on disk: <code>{{bytesToHumanReadable .AlbumBytes}}</code></p>
   {{if .AlbumTags}}
     <h3>Tags</h3>
     <p class="chips">

@@ -155,6 +155,15 @@ func StartServer(cfg Config) (*Controller, error) {
 			}
 			return pages
 		},
+		"bytesToHumanReadable": func(size int64) string {
+			floatBytes := float64(size)
+			magnitudes := []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"}
+			magIdx := 0
+			for ; floatBytes >= 1024; magIdx++ {
+				floatBytes /= 1024
+			}
+			return fmt.Sprintf("%.2f %sB", floatBytes, magnitudes[magIdx])
+		},
 		"fmtMillis": func(d time.Duration) string { return d.Round(time.Millisecond).String() },
 		"finalPageMillis": func(p types.Perf) string {
 			if !p.Start.IsZero() {
