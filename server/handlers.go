@@ -1473,6 +1473,56 @@ func getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
 	return tagsTotal, err
 }
 
+func getSearchTagsPage(ctx context.Context, searchQuery string) ([]types.Tag, error) {
+	var tags []types.Tag
+	if err := withSQL(ctx, func() error {
+		rows, err := vars.Db.QueryContext(ctx, `
+			  WITH matches AS (
+			      SELECT tf5.ROWID, BM25(tag_fts5) AS score
+			        FROM tag_fts5 tf5
+			        JOIN tag t ON t.tag_id = tf5.ROWID
+			       WHERE tag_fts5 MATCH ?
+			         AND t.local = 0 -- TODO show local tags separately
+			       ORDER BY score
+			       LIMIT ?
+			                  )
+			SELECT m.score
+			     , t.name
+			     , (
+			    SELECT COUNT(*)
+			      FROM map_remote_file_tag mrft
+			     WHERE t.tag_id = mrft.tag_id
+			    --AND rf.fetched = 1
+			    -- filtering on fetched here is quite slow
+			       ) AS cnt
+			  FROM matches m
+			  JOIN tag t ON t.tag_id = m.ROWID
+			 WHERE t.local = 0 -- TODO show local tags separately
+			 ORDER BY cnt DESC, m.score
+		`, searchQuery, 100)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var t types.Tag
+			var score *float64
+			if err := rows.Scan(
+				&score,
+				&t.Name,
+				&t.Count,
+			); err != nil {
+				return err
+			}
+			tags = append(tags, t)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+	return tags, nil
+}
+
 // handleSearch handles /search
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -1522,50 +1572,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		var tags []types.Tag
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
-				  WITH matches AS (
-				      SELECT tf5.ROWID, BM25(tag_fts5) AS score
-				        FROM tag_fts5 tf5
-				        JOIN tag t ON t.tag_id = tf5.ROWID
-				       WHERE tag_fts5 MATCH ?
-				         AND t.local = 0 -- TODO show local tags separately
-				       ORDER BY score
-				       LIMIT ?
-				                  )
-				SELECT m.score
-				     , t.name
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_remote_file_tag mrft
-				     WHERE t.tag_id = mrft.tag_id
-				       --AND rf.fetched = 1
-				    -- filtering on fetched here is quite slow
-				       ) AS cnt
-				  FROM matches m
-				  JOIN tag t ON t.tag_id = m.ROWID
-				 WHERE t.local = 0 -- TODO show local tags separately
-				 ORDER BY cnt DESC, m.score
-			`, searchQuery, 100)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var t types.Tag
-				var score *float64
-				if err := rows.Scan(
-					&score,
-					&t.Name,
-					&t.Count,
-				); err != nil {
-					return err
-				}
-				tags = append(tags, t)
-			}
-			return rows.Err()
-		}); err != nil {
+		tags, err := getSearchTagsPage(ctx, searchQuery)
+		if err != nil {
 			return err
 		}
 
