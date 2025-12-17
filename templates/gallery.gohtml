@@ -3,7 +3,7 @@
 {{template "base_start" (dict "title" $title)}}
   <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}} <span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
 
-  {{ if .Album.Description.Valid }}
+  {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
     <div class="card">
       <div class="muted">{{.Album.Description.String}}</div>
     </div>
