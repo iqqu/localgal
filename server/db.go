@@ -37,7 +37,11 @@ func GetDb(dsn string) (*sql.DB, error) {
 		log.Printf("open db: %v", err)
 		return nil, err
 	}
-	db.SetMaxOpenConns(1) // sqlite preferred in many cases
+	//db.SetMaxOpenConns(1) // sqlite preferred in many cases
+	// Allow simultaneous connections, because getting related galleries is slow,
+	// which blocks the thumbnail rail from loading prev/next thumbs.
+	// Shouldn't be a problem if using PRAGMA transaction_mode=IMMEDIATE;
+	db.SetMaxOpenConns(10)
 	return db, nil
 }
 
@@ -98,6 +102,9 @@ func initDB(db *sql.DB, filename string) error {
 	//pragmas = append(pragmas, "PRAGMA synchronous=NORMAL;")
 	pragmas = append(pragmas, "PRAGMA temp_store=MEMORY;")
 	//pragmas = append(pragmas, "PRAGMA mmap_size=268435456;") // 256MB
+
+	// Prevent SQLITE_BUSY with simultaneous connections
+	pragmas = append(pragmas, "PRAGMA transaction_mode=IMMEDIATE;")
 
 	for _, p := range pragmas {
 		if _, err := db.Exec(p); err != nil {
