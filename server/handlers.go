@@ -1025,39 +1025,38 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 	var albums []types.Album
 	if err := withSQL(ctx, func() error {
 		rows, e := vars.Db.QueryContext(ctx, `
-			SELECT a.album_id
-			     , a.ripper_id
-			     , r.name AS ripper_name
-			     , r.host AS ripper_host
-			     , a.gid
-			     , a.uploader
-			     , a.title
-			     , a.description
-			     , a.created_ts
-			     , a.modified_ts
-			     , a.fetch_count
-			     , a.hidden
-			     , a.removed
-			     , a.last_fetch_ts
-			     , a.inserted_ts
-			     , (
-			    SELECT COUNT(*)
-			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-			     WHERE marf.album_id = a.album_id
-			       ) AS file_count
-			     , (
-			    SELECT rf.remote_file_id
-			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
-			     WHERE marf.album_id = a.album_id
-			-- ORDER BY rf.remote_file_id ASC
-			     LIMIT 1
-			       ) AS thumb
-			  FROM album a
-			  JOIN ripper r ON r.ripper_id = a.ripper_id
-			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
-			 ORDER BY a.album_id
+		  WITH agg AS (
+		      SELECT marf.album_id
+		           , COUNT(*) AS file_count
+		           , MIN(rf.remote_file_id) AS thumb
+		        FROM map_album_remote_file marf
+		        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+		       WHERE rf.remote_file_id = ?
+		         AND rf.fetched = 1
+		         AND rf.ignored = 0
+		       GROUP BY marf.album_id
+		              )
+		SELECT a.album_id
+		     , a.ripper_id
+		     , r.name AS ripper_name
+		     , r.host AS ripper_host
+		     , a.gid
+		     , a.uploader
+		     , a.title
+		     , a.description
+		     , a.created_ts
+		     , a.modified_ts
+		     , a.fetch_count
+		     , a.hidden
+		     , a.removed
+		     , a.last_fetch_ts
+		     , a.inserted_ts
+		     , agg.file_count
+		     , agg.thumb
+		  FROM album a
+		  JOIN ripper r ON r.ripper_id = a.ripper_id
+		  JOIN agg ON agg.album_id = a.album_id
+		 ORDER BY a.album_id
 		`, fileId)
 		if e != nil {
 			return e
