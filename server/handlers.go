@@ -83,13 +83,11 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				       AND rf.fetched = 1
 				       ) AS file_count
 				     , (
-				    SELECT rf.remote_file_id
+				    SELECT MIN(rf.remote_file_id)
 				      FROM map_album_remote_file marf
 				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				     WHERE marf.album_id = a.album_id
 				       AND rf.fetched = 1
-				     ORDER BY marf.remote_file_id
-				     LIMIT 1
 				       ) AS thumb_remote_file_id
 				  FROM album a
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
