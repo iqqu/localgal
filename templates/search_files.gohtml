@@ -27,7 +27,7 @@
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
           <input type="hidden" name="sort" value="{{.Sort}}">
-          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="hidden" name="q" value="{{.Query}}">
           <button type="submit">Go</button>
         </form>
         <div>
@@ -52,7 +52,7 @@
             </select>
             {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
           </label>
-          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="hidden" name="q" value="{{.Query}}">
           <input type="submit" value="Apply">
         </form>
       </div>
@@ -93,7 +93,7 @@
             <input type="number" name="page" min="1" max="{{calcPages .FilesTotal .PageSize}}" value="{{.Page}}">
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
-          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="hidden" name="q" value="{{.Query}}">
           <button type="submit">Go</button>
         </form>
         <div>
@@ -118,7 +118,7 @@
             </select>
             {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
           </label>
-          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="hidden" name="q" value="{{.Query}}">
           <input type="submit" value="Apply">
         </form>
       </div>
