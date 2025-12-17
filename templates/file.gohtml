@@ -21,6 +21,10 @@
                   <p>[no thumbnail]</p>
                 {{ end }}
               </div>
+              {{/*<div>*/}}
+              {{/*  {{if .Bytes.Valid}}{{bytesToHumanReadable .Bytes.Value}}{{end}}*/}}
+              {{/*  {{if .UploadedTs.Valid}}{{fmtDateMillis .UploadedTs.Value}}{{end}}*/}}
+              {{/*</div>*/}}
             </a>
           {{end}}
         </div>
@@ -48,6 +52,10 @@
                   <p>[no thumbnail]</p>
                 {{ end }}
               </div>
+              {{/*<div>*/}}
+              {{/*  {{if .Bytes.Valid}}{{bytesToHumanReadable .Bytes.Value}}{{end}}*/}}
+              {{/*  {{if .UploadedTs.Valid}}{{fmtDateMillis .UploadedTs.Value}}{{end}}*/}}
+              {{/*</div>*/}}
             </a>
           {{end}}
           {{if lt (len .Next) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">End</div></div>{{end}}

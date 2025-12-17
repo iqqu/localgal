@@ -4,8 +4,8 @@
   <h1>Search: {{.Query}}</h1>
   <div class="tabs">
     <a class="tab tab-selected" href="/search?q={{.Query | urlquery}}">Top Results</a>
-    <a class="tab" href="/search/galleries?q={{.Query | urlquery}}">Galleries ({{.AlbumsTotal}})</a>
-    <a class="tab" href="/search/files?q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
+    <a class="tab" href="/search/galleries?sort=rank&q={{.Query | urlquery}}">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab" href="/search/files?sort=rank&q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
     <a class="tab" href="/search/tags?q={{.Query | urlquery}}">Tags ({{.TagsTotal}})</a>
   </div>
   <h2>Galleries</h2>

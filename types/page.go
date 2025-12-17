@@ -11,6 +11,7 @@ type BrowsePage struct {
 	Total    int     `json:"total"`
 	HasPrev  bool    `json:"hasPrev"`
 	HasNext  bool    `json:"hasNext"`
+	Sort     string  `json:"sort,omitempty,omitzero"`
 	//Perf     Perf    `json:"perf"`
 	BasePage
 }
@@ -26,6 +27,7 @@ type GalleryPage struct {
 	AlbumTags  []Tag  `json:"albumTags"`
 	FileTags   []Tag  `json:"fileTags"`
 	AlbumBytes int64  `json:"albumBytes"`
+	Sort       string `json:"sort,omitempty,omitzero"`
 	//Perf      Perf   `json:"perf"`
 	BasePage
 }
@@ -42,6 +44,7 @@ type SearchPage struct {
 	HasPrev     bool    `json:"hasPrev"`
 	Page        int     `json:"page"`
 	PageSize    int     `json:"pageSize"`
+	Sort        string  `json:"sort,omitempty,omitzero"`
 	//Perf      Perf   `json:"perf"`
 	BasePage
 }

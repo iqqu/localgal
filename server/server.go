@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -141,6 +142,22 @@ func StartServer(cfg Config) (*Controller, error) {
 				return ""
 			}
 			return time.UnixMilli(ms).Format("2006-01-02")
+		},
+		"queryParam": func(k string, v string) string {
+			if len(v) == 0 {
+				return ""
+			}
+			return "&" + k + "=" + v
+		},
+		"queryString": func(params map[string]string) string {
+			if len(params) == 0 {
+				return ""
+			}
+			v := url.Values{}
+			for key, value := range params {
+				v.Set(key, value)
+			}
+			return "?" + v.Encode()
 		},
 		"calcPages": func(total, size int) int {
 			if size <= 0 {
@@ -274,7 +291,10 @@ func newMux() http.Handler {
 
 	mux.HandleFunc("/media/", handleMedia)
 
+	// For development:
+	//mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/media/data/code/golocalgal_public/static"))))
 	mux.HandleFunc("/static/", handleStatic)
+
 	mux.HandleFunc("/about", handleAbout)
 	//mux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
 	//	renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))

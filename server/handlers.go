@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,116 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const (
+	SortFetched  string = "fetched"
+	SortUploaded string = "uploaded"
+
+	// TODO materialize slow aggregate calculations
+	//SortItems    string = "items"
+	SortBytes string = "bytes"
+
+	SortRank    string = "rank"
+	SortDefault string = ""
+)
+
+var GallerySorts = []string{SortFetched, SortUploaded}
+var FileSorts = []string{SortFetched, SortUploaded, SortBytes}
+var GallerySearchSorts = []string{SortRank, SortFetched, SortUploaded}
+var FileSearchSorts = []string{SortRank, SortFetched, SortUploaded, SortBytes}
+
+func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
+	var defaultSortValue string
+	defaultSort, err := r.Cookie("defaultSortGalleries")
+	if err == nil && slices.Contains(GallerySorts, defaultSort.Value) {
+		defaultSortValue = defaultSort.Value
+	} else {
+		defaultSortValue = ""
+	}
+
+	sortQs := r.URL.Query().Get("sort")
+	if !slices.Contains(GallerySorts, sortQs) {
+		sortQs = ""
+	}
+
+	sortQsWasValid := sortQs != ""
+	newDefaultSortValue := sortQs != defaultSortValue
+	if sortQsWasValid && newDefaultSortValue {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "defaultSortGalleries",
+			Value:    sortQs,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   int((6 * time.Hour).Seconds()),
+		})
+	}
+	if sortQs == "" {
+		return defaultSortValue
+	}
+	return sortQs
+}
+
+func getSortFiles(w http.ResponseWriter, r *http.Request) string {
+	var defaultSortValue string
+	defaultSort, err := r.Cookie("defaultSortFiles")
+	if err == nil && slices.Contains(FileSorts, defaultSort.Value) {
+		defaultSortValue = defaultSort.Value
+	} else {
+		defaultSortValue = ""
+	}
+
+	sortQs := r.URL.Query().Get("sort")
+	if !slices.Contains(FileSorts, sortQs) {
+		sortQs = ""
+	}
+
+	sortQsWasValid := sortQs != ""
+	newDefaultSortValue := sortQs != defaultSortValue
+	if sortQsWasValid && newDefaultSortValue {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "defaultSortFiles",
+			Value:    sortQs,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   int((6 * time.Hour).Seconds()),
+		})
+	}
+	if sortQs == "" {
+		return defaultSortValue
+	}
+	return sortQs
+}
+
+func getSortSearchFiles(w http.ResponseWriter, r *http.Request) string {
+	var defaultSortValue string
+	defaultSort, err := r.Cookie("defaultSortSearchFiles")
+	if err == nil && slices.Contains(FileSearchSorts, defaultSort.Value) {
+		defaultSortValue = defaultSort.Value
+	} else {
+		defaultSortValue = ""
+	}
+
+	sortQs := r.URL.Query().Get("sort")
+	if !slices.Contains(FileSearchSorts, sortQs) {
+		sortQs = ""
+	}
+
+	sortQsWasValid := sortQs != ""
+	newDefaultSortValue := sortQs != defaultSortValue
+	if sortQsWasValid && newDefaultSortValue {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "defaultSortSearchFiles",
+			Value:    sortQs,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   int((6 * time.Hour).Seconds()),
+		})
+	}
+	if sortQs == "" {
+		return defaultSortValue
+	}
+	return sortQs
+}
+
 func handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if !(r.URL.Path == "/" || r.URL.Path == "/api/galleries") {
 		renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
@@ -46,20 +157,40 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		page, size := parsePageParams(r, 40)
 		offset := (page - 1) * size
+		sort := getSortGalleries(w, r)
+
 		var total int
 		if err := withSQL(ctx, func() error {
 			return vars.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
 				  FROM album
-				  -- Technically correct, but practically insignificant, and I don't want to add an index for it
-				  -- WHERE fetch_count > 0
 			`).Scan(&total)
 		}); err != nil {
 			return err
 		}
 		var list []types.Album
 		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
+			var orderByPage string
+			var orderByAgg string
+			switch sort {
+			case SortFetched:
+				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
+			case SortUploaded:
+				orderByPage = "ORDER BY a.created_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.created_ts DESC, p.album_id DESC"
+			//case SortBytes:
+			//	orderByPage = "ORDER BY a.album_bytes DESC, a.album_id DESC"
+			//	orderByAgg = "ORDER BY p.album_bytes DESC, p.album_id DESC"
+			//case SortItems:
+			//	orderByPage = "ORDER BY a.file_count DESC, a.album_id DESC"
+			//	orderByAgg = "ORDER BY p.file_count DESC, p.album_id DESC"
+			default:
+				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
+			}
+			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg)
+			rows, err := vars.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH page AS (
 				      SELECT a.album_id
 				           , a.ripper_id
@@ -75,11 +206,15 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           , a.last_fetch_ts
 				           , a.inserted_ts
 				        FROM album a
+				        -- ORDER BY a.album_id
+				        /*ORDER_BY_PAGE*/
+				        LIMIT ? OFFSET ?
 				               )
 				     , agg AS (
 				      SELECT marf.album_id
 				           , COUNT(*) AS file_count
 				           , MIN(rf.remote_file_id) AS thumb_remote_file_id
+				           , SUM(rf.bytes) AS album_bytes
 				        FROM map_album_remote_file marf
 				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				       WHERE marf.album_id IN (
@@ -105,14 +240,15 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , p.local_rating
 				     , p.last_fetch_ts
 				     , p.inserted_ts
-				     , COALESCE(agg.file_count, 0)
+				     , COALESCE(agg.file_count, 0) AS file_count
+				     , COALESCE(agg.album_bytes, 0) AS album_bytes
 				     , agg.thumb_remote_file_id
 				  FROM page p
 				  JOIN ripper r ON r.ripper_id = p.ripper_id
 				  LEFT JOIN agg ON agg.album_id = p.album_id
-				 ORDER BY p.album_id
-				 LIMIT ? OFFSET ?
-			`, size, offset)
+				 -- ORDER BY p.album_id
+				  /*ORDER_BY_AGG*/
+			`), size, offset)
 			if err != nil {
 				return err
 			}
@@ -138,6 +274,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					&a.LastFetchTs,
 					&a.InsertedTs,
 					&a.FileCount,
+					&a.Bytes,
 					&thumbFileId,
 				); err != nil {
 					return err
@@ -176,7 +313,16 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				list[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", list[i].RipperHost, list[i].Gid, list[i].Thumb.Filename.String)
 			}
 		}
-		model := types.BrowsePage{Albums: list, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(list) < total, BasePage: types.BasePage{Perf: perf}}
+		model := types.BrowsePage{
+			Albums:   list,
+			Page:     page,
+			PageSize: size,
+			Total:    total,
+			HasPrev:  page > 1,
+			HasNext:  offset+len(list) < total,
+			Sort:     sort,
+			BasePage: types.BasePage{Perf: perf},
+		}
 		return render(ctx, w, "browse.gohtml", model)
 	})
 	if err != nil {
@@ -239,6 +385,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 		page, size := parsePageParams(r, 60)
 		offset := (page - 1) * size
+		sort := getSortFiles(w, r)
+
 		var total int
 		var albumBytes int64
 		if err := withSQL(ctx, func() error {
@@ -256,7 +404,19 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 		var files []types.File
 		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
+			var orderBy string
+			switch sort {
+			// TODO: order by local_rating?
+			case SortFetched:
+				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id"
+			case SortBytes:
+				orderBy = "ORDER BY rf.bytes DESC, rf.remote_file_id"
+			case SortUploaded:
+				orderBy = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id"
+			default:
+				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id"
+			}
+			rows, err := vars.Db.QueryContext(ctx, strings.Replace(`
 				SELECT rf.remote_file_id
 				     --, r.name AS ripper_name
 				     --, r.host AS ripper_host
@@ -273,13 +433,16 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , rf.local_rating
 				     , rf.inserted_ts
 				  FROM map_album_remote_file marf
-				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				  -- JOIN ripper r ON r.ripper_id = rf.ripper_id
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE marf.album_id = ?
-				 ORDER BY marf.remote_file_id
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
+				 -- ORDER BY marf.remote_file_id
+				 /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`, a.AlbumId, size, offset)
+			`, "/*ORDER_BY*/", orderBy, 1), a.AlbumId, size, offset)
 			if err != nil {
 				return err
 			}
@@ -384,6 +547,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			AlbumTags:  albumTags,
 			FileTags:   fileTags,
 			AlbumBytes: albumBytes,
+			Sort:       sort,
 			BasePage:   types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "gallery.gohtml", model)
@@ -493,38 +657,112 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
+
+		sort := getSortFiles(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
 		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+			var prevOrderKey1 string
+			var prevOrderKey2 string
+			switch sort {
+			case SortFetched:
+				prevOrderKey1 = `
+				         AND (
+				           rf.inserted_ts > t.inserted_ts
+				               OR (rf.inserted_ts = t.inserted_ts
+				               AND rf.remote_file_id < t.remote_file_id)
+				           )
+				       ORDER BY rf.inserted_ts ASC, rf.remote_file_id DESC
+				`
+				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id ASC"
+			case SortUploaded:
+				prevOrderKey1 = `
+				         AND (
+				           (t.uploaded_ts IS NOT NULL
+				               AND (rf.uploaded_ts > t.uploaded_ts
+				                   OR (rf.uploaded_ts = t.uploaded_ts
+				                       AND rf.remote_file_id < t.remote_file_id)))
+				               OR
+				           (t.uploaded_ts IS NULL
+				               AND (rf.uploaded_ts IS NOT NULL
+				                   OR rf.remote_file_id < t.remote_file_id))
+				           )
+				       ORDER BY rf.uploaded_ts ASC, rf.remote_file_id DESC
+				`
+				prevOrderKey2 = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id ASC"
+			case SortBytes:
+				prevOrderKey1 = `
+				         AND (
+				           (t.bytes IS NOT NULL
+				               AND (rf.bytes > t.bytes
+				                   OR (rf.bytes = t.bytes
+				                       AND rf.remote_file_id < t.remote_file_id)))
+				               OR
+				           (t.bytes IS NULL
+				               AND (rf.bytes IS NOT NULL
+				                   OR rf.remote_file_id < t.remote_file_id))
+				           )
+				       ORDER BY rf.bytes ASC, rf.remote_file_id DESC
+				`
+				prevOrderKey2 = "ORDER BY rf.bytes DESC, rf.remote_file_id ASC"
+			default:
+				prevOrderKey1 = `
+				         AND (
+				           rf.inserted_ts > t.inserted_ts
+				               OR (rf.inserted_ts = t.inserted_ts
+				               AND rf.remote_file_id < t.remote_file_id)
+				           )
+				       ORDER BY rf.inserted_ts ASC, rf.remote_file_id DESC
+				`
+				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id ASC"
+			}
+
+			replacer := strings.NewReplacer(
+				"/*PREV_ORDER_KEY_INNER*/",
+				prevOrderKey1,
+				"/*PREV_ORDER_KEY_OUTER*/",
+				prevOrderKey2,
+			)
+			rows, e := vars.Db.QueryContext(ctx, replacer.Replace(`
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
 				-- Step 2: Join the small set to remote_file and filter to available rows.
 				-- Step 3: Re-order ascending for display as chronological prev list.
-				SELECT rf.remote_file_id
-				     , rf.urlid
-				     , rf.filename
-				     , mt.name AS mime_type
-				     , rf.title
-				     , rf.description
-				     , rf.uploaded_ts
-				     , rf.uploader
-				     , rf.hidden
-				     , rf.removed
-				  FROM (
-				      -- Performance: do the LIMIT on the indexed mapping table first; avoids joining many rows only to drop them.
-				      -- Uses composite PK (album_id, remote_file_id) for efficient range+order scan.
-				      SELECT marf.remote_file_id
+				  WITH reversed AS (
+				        WITH target AS (
+				            SELECT t.remote_file_id
+				                 , t.inserted_ts
+				                 , t.uploaded_ts
+				                 , t.bytes
+				              FROM remote_file t
+				             WHERE t.remote_file_id = ?
+				                       )
+				      SELECT rf.remote_file_id
+				           , rf.urlid
+				           , rf.filename
+				           , mt.name AS mime_type
+				           , rf.title
+				           , rf.description
+				           , rf.uploaded_ts
+				           , rf.uploader
+				           , rf.hidden
+				           , rf.removed
+				           , rf.bytes
+				           , rf.local_rating
+				           , rf.inserted_ts
 				        FROM map_album_remote_file marf
-				        JOIN remote_file rf ON marf.remote_file_id = rf.remote_file_id AND rf.fetched = 1
+				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				        LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				        JOIN target t
 				       WHERE marf.album_id = ?
-				         AND marf.remote_file_id < ?
-				       ORDER BY marf.remote_file_id DESC
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				         /*PREV_ORDER_KEY_INNER*/
 				       LIMIT 3
-				       ) s
-				  JOIN remote_file rf ON rf.remote_file_id = s.remote_file_id AND rf.fetched = 1
-				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				 ORDER BY rf.remote_file_id
-				`, a.AlbumId, f.FileId)
+				                   )
+				SELECT *
+				  FROM reversed rf
+				  /*PREV_ORDER_KEY_OUTER*/
+			`), f.FileId, a.AlbumId)
 			if e != nil {
 				return e
 			}
@@ -542,6 +780,9 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 					&pf.Uploader,
 					&pf.Hidden,
 					&pf.Removed,
+					&pf.Bytes,
+					&pf.LocalRating,
+					&pf.InsertedTs,
 				); err != nil {
 					return err
 				}
@@ -553,7 +794,64 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 		var next []types.File
 		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+			var nextOrderKey string
+			switch sort {
+			case SortFetched:
+				nextOrderKey = `
+				   AND (
+				     rf.inserted_ts < t.inserted_ts
+				         OR (rf.inserted_ts = t.inserted_ts
+				         AND rf.remote_file_id > t.remote_file_id)
+				     )
+				 ORDER BY rf.inserted_ts DESC, rf.remote_file_id ASC
+				`
+			case SortUploaded:
+				nextOrderKey = `
+				   AND (
+				     (t.uploaded_ts IS NOT NULL
+				         AND (rf.uploaded_ts IS NULL
+				             OR rf.uploaded_ts < t.uploaded_ts
+				             OR (rf.uploaded_ts = t.uploaded_ts
+				                 AND rf.remote_file_id > t.remote_file_id)))
+				         OR
+				     (t.uploaded_ts IS NULL AND rf.uploaded_ts IS NULL
+				         AND rf.remote_file_id > t.remote_file_id)
+				     )
+				 ORDER BY rf.uploaded_ts DESC, rf.remote_file_id ASC
+				`
+			case SortBytes:
+				nextOrderKey = `
+				   AND (
+				     (t.bytes IS NOT NULL
+				         AND (rf.bytes IS NULL
+				             OR rf.bytes < t.bytes
+				             OR (rf.bytes = t.bytes
+				                 AND rf.remote_file_id > t.remote_file_id)))
+				         OR
+				     (t.bytes IS NULL AND rf.bytes IS NULL
+				         AND rf.remote_file_id > t.remote_file_id)
+				     )
+				 ORDER BY rf.bytes DESC, rf.remote_file_id ASC
+				`
+			default:
+				nextOrderKey = `
+				   AND (
+				     rf.inserted_ts < t.inserted_ts
+				         OR (rf.inserted_ts = t.inserted_ts
+				         AND rf.remote_file_id > t.remote_file_id)
+				     )
+				 ORDER BY rf.inserted_ts DESC, rf.remote_file_id ASC
+				`
+			}
+			rows, e := vars.Db.QueryContext(ctx, strings.Replace(`
+				  WITH target AS (
+				      SELECT t.remote_file_id
+				           , t.inserted_ts
+				           , t.uploaded_ts
+				           , t.bytes
+				        FROM remote_file t
+				       WHERE t.remote_file_id = ?
+				                 )
 				SELECT rf.remote_file_id
 				     , rf.urlid
 				     , rf.filename
@@ -564,15 +862,19 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				     , rf.uploader
 				     , rf.hidden
 				     , rf.removed
+				     , rf.bytes
+				     , rf.local_rating
+				     , rf.inserted_ts
 				  FROM map_album_remote_file marf
-				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				  JOIN target t
 				 WHERE marf.album_id = ?
-				   AND marf.remote_file_id > ?
-				-- Performance: order and range on mapping table column aligned with PK; avoids sort on rf and uses index for next-page scan.
-				 ORDER BY marf.remote_file_id
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
+				   /*NEXT_ORDER_KEY*/
 				 LIMIT 3
-				`, a.AlbumId, f.FileId)
+			`, "/*NEXT_ORDER_KEY*/", nextOrderKey, 1), f.FileId, a.AlbumId)
 			if e != nil {
 				return e
 			}
@@ -590,6 +892,9 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 					&nf.Uploader,
 					&nf.Hidden,
 					&nf.Removed,
+					&nf.Bytes,
+					&nf.LocalRating,
+					&nf.InsertedTs,
 				); err != nil {
 					return err
 				}
@@ -1226,65 +1531,136 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 	})
 	return albumsTotal, err
 }
-func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int) ([]types.Album, error) {
+func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.Album, error) {
 	var albums []types.Album
 	if err := withSQL(ctx, func() error {
-		rows, err := vars.Db.QueryContext(ctx, `
-			  WITH matches AS (
-			      SELECT af5.ROWID
-			           , BM25(album_fts5, 9.0, 6.0) AS score
-			        FROM album_fts5 af5
-			       WHERE album_fts5 MATCH ?
-			         AND EXISTS(
-			           SELECT 1
-			             FROM map_album_remote_file marf
-			             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-			            WHERE marf.album_id = af5.ROWID
-			              AND rf.fetched = 1
-			              AND rf.ignored = 0
-			                   )
-			       ORDER BY score
-			       LIMIT ? OFFSET ?
-			                  )
-			SELECT m.score
-			     , a.album_id
-			     , a.ripper_id
-			     , r.name AS ripper_name
-			     , r.host AS ripper_host
-			     , a.gid
-			     , a.uploader
-			     , a.title
-			     , a.description
-			     , a.created_ts
-			     , a.modified_ts
-			     , a.hidden
-			     , a.removed
-			     , a.local_rating
-			     , a.last_fetch_ts
-			     , a.inserted_ts
-			     , (
-			    SELECT COUNT(*)
-			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-			     WHERE marf.album_id = a.album_id
-			       AND rf.fetched = 1
-			       AND rf.ignored = 0
-			       ) AS file_count
-			     , (
-			    SELECT rf.remote_file_id
-			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-			     WHERE marf.album_id = a.album_id
-			       AND rf.fetched = 1
-			       AND rf.ignored = 0
-			     ORDER BY marf.remote_file_id
-			     LIMIT 1
-			       ) AS thumb_remote_file_id
-			  FROM matches m
-			  JOIN album a ON a.album_id = m.ROWID
-			  JOIN ripper r ON r.ripper_id = a.ripper_id
-			 ORDER BY m.score
-		`, searchQuery, size, offset)
+		var rows *sql.Rows
+		var err error
+
+		if order == SortRank || order == SortDefault {
+			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
+			rows, err = vars.Db.QueryContext(ctx, `
+				  WITH matches AS (
+				      SELECT af5.ROWID
+				           , BM25(album_fts5, 9.0, 6.0) AS score
+				        FROM album_fts5 af5
+				       WHERE album_fts5 MATCH ?
+				         AND EXISTS(
+				           SELECT 1
+				             FROM map_album_remote_file marf
+				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				            WHERE marf.album_id = af5.ROWID
+				              AND rf.fetched = 1
+				              AND rf.ignored = 0
+				                   )
+				       ORDER BY score
+				       LIMIT ? OFFSET ?
+				                  )
+				SELECT m.score
+				     , a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.local_rating
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , (
+				    SELECT COUNT(*)
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				       ) AS file_count
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				     ORDER BY marf.remote_file_id
+				     LIMIT 1
+				       ) AS thumb_remote_file_id
+				  FROM matches m
+				  JOIN album a ON a.album_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 ORDER BY m.score
+			`, searchQuery, size, offset)
+		} else {
+			// Need to enumerate all matches for nonranked sort, but no need to compute bm25
+			var orderBy string
+			switch order {
+			case SortFetched:
+				orderBy = "ORDER BY a.inserted_ts DESC, a.album_id DESC"
+			case SortUploaded:
+				orderBy = "ORDER BY a.created_ts DESC, a.album_id DESC"
+			}
+			rows, err = vars.Db.QueryContext(ctx, strings.Replace(`
+				  WITH matches AS (
+				      SELECT af5.ROWID
+				        FROM album_fts5 af5
+				       WHERE album_fts5 MATCH ?
+				         AND EXISTS(
+				           SELECT 1
+				             FROM map_album_remote_file marf
+				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				            WHERE marf.album_id = af5.ROWID
+				              AND rf.fetched = 1
+				              AND rf.ignored = 0
+				                   )
+				                  )
+				SELECT 0 -- placeholder value for score
+				     , a.album_id
+				     , a.ripper_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , a.gid
+				     , a.uploader
+				     , a.title
+				     , a.description
+				     , a.created_ts
+				     , a.modified_ts
+				     , a.hidden
+				     , a.removed
+				     , a.local_rating
+				     , a.last_fetch_ts
+				     , a.inserted_ts
+				     , (
+				    SELECT COUNT(*)
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				       ) AS file_count
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = a.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				     ORDER BY marf.remote_file_id
+				     LIMIT 1
+				       ) AS thumb_remote_file_id
+				  FROM matches m
+				  JOIN album a ON a.album_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
+				 --ORDER BY m.score
+				  /*ORDER_BY*/
+				 LIMIT ? OFFSET ?
+			`, "/*ORDER_BY*/", orderBy, 1), searchQuery, size, offset)
+
+		}
 		if err != nil {
 			return err
 		}
@@ -1417,42 +1793,93 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 	return filesTotal, err
 }
 
-func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int) ([]types.File, error) {
+func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.File, error) {
 	var files []types.File
 	if err := withSQL(ctx, func() error {
-		rows, err := vars.Db.QueryContext(ctx, `
-			  WITH matches AS (
-			      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
-			        FROM remote_file_fts5 rff5
-			        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
-			       WHERE remote_file_fts5 MATCH ?
-			         AND rf.fetched = 1
-			         AND rf.ignored = 0
-			       ORDER BY score
-			       LIMIT ? OFFSET ?
-			                  )
-			SELECT m.score
-			     , rf.remote_file_id
-			     , r.name AS ripper_name
-			     , r.host AS ripper_host
-			     , rf.urlid
-			     , rf.filename
-			     , mt.name AS mime_type
-			     , rf.title
-			     , rf.description
-			     , rf.uploaded_ts
-			     , rf.uploader
-			     , rf.hidden
-			     , rf.removed
-			     , rf.bytes
-			     , rf.local_rating
-			     , rf.inserted_ts
-			  FROM matches m
-			  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
-			  JOIN ripper r ON r.ripper_id = rf.ripper_id
-			  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-			 ORDER BY m.score
-		`, searchQuery, size, offset)
+		var rows *sql.Rows
+		var err error
+
+		if order == SortRank || order == SortDefault {
+			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
+			rows, err = vars.Db.QueryContext(ctx, `
+				  WITH matches AS (
+				      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
+				        FROM remote_file_fts5 rff5
+				        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
+				       WHERE remote_file_fts5 MATCH ?
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				       ORDER BY score, rf.remote_file_id DESC
+				       LIMIT ? OFFSET ?
+				                  )
+				SELECT m.score
+				     , rf.remote_file_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				     , rf.bytes
+				     , rf.local_rating
+				     , rf.inserted_ts
+				  FROM matches m
+				  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 ORDER BY m.score, rf.remote_file_id DESC
+			`, searchQuery, size, offset)
+		} else {
+			// Need to enumerate all matches for nonranked sort, but no need to compute bm25
+			var orderBy string
+			switch order {
+			case SortBytes:
+				orderBy = "ORDER BY rf.bytes DESC, rf.remote_file_id DESC"
+			case SortFetched:
+				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
+			case SortUploaded:
+				orderBy = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC"
+			}
+			rows, err = vars.Db.QueryContext(ctx, strings.Replace(`
+				  WITH matches AS (
+				      SELECT rff5.ROWID
+				        FROM remote_file_fts5 rff5
+				        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
+				       WHERE remote_file_fts5 MATCH ?
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				                  )
+				SELECT 0 -- placeholder value for score
+				     , rf.remote_file_id
+				     , r.name AS ripper_name
+				     , r.host AS ripper_host
+				     , rf.urlid
+				     , rf.filename
+				     , mt.name AS mime_type
+				     , rf.title
+				     , rf.description
+				     , rf.uploaded_ts
+				     , rf.uploader
+				     , rf.hidden
+				     , rf.removed
+				     , rf.bytes
+				     , rf.local_rating
+				     , rf.inserted_ts
+				  FROM matches m
+				  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
+				  JOIN ripper r ON r.ripper_id = rf.ripper_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 --ORDER BY m.score
+				  /*ORDER_BY*/
+				 LIMIT ? OFFSET ?
+			`, "/*ORDER_BY*/", orderBy, 1), searchQuery, size, offset)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -1587,7 +2014,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset)
+		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
 		if err != nil {
 			return err
 		}
@@ -1599,7 +2026,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		files, err := getSearchFilesPage(ctx, searchQuery, size, offset)
+		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
 		if err != nil {
 			return err
 		}
@@ -1624,6 +2051,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			FilesTotal:  filesTotal,
 			Tags:        tags,
 			TagsTotal:   tagsTotal,
+			Sort:        SortRank,
 			BasePage:    types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "search.gohtml", model)
@@ -1664,7 +2092,8 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset)
+		order := getSortSearchFiles(w, r)
+		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -1679,6 +2108,7 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			HasNext:     offset+len(albums) < albumsTotal,
 			Page:        page,
 			PageSize:    size,
+			Sort:        order,
 			BasePage:    types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "search_galleries.gohtml", model)
@@ -1719,7 +2149,8 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		files, err := getSearchFilesPage(ctx, searchQuery, size, offset)
+		order := getSortSearchFiles(w, r)
+		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -1734,6 +2165,7 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			HasNext:     offset+len(files) < filesTotal,
 			Page:        page,
 			PageSize:    size,
+			Sort:        order,
 			BasePage:    types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "search_files.gohtml", model)

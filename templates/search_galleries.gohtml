@@ -11,21 +11,22 @@
   <h2>Galleries</h2>
   {{- if .Albums }}
     <div class="pager">
-      <div class="pager-total muted">{{.AlbumsTotal}} items</div>
+      <div class="pager-total">{{.AlbumsTotal}} items</div>
       <div class="pager-controls">
         <div>
           {{- if .HasPrev }}
-            <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+            <a class="pager-prev" href="/search/galleries?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">&larr; Previous</a>
           {{- else }}
             <span class="muted">&larr; Previous</span>
           {{- end }}
         </div>
-        <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
+        <div>Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
         <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="sort" value="{{.Sort}}">
           <input type="hidden" name="q" value="{{.Query | urlquery}}">
           <button type="submit">Go</button>
         </form>
@@ -36,6 +37,24 @@
             <span class="muted">Next &rarr;</span>
           {{- end }}
         </div>
+      </div>
+      <div>
+        <form method="get" action="/search/galleries">
+          <input type="hidden" name="page" value="1">
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <label>
+            <span>Sort:</span>
+            <select name="sort">
+              <option value="rank"{{if eq .Sort "rank"}} selected{{end}}>Best</option>
+              <option value="fetched"{{if eq .Sort "fetched"}} selected{{end}}>Fetch Date</option>
+              <option value="uploaded"{{if eq .Sort "uploaded"}} selected{{end}}>Upload Date</option>
+              {{/*<option value="bytes"{{if eq .Sort "bytes"}} selected{{end}}>File Size</option>*/}}
+            </select>
+            {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
+          </label>
+          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="submit" value="Apply">
+        </form>
       </div>
     </div>
     <div class="grid">
@@ -76,7 +95,7 @@
       {{end}}
     </div>
     <div class="pager">
-      <div class="pager-total muted">{{.AlbumsTotal}} items</div>
+      <div class="pager-total">{{.AlbumsTotal}} items</div>
       <div class="pager-controls">
         <div>
           {{- if .HasPrev }}
@@ -85,7 +104,7 @@
             <span class="muted">&larr; Previous</span>
           {{- end }}
         </div>
-        <div class="muted">Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
+        <div>Page {{.Page}} / {{calcPages .AlbumsTotal .PageSize}}</div>
         <form method="get" action="/search/galleries" style="display:inline-flex; align-items:center; gap:0.4rem;">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .AlbumsTotal .PageSize}}" value="{{.Page}}">
@@ -101,6 +120,24 @@
             <span class="muted">Next &rarr;</span>
           {{- end}}
         </div>
+      </div>
+      <div>
+        <form method="get" action="/search/galleries">
+          <input type="hidden" name="page" value="1">
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <label>
+            <span>Sort:</span>
+            <select name="sort">
+              <option value="rank"{{if eq .Sort "rank"}} selected{{end}}>Best</option>
+              <option value="fetched"{{if eq .Sort "fetched"}} selected{{end}}>Fetch Date</option>
+              <option value="uploaded"{{if eq .Sort "uploaded"}} selected{{end}}>Upload Date</option>
+              {{/*<option value="bytes"{{if eq .Sort "bytes"}} selected{{end}}>File Size</option>*/}}
+            </select>
+            {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
+          </label>
+          <input type="hidden" name="q" value="{{.Query | urlquery}}">
+          <input type="submit" value="Apply">
+        </form>
       </div>
     </div>
   {{- else }}

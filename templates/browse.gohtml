@@ -3,30 +3,48 @@
   <h1>Galleries</h1>
   {{- if .Albums }}
     <div class="pager">
-      <div class="pager-total muted">{{.Total}} items</div>
+      <div class="pager-total">{{.Total}} items</div>
       <div class="pager-controls">
         <div>
           {{- if .HasPrev }}
-            <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+            <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">&larr; Previous</a>
           {{- else }}
             <span class="muted">&larr; Previous</span>
           {{- end }}
         </div>
-        <div class="muted">Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
+        <div>Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
         <form method="get" action="/" style="display:inline-flex; align-items:center; gap:0.4rem;">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="sort" value="{{.Sort}}">
           <button type="submit">Go</button>
         </form>
         <div>
           {{- if .HasNext }}
-            <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+            <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">Next &rarr;</a>
           {{- else }}
             <span class="muted">Next &rarr;</span>
           {{- end }}
         </div>
+      </div>
+      <div>
+        <form method="get" action="/">
+          <input type="hidden" name="page" value="1">
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <label>
+            <span>Sort:</span>
+            <select name="sort">
+              <option value="fetched"{{if eq .Sort "fetched"}} selected{{end}}>Fetch Date</option>
+              <option value="uploaded"{{if eq .Sort "uploaded"}} selected{{end}}>Upload Date</option>
+              {{/*<option value="items"{{if eq .Sort "items"}} selected{{end}}>Items</option>*/}}
+              {{/*<option value="bytes"{{if eq .Sort "bytes"}} selected{{end}}>File Size</option>*/}}
+            </select>
+            {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
+          </label>
+          <input type="submit" value="Apply">
+        </form>
       </div>
     </div>
     <div class="grid">
@@ -67,30 +85,48 @@
       {{end}}
     </div>
     <div class="pager">
-      <div class="pager-total muted">{{.Total}} items</div>
+      <div class="pager-total">{{.Total}} items</div>
       <div class="pager-controls">
         <div>
           {{- if .HasPrev }}
-            <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+            <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">&larr; Previous</a>
           {{- else }}
             <span class="muted">&larr; Previous</span>
           {{- end }}
         </div>
-        <div class="muted">Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
+        <div>Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
         <form method="get" action="/" style="display:inline-flex; align-items:center; gap:0.4rem;">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="sort" value="{{.Sort}}">
           <button type="submit">Go</button>
         </form>
         <div>
           {{- if .HasNext}}
-            <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+            <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">Next &rarr;</a>
           {{- else}}
             <span class="muted">Next &rarr;</span>
           {{- end}}
         </div>
+      </div>
+      <div>
+        <form method="get" action="/">
+          <input type="hidden" name="page" value="1">
+          <input type="hidden" name="size" value="{{.PageSize}}">
+          <label>
+            <span>Sort:</span>
+            <select name="sort">
+              <option value="fetched"{{if eq .Sort "fetched"}} selected{{end}}>Fetch Date</option>
+              <option value="uploaded"{{if eq .Sort "uploaded"}} selected{{end}}>Upload Date</option>
+              {{/*<option value="items"{{if eq .Sort "items"}} selected{{end}}>Items</option>*/}}
+              {{/*<option value="bytes"{{if eq .Sort "bytes"}} selected{{end}}>File Size</option>*/}}
+            </select>
+            {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
+          </label>
+          <input type="submit" value="Apply">
+        </form>
       </div>
     </div>
   {{- else }}
