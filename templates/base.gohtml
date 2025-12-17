@@ -28,8 +28,8 @@
       <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 1ch;">
         <form method="get" action="/search" style="flex: 1; display: flex;">
           <label style="flex: 1; display: flex;">
-            <input type="search" placeholder="Search" name="q" style="flex: 1; width: 7ch;"{{if .query}} value="{{.query}}"{{end}} />
-            <span class="nav-icon">&#x1F50D;</span>
+            <input id="search" type="search" placeholder="Search" name="q" style="flex: 1; width: 7ch;"{{if .query}} value="{{.query}}"{{end}} />
+            <button class="nav-icon" type="submit" style="border: none; background: none;">&#x1F50D;</button>
           </label>
         </form>
       </div>
@@ -52,7 +52,7 @@
         </a>
         <span class="muted"> | </span>
         <a id="random-file-link" href="/random/file" title="Go to a random file">
-          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F5BC;&#xFE0F;{{/*framed picture*/}}</span>
+          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F39E;&#xFE0F;{{/*film strip*/}}{{/*&#x1F5BC;&#xFE0F;framed picture*/}}</span>
           <span class="nav-label">File</span>
         </a>
       </div>

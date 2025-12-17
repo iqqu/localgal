@@ -20,7 +20,7 @@ html {scrollbar-gutter: stable; min-width: 500px;}
 /*Chrome scroll-behavior smooth is bugged; sometimes scrollIntoView goes too far or stops too early*/
 /*.scroll-smooth {scroll-behavior: smooth;}*/
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fafafa; color: #222; }
-header { height: var(--header-height); background: #222; color: #fff; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
+header { height: var(--header-height); background: #222; color: #fff; color-scheme: dark; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
 header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:flex; gap: .5rem; justify-content:space-between; align-items:center; }
 header nav .nav-icon { margin: 0 .2rem; }
 @media (max-width: 800px) { header nav .nav-label { display: none; } }
