@@ -46,7 +46,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		page, size := parsePageParams(r.URL, 40)
+		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
 
@@ -68,8 +68,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
 			case SortUploaded:
-				orderByPage = "ORDER BY a.created_ts DESC, a.album_id DESC"
-				orderByAgg = "ORDER BY p.created_ts DESC, p.album_id DESC"
+				orderByPage = "ORDER BY a.created_ts DESC, a.inserted_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.created_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			//case SortBytes:
 			//	orderByPage = "ORDER BY a.album_bytes DESC, a.album_id DESC"
 			//	orderByAgg = "ORDER BY p.album_bytes DESC, p.album_id DESC"
@@ -274,7 +274,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		page, size := parsePageParams(r.URL, 60)
+		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortFiles(w, r)
 
@@ -1139,7 +1139,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		// Albums for tag (with pagination)
-		page, size := parsePageParams(r.URL, 40)
+		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		var total int
 		if err := withSQL(ctx, func() error {
@@ -1469,7 +1469,7 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			}
 			return render(r.Context(), w, "search_noquery.gohtml", &model)
 		}
-		page, size := parsePageParams(r.URL, 60)
+		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 
 		var albumsTotal int
@@ -1538,7 +1538,7 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			}
 			return render(r.Context(), w, "search_noquery.gohtml", &model)
 		}
-		page, size := parsePageParams(r.URL, 60)
+		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 
 		var albumsTotal int
@@ -1812,7 +1812,7 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 		if m := matchGallery.FindStringSubmatch(path); m != nil {
 			ripperHost := m[1]
 			gid := m[2]
-			page, size := parsePageParams(parsedUrl, 60)
+			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
 			nextPage, err := getRandomGalleryPage(ctx, ripperHost, gid, page, size)
 			if err != nil {
@@ -1831,7 +1831,7 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
 				return nil
 			}
-			page, size := parsePageParams(parsedUrl, 60)
+			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchGalleries(parsedUrl)
 			nextPage, err := getRandomSearchGalleryPage(ctx, searchQuery, page, size)
 			if err != nil {
@@ -1846,7 +1846,7 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
 				return nil
 			}
-			page, size := parsePageParams(parsedUrl, 60)
+			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchFiles(parsedUrl)
 			nextPage, err := getRandomSearchFilePage(ctx, searchQuery, page, size)
 			if err != nil {

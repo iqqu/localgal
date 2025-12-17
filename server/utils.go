@@ -5,11 +5,14 @@ import (
 	"golocalgal/types"
 	"golocalgal/vars"
 	"log"
+	"net/http"
 	"net/url"
 	"runtime"
 	"strconv"
 	"time"
 )
+
+const DefaultPageSize = 60
 
 func atoiDefault(s string, def int) int {
 	n, err := strconv.Atoi(s)
@@ -17,6 +20,25 @@ func atoiDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+func getPageParams(w http.ResponseWriter, r *http.Request, url *url.URL) (page, size int) {
+	defaultPageSize := DefaultPageSize
+	defaultSort, err := r.Cookie("defaultPageSize")
+	if err == nil {
+		defaultPageSize = atoiDefault(defaultSort.Value, defaultPageSize)
+	}
+
+	page, size = parsePageParams(url, defaultPageSize)
+	if defaultPageSize != size {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "defaultPageSize",
+			Value:    strconv.Itoa(size),
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		})
+	}
+	return page, size
 }
 
 func parsePageParams(url *url.URL, defSize int) (page, size int) {
@@ -37,7 +59,7 @@ func getPageCount(itemCount int64, pageSize int64) int64 {
 		itemCount = 0
 	}
 	if pageSize <= 0 {
-		pageSize = 60
+		pageSize = DefaultPageSize
 	}
 	return (itemCount + pageSize - 1) / pageSize
 }
