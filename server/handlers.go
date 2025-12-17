@@ -297,7 +297,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		if err := withSQL(ctx, func() error {
 			return vars.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
-				     , SUM(rf.bytes)
+				     , COALESCE(SUM(rf.bytes), 0)
 				  FROM map_album_remote_file marf
 				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				 WHERE marf.album_id = ?
