@@ -81,6 +81,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg)
+			//language=sqlite
 			rows, err := vars.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH page AS (
 				      SELECT a.album_id
@@ -619,6 +620,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				"/*PREV_ORDER_KEY_OUTER*/",
 				prevOrderKey2,
 			)
+			//language=sqlite
 			rows, e := vars.Db.QueryContext(ctx, replacer.Replace(`
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
 				-- Step 2: Join the small set to remote_file and filter to available rows.
@@ -739,7 +741,10 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				 ORDER BY rf.inserted_ts DESC, rf.remote_file_id ASC
 				`
 			}
-			rows, e := vars.Db.QueryContext(ctx, strings.Replace(`
+
+			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey)
+			//language=sqlite
+			rows, e := vars.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH target AS (
 				      SELECT t.remote_file_id
 				           , t.inserted_ts
@@ -770,7 +775,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				   AND rf.ignored = 0
 				   /*NEXT_ORDER_KEY*/
 				 LIMIT 3
-			`, "/*NEXT_ORDER_KEY*/", nextOrderKey, 1), f.FileId, a.AlbumId)
+			`), f.FileId, a.AlbumId)
 			if e != nil {
 				return e
 			}
