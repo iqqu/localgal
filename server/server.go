@@ -273,6 +273,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("/search/tags", handleSearchTags)
 	mux.HandleFunc("/random/gallery", handleRandomGallery)
 	mux.HandleFunc("/random/file", handleRandomFile)
+	mux.HandleFunc("/random/page", handleRandomPage)
 
 	mux.HandleFunc("GET /api/", asApi(handle404))
 	mux.HandleFunc("GET /api/galleries", asApi(handleBrowse))
@@ -489,4 +490,21 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = vars.Tpl.ExecuteTemplate(w, "error.gohtml", model)
+}
+
+func httpRedirect(ctx context.Context, w http.ResponseWriter, r *http.Request, perf *types.Perf, url string, code int) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	pageTime := time.Since(perf.Start)
+	pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
+	sqlTimeStr := strconv.FormatInt(perf.SQLTime.Milliseconds(), 10)
+	sqlCountStr := strconv.FormatInt(int64(perf.SQLCount), 10)
+	w.Header().Set("X-App-Page-Time-Ms", pageTimeStr)
+	w.Header().Set("X-App-Sql-Time-Ms", sqlTimeStr)
+	w.Header().Set("X-App-Sql-Count", sqlCountStr)
+	http.Redirect(w, r, url, code)
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/url"
 	"slices"
 	"time"
 )
@@ -143,6 +144,38 @@ func getSortSearchFiles(w http.ResponseWriter, r *http.Request) string {
 	}
 	if sortQs == "" {
 		return defaultSortValue
+	}
+	return sortQs
+}
+
+func getUrlSortGalleries(url *url.URL) string {
+	sortQs := url.Query().Get("sort")
+	if !slices.Contains(GallerySorts, sortQs) {
+		sortQs = ""
+	}
+	return sortQs
+}
+
+func getUrlSortFiles(url *url.URL) string {
+	sortQs := url.Query().Get("sort")
+	if !slices.Contains(FileSorts, sortQs) {
+		sortQs = ""
+	}
+	return sortQs
+}
+
+func getUrlSortSearchGalleries(url *url.URL) string {
+	sortQs := url.Query().Get("sort")
+	if !slices.Contains(GallerySearchSorts, sortQs) {
+		sortQs = ""
+	}
+	return sortQs
+}
+
+func getUrlSortSearchFiles(url *url.URL) string {
+	sortQs := url.Query().Get("sort")
+	if !slices.Contains(FileSearchSorts, sortQs) {
+		sortQs = ""
 	}
 	return sortQs
 }

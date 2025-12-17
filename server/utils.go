@@ -32,6 +32,16 @@ func parsePageParams(url *url.URL, defSize int) (page, size int) {
 	return
 }
 
+func getPageCount(itemCount int64, pageSize int64) int64 {
+	if itemCount <= 0 {
+		itemCount = 0
+	}
+	if pageSize <= 0 {
+		pageSize = 60
+	}
+	return (itemCount + pageSize - 1) / pageSize
+}
+
 type perfKey struct{}
 
 // perfTracker helps measure SQL and request timings

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"golocalgal/types"
 	"golocalgal/vars"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -1764,6 +1765,208 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
+}
+
+var matchGalleryFile = regexp.MustCompile(`^/gallery/([^/]+)/([^/]+)/(.+)/?$`)
+var matchGallery = regexp.MustCompile(`^/gallery/([^/]+)/(.+)/?$`)
+var matchFile = regexp.MustCompile(`^/file/`)
+var matchSearchGalleries = regexp.MustCompile(`^/search/galleries/?$`)
+var matchSearchFiles = regexp.MustCompile(`^/search/files/?$`)
+
+// handleRandomPage selects a random page within the current set of pages.
+func handleRandomPage(w http.ResponseWriter, r *http.Request) {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		referer := r.Referer()
+		if len(referer) == 0 {
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return nil
+		}
+		parsedUrl, err := url.Parse(referer)
+		if err != nil {
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return nil
+		}
+		if r.Host != parsedUrl.Host {
+			// Request came from some other server. Suspicious!
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		}
+		path := parsedUrl.Path
+		if len(path) == 0 {
+			// Go back
+			http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
+			return nil
+		}
+
+		if m := matchGalleryFile.FindStringSubmatch(path); m != nil {
+			ripperHost := m[1]
+			gid := m[2]
+			fileId := m[3]
+			nextFileId, err := getRandomGalleryFilePage(ctx, ripperHost, gid, fileId)
+			if err != nil {
+				return err
+			}
+			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s/%d", ripperHost, gid, nextFileId), http.StatusTemporaryRedirect)
+			return nil
+		}
+		if m := matchGallery.FindStringSubmatch(path); m != nil {
+			ripperHost := m[1]
+			gid := m[2]
+			page, size := parsePageParams(parsedUrl, 60)
+			sort := getUrlSortGalleries(parsedUrl)
+			nextPage, err := getRandomGalleryPage(ctx, ripperHost, gid, page, size)
+			if err != nil {
+				return err
+			}
+			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&sort=%s", ripperHost, gid, nextPage, size, sort), http.StatusTemporaryRedirect)
+			return nil
+		}
+		if matchFile.MatchString(path) {
+			http.Redirect(w, r, "/random/file", http.StatusTemporaryRedirect)
+			return nil
+		}
+		if matchSearchGalleries.MatchString(path) {
+			searchQuery := parsedUrl.Query().Get("q")
+			if len(searchQuery) == 0 {
+				http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
+				return nil
+			}
+			page, size := parsePageParams(parsedUrl, 60)
+			sort := getUrlSortSearchGalleries(parsedUrl)
+			nextPage, err := getRandomSearchGalleryPage(ctx, searchQuery, page, size)
+			if err != nil {
+				return err
+			}
+			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/galleries?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			return nil
+		}
+		if matchSearchFiles.MatchString(path) {
+			searchQuery := parsedUrl.Query().Get("q")
+			if len(searchQuery) == 0 {
+				http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
+				return nil
+			}
+			page, size := parsePageParams(parsedUrl, 60)
+			sort := getUrlSortSearchFiles(parsedUrl)
+			nextPage, err := getRandomSearchFilePage(ctx, searchQuery, page, size)
+			if err != nil {
+				return err
+			}
+			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/files?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			return nil
+		}
+		// Not supported on this URL. Go back
+		http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
+		return nil
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+func getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string) (int64, error) {
+	var nextFileId sql.NullInt64
+	err := withSQL(ctx, func() error {
+		return vars.Db.QueryRowContext(ctx, `
+		  WITH row_count AS (
+		      SELECT COUNT(*) cnt
+		        FROM remote_file rf
+		        JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+		        JOIN album a ON a.album_id = marf.album_id
+		        JOIN ripper r ON r.ripper_id = rf.ripper_id
+		       WHERE r.host = ?
+		         AND a.gid = ?
+		         AND rf.remote_file_id != ?
+		         AND rf.fetched = 1
+		         AND rf.ignored = 0
+		                    )
+		SELECT rf.remote_file_id
+		  FROM remote_file rf
+		  JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+		  JOIN album a ON a.album_id = marf.album_id
+		  JOIN ripper r ON r.ripper_id = rf.ripper_id
+		 WHERE r.host = ?
+		   AND a.gid = ?
+		   AND rf.remote_file_id != ?
+		   AND rf.fetched = 1
+		   AND rf.ignored = 0
+		 LIMIT 1 OFFSET (ABS(RANDOM()) % (
+		     SELECT cnt
+		       FROM row_count
+		                                 ))
+		`, ripperHost, gid, fileId, ripperHost, gid, fileId).Scan(&nextFileId)
+	})
+	if err != nil {
+		return 0, err
+	}
+	if nextFileId.Valid {
+		return nextFileId.Int64, nil
+	}
+	return 0, fmt.Errorf("gallery file not found")
+}
+
+func getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int) (int64, error) {
+	var count int64
+	err := withSQL(ctx, func() error {
+		return vars.Db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			  FROM album a
+			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
+			  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+			  JOIN ripper r ON r.ripper_id = a.ripper_id
+			 WHERE r.host = ?
+			   AND a.gid = ?
+			   AND rf.fetched = 1
+			   AND rf.ignored = 0
+		`, ripperHost, gid).Scan(&count)
+	})
+	if err != nil {
+		return 0, err
+	}
+	pageCount := getPageCount(count, int64(size))
+	if pageCount <= 1 {
+		return 1, nil
+	}
+	n := rand.Int64N(pageCount - 1)
+	nextPage := n + 1
+	if nextPage >= int64(page) {
+		nextPage += 1
+	}
+	return nextPage, nil
+}
+
+func getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
+	totalHits, err := getSearchAlbumHits(ctx, searchQuery, false)
+	if err != nil {
+		return 0, err
+	}
+	pageCount := getPageCount(int64(totalHits), int64(size))
+	if pageCount <= 1 {
+		return 1, nil
+	}
+	n := rand.Int64N(pageCount - 1)
+	nextPage := n + 1
+	if nextPage >= int64(page) {
+		nextPage += 1
+	}
+	return nextPage, nil
+}
+
+func getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
+	totalHits, err := getSearchFileHits(ctx, searchQuery, false)
+	if err != nil {
+		return 0, err
+	}
+	pageCount := getPageCount(int64(totalHits), int64(size))
+	if pageCount <= 1 {
+		return 1, nil
+	}
+	n := rand.Int64N(pageCount - 1)
+	nextPage := n + 1
+	if nextPage >= int64(page) {
+		nextPage += 1
+	}
+	return nextPage, nil
 }
 
 func cleanJoin(elem ...string) string {
