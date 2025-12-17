@@ -2,7 +2,10 @@
 {{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
 {{template "base_start" (dict "title" $title)}}
   <div style="display: grid; grid-template-columns: auto auto">
-    <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}} <span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</h1>
+    <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}
+      {{- if .Album.Hidden }} <span class="muted hidden" title="This gallery is hidden">Hidden</span>{{ end }}
+      {{- if .Album.Removed }} <span class="muted removed" title="This gallery is removed">Removed</span>{{ end -}}
+    </h1>
     <a href="#detail" style="align-self: end; justify-self: end;">[scroll to detail]</a>
   </div>
   {{if .Files}}
@@ -85,12 +88,63 @@
   {{end}}
 
   <div id="detail" class="card">
-    <h2>Detail: <span style="font-weight: normal;">{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}{{if .Album.Hidden}}<span class="muted" title="This album is hidden" style="font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.1rem 0.4rem; border-radius:999px; vertical-align:middle;">Hidden</span>{{end}}</span></h2>
+    <h2>Detail:
+      <span style="font-weight: normal;">
+        {{- if .Album.Title.Valid }}{{.Album.Title.String}}{{ else }}{{.Album.Gid}}{{ end }}
+        {{- if .Album.Hidden }} <span class="muted hidden" title="This gallery is hidden">Hidden</span>{{ end }}
+        {{- if .Album.Removed }} <span class="muted removed" title="This gallery is removed">Removed</span>{{ end -}}
+      </span>
+    </h2>
 
     {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
       <p>{{.Album.Description.String}}</p>
     {{- end }}
-    <p>Total gallery size on disk: <code>{{bytesToHumanReadable .AlbumBytes}}</code></p>
+    <table>
+      <tr>
+        <td>Ripper Name</td>
+        <td>{{.Album.RipperName}}</td>
+      </tr>
+      <tr>
+        <td>Ripper Host</td>
+        <td>{{.Album.RipperHost}}</td>
+      </tr>
+      {{if .Album.Uploader.Valid}}
+        <tr>
+          <td>Uploader</td>
+          <td>{{.Album.Uploader.String}}</td>
+        </tr>
+      {{end}}
+      {{if .Album.CreatedTs.Valid}}
+        <tr>
+          <td>Created</td>
+          <td>{{fmtDateMillis .Album.CreatedTs.Int64}}</td>
+        </tr>
+      {{end}}
+      {{if .Album.ModifiedTs.Valid}}
+        <tr>
+          <td>Modified</td>
+          <td>{{fmtDateMillis .Album.ModifiedTs.Int64}}</td>
+        </tr>
+      {{end}}
+      {{if .Album.LastFetchTs.Valid}}
+        <tr>
+          <td>Last Fetch</td>
+          <td>{{fmtDateMillis .Album.LastFetchTs.Int64}}</td>
+        </tr>
+      {{end}}
+      <tr>
+        <td>First Fetched</td>
+        <td>{{fmtDateMillis .Album.InsertedTs}}</td>
+      </tr>
+      <tr>
+        <td>Album GID</td>
+        <td>{{.Album.Gid}}</td>
+      </tr>
+      <tr>
+        <td>Total size on disk</td>
+        <td><code>{{bytesToHumanReadable .AlbumBytes}}</code></td>
+      </tr>
+    </table>
   </div>
 
   {{if .AlbumTags}}
