@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mattn/go-sqlite3"
 )
 
 func handle404(w http.ResponseWriter, r *http.Request) {
@@ -1352,11 +1354,92 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleSearch handles /search
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		size := 10
+		offset := 0
+		if len(searchQuery) == 0 {
+			model := types.SearchPage{
+				BasePage: types.BasePage{Perf: perf},
+			}
+			return render(r.Context(), w, "search_noquery.gohtml", model)
+		}
+
+		// 1: Search albums
+		var albumsTotal int
+		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+
+		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
+		if err != nil {
+			return err
+		}
+
+		// 2: Search files
+		var filesTotal int
+		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+
+		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
+		if err != nil {
+			return err
+		}
+
+		// 3: Search tags
+		var tagsTotal int
+		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		if err != nil {
+			return err
+		}
+
+		tags, err := getSearchTagsPage(ctx, searchQuery, 100)
+		if err != nil {
+			return err
+		}
+
+		model := types.SearchPage{
+			Query:       searchQuery,
+			Albums:      albums,
+			AlbumsTotal: albumsTotal,
+			Files:       files,
+			FilesTotal:  filesTotal,
+			Tags:        tags,
+			TagsTotal:   tagsTotal,
+			Sort:        SortRank,
+			BasePage:    types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "search.gohtml", model)
+	})
+	var se sqlite3.Error
+	if errors.As(err, &se) {
+		model := types.SearchErrorPage{
+			Query:    searchQuery,
+			Message:  err.Error(),
+			BasePage: types.BasePage{Perf: &p},
+		}
+		if err := render(r.Context(), w, "search_error.gohtml", model); err != nil {
+			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		}
+		return
+	}
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
 // handleSearchGalleries handles /search/galleries
 func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		q := r.URL.Query()
-		searchQuery := q.Get("q")
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: types.BasePage{Perf: perf},
@@ -1403,6 +1486,18 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 		return render(ctx, w, "search_galleries.gohtml", model)
 	})
+	var se sqlite3.Error
+	if errors.As(err, &se) {
+		model := types.SearchErrorPage{
+			Query:    searchQuery,
+			Message:  err.Error(),
+			BasePage: types.BasePage{Perf: &p},
+		}
+		if err := render(r.Context(), w, "search_error.gohtml", model); err != nil {
+			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		}
+		return
+	}
 	if err != nil {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
@@ -1411,9 +1506,9 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 
 // handleSearchFiles handles /search/files
 func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		q := r.URL.Query()
-		searchQuery := q.Get("q")
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: types.BasePage{Perf: perf},
@@ -1460,6 +1555,18 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 		return render(ctx, w, "search_files.gohtml", model)
 	})
+	var se sqlite3.Error
+	if errors.As(err, &se) {
+		model := types.SearchErrorPage{
+			Query:    searchQuery,
+			Message:  err.Error(),
+			BasePage: types.BasePage{Perf: &p},
+		}
+		if err := render(r.Context(), w, "search_error.gohtml", model); err != nil {
+			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		}
+		return
+	}
 	if err != nil {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
@@ -1468,9 +1575,9 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 
 // handleSearchTags handles /search/tags
 func handleSearchTags(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		q := r.URL.Query()
-		searchQuery := q.Get("q")
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: types.BasePage{Perf: perf},
@@ -1509,6 +1616,18 @@ func handleSearchTags(w http.ResponseWriter, r *http.Request) {
 		}
 		return render(ctx, w, "search_tags.gohtml", model)
 	})
+	var se sqlite3.Error
+	if errors.As(err, &se) {
+		model := types.SearchErrorPage{
+			Query:    searchQuery,
+			Message:  err.Error(),
+			BasePage: types.BasePage{Perf: &p},
+		}
+		if err := render(r.Context(), w, "search_error.gohtml", model); err != nil {
+			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		}
+		return
+	}
 	if err != nil {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return

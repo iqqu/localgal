@@ -49,6 +49,13 @@ type SearchPage struct {
 	BasePage
 }
 
+type SearchErrorPage struct {
+	Query   string `json:"query"`
+	Message string `json:"message"`
+	//Perf      Perf   `json:"perf"`
+	BasePage
+}
+
 type FilePage struct {
 	File         File    `json:"file"`
 	Prev         []File  `json:"prev"`

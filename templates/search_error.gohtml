@@ -1,0 +1,22 @@
+{{ define "search_error.gohtml" }}
+{{$title := printf "Search Error: %s" .Query}}
+{{ template "base_start" (dict "title" $title "query" .Query) }}
+  <h1>Search Error</h1>
+  <div class="card">
+    {{ if .Message }}
+    <div>The database says:</div>
+    <div style="white-space: pre-wrap; word-break: break-word;">
+      {{.Message}}
+    </div>
+    {{else}}
+      <div>Unexpected error. Please try again.</div>
+    {{ end }}
+    <p>Tips:</p>
+    <ul>
+      <li>Don't include punctuation in the search query.</li>
+      <li>If you want to include punctuation, surround it with double quotes.</li>
+      <li>Searching uses fts5 query syntax.</li>
+    </ul>
+  </div>
+  {{template "base_end" .}}
+{{end}}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"golocalgal/types"
 	"golocalgal/vars"
-	"net/http"
 	"strings"
 )
 
@@ -538,73 +537,4 @@ func getSearchTagsPage(ctx context.Context, searchQuery string, limit int) ([]ty
 		return nil, err
 	}
 	return tags, nil
-}
-
-// handleSearch handles /search
-func handleSearch(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		q := r.URL.Query()
-		searchQuery := q.Get("q")
-		size := 10
-		offset := 0
-		if len(searchQuery) == 0 {
-			model := types.SearchPage{
-				BasePage: types.BasePage{Perf: perf},
-			}
-			return render(r.Context(), w, "search_noquery.gohtml", model)
-		}
-
-		// 1: Search albums
-		var albumsTotal int
-		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
-		if err != nil {
-			return err
-		}
-
-		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
-		if err != nil {
-			return err
-		}
-
-		// 2: Search files
-		var filesTotal int
-		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
-		if err != nil {
-			return err
-		}
-
-		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
-		if err != nil {
-			return err
-		}
-
-		// 3: Search tags
-		var tagsTotal int
-		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
-		if err != nil {
-			return err
-		}
-
-		tags, err := getSearchTagsPage(ctx, searchQuery, 100)
-		if err != nil {
-			return err
-		}
-
-		model := types.SearchPage{
-			Query:       searchQuery,
-			Albums:      albums,
-			AlbumsTotal: albumsTotal,
-			Files:       files,
-			FilesTotal:  filesTotal,
-			Tags:        tags,
-			TagsTotal:   tagsTotal,
-			Sort:        SortRank,
-			BasePage:    types.BasePage{Perf: perf},
-		}
-		return render(ctx, w, "search.gohtml", model)
-	})
-	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
-		return
-	}
 }
