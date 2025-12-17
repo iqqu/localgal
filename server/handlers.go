@@ -1035,6 +1035,7 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 			     , a.description
 			     , a.created_ts
 			     , a.modified_ts
+			     , a.fetch_count
 			     , a.hidden
 			     , a.removed
 			     , a.last_fetch_ts
@@ -1076,6 +1077,7 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 				&a2.Description,
 				&a2.CreatedTs,
 				&a2.ModifiedTs,
+				&a2.FetchCount,
 				&a2.Hidden,
 				&a2.Removed,
 				&a2.LastFetchTs,

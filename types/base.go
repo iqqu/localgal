@@ -23,6 +23,7 @@ type Album struct {
 	Description SqlJsonString `json:"description,omitempty,omitzero"`
 	CreatedTs   SqlJsonInt64  `json:"createdTs,omitempty,omitzero"`
 	ModifiedTs  SqlJsonInt64  `json:"modifiedTs,omitempty,omitzero"`
+	FetchCount  int64         `json:"fetchCount,omitempty,omitzero"`
 	Hidden      bool          `json:"hidden,omitempty,omitzero"`
 	Removed     bool          `json:"removed,omitempty,omitzero"`
 	LocalRating SqlJsonInt64  `json:"localRating,omitempty,omitzero"`
