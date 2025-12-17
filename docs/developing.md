@@ -1,5 +1,12 @@
 # Developing
 
+Compiling:
+* `make build` - Build development binary with metadata LDFLAGS
+* `make build-dist` - Build distribution binary with metadata LDFLAGS
+* `go build -tags fts5` - The `fts5` go build tag is always required to build
+* `go build -tags fts5,gio` - Build with Server Management GUI (default is CLI only)
+* `go build -tags fts5,giu` - Build with alternate Server Management GUI (may be removed later)
+
 Manual testing the basic things is simple enough and proper automated testing of everything is tedious enough and browser-dependent enough that I'm just manually testing most things.
 
 Manual test checklist:

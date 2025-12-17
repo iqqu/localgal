@@ -28,6 +28,8 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
    * Run the executable in a terminal to start the server without the GUI
 4. Open `http://127.0.0.1:5037` in your web browser
 
+For notes on compiling from source, see [docs/developing.md](./docs/developing.md)
+
 ## Pages
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery
