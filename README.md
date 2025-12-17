@@ -99,7 +99,6 @@ In case somebody wants to develop a different UI.
 ## TODO
 * Simplify Server Control GUI layout code
 * Sorting options
-* Show file size / total gallery size
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
 * ???
