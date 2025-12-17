@@ -5,7 +5,7 @@ import (
 	"golocalgal/types"
 	"golocalgal/vars"
 	"log"
-	"net/http"
+	"net/url"
 	"runtime"
 	"strconv"
 	"time"
@@ -19,8 +19,8 @@ func atoiDefault(s string, def int) int {
 	return n
 }
 
-func parsePageParams(r *http.Request, defSize int) (page, size int) {
-	q := r.URL.Query()
+func parsePageParams(url *url.URL, defSize int) (page, size int) {
+	q := url.Query()
 	page = atoiDefault(q.Get("page"), 1)
 	if page < 1 {
 		page = 1

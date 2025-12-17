@@ -45,7 +45,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		page, size := parsePageParams(r, 40)
+		page, size := parsePageParams(r.URL, 40)
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
 
@@ -273,7 +273,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		page, size := parsePageParams(r, 60)
+		page, size := parsePageParams(r.URL, 60)
 		offset := (page - 1) * size
 		sort := getSortFiles(w, r)
 
@@ -1137,7 +1137,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		// Albums for tag (with pagination)
-		page, size := parsePageParams(r, 40)
+		page, size := parsePageParams(r.URL, 40)
 		offset := (page - 1) * size
 		var total int
 		if err := withSQL(ctx, func() error {
@@ -1467,7 +1467,7 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			}
 			return render(r.Context(), w, "search_noquery.gohtml", model)
 		}
-		page, size := parsePageParams(r, 60)
+		page, size := parsePageParams(r.URL, 60)
 		offset := (page - 1) * size
 
 		var albumsTotal int
@@ -1536,7 +1536,7 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			}
 			return render(r.Context(), w, "search_noquery.gohtml", model)
 		}
-		page, size := parsePageParams(r, 60)
+		page, size := parsePageParams(r.URL, 60)
 		offset := (page - 1) * size
 
 		var albumsTotal int
