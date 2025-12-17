@@ -35,7 +35,7 @@ clean:
 	rm -rf $(DISTDIR)/
 
 test:
-	go test ./...
+	go test -tags=fts5,gio ./...
 
 update-deps:
 	go get -v -u
