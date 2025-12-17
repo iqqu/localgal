@@ -103,19 +103,30 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 
 ## TODO
 * Improve keyboard accessibility (tabindex, etc)
+* Add search pages:
+  * Search galleries containing files that match a query
+* Add statistics page:
+  * Summary of gallery, file, tag counts
+  * List popular files added to many galleries
+  * Schema info
 * Simplify Server Control GUI layout code
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
 * Reduce duplicated error handling code
+* Find a nice UX for random video and random image
+  * The header bar is full already - create a drop-down menu for more space?
 * ???
 
 ## Wishlist (help welcome)
+* Improve tag pages (thumbnails or pagination?)
 * Fix GitHub pipeline compilation for amd64 mac
 * Better icon
 * Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
 * More sorting options
   * I think I've pushed sorting as far as it can go without materializing tables
+* FTS5 CJK tokenization / ICU
+  * Needs to work for Java and Go, needs to work cross-platform, needs to be embeddable
 * Read-write functionality:
   * Ignored files
   * Local user-defined tags

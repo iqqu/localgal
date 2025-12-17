@@ -24,14 +24,28 @@ Manual test checklist:
 * Autojump and manual jump scroll to the correct position every time on Chrome and Firefox
 * Autojump and manual jump automatically focus a video to play with the space bar
 * All the hotkeys work
+* Pagination links work and direct page jumping with number entry works
+* Sort works on search, browse, and gallery pages
+* On the file page, the sort order last recently used for galleries is used in the rail
 * Prev/next rail crops images at the center to fill the thumbnail
 * Gallery browse shows a grid of galleries
-* Pagination links and number entry work
 * Gallery view sizes columns responsively
 * Gallery view images and videos are shown at their native aspect ratio
+* Header bar responsively collapses for narrow windows
 * No external network requests
 * `#top`, `#main-content`, and image zoom all work the same with JS disabled, except for JS-specific things like focusing the video and hotkeys
 * Page titles look as expected
 * SQL query performance did not worsen; page loads are snappy with a 1 GiB database
 * Javascript detection and related gallery lazy loading works correctly on file pages, both in and out of a gallery
+* Search works
+* Random Page works from browse, gallery, file, search gallery, and search file pages
+* Random Gallery and Random File works
+* Search term is preserved in search box when navigating through search pages
+* Gallery / file totals are correct
+* Gallery detail link flashes the gallery detail header when clicked
 * Whitespace in generated pages isn't excessive
+
+Implementation notes:
+* I specifically chose not to use an ORM so that I could get the most flexibility in improving query performance
+* Queries use strings.Replace() so that syntax highlighting doesn't show errors for placeholders like %s
+
