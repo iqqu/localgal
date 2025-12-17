@@ -189,7 +189,9 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					     , mt.name AS mime_type
 					  FROM remote_file rf
 					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.remote_file_id = ? AND rf.fetched = 1
+					 WHERE rf.remote_file_id = ?
+					   AND rf.fetched = 1
+					   AND rf.ignored = 0
 				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 			}); err != nil {
 				return err
@@ -397,8 +399,10 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				  FROM tag t
 				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
 				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
-				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				 WHERE marf.album_id = ?
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 				 GROUP BY t.tag_id, t.name
 				 ORDER BY count DESC
 				 LIMIT 100 -- some albums might have a million tags...
@@ -529,6 +533,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				 WHERE m.album_id = ?
 				   AND rf.remote_file_id = ?
 				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 			`, a.AlbumId, fileId).Scan(
 				&f.FileId,
 				&f.RipperName, // TODO use value from Album
@@ -921,6 +926,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 				 WHERE r.host = ?
 				   AND rf.remote_file_id = ?
 				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 			`, ripperHost, fileId).Scan(
 				&f.FileId,
 				&f.Urlid,
@@ -1256,6 +1262,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				  JOIN map_remote_file_tag m ON m.remote_file_id = rf.remote_file_id AND m.tag_id = ?
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE rf.fetched = 1
+				   AND rf.ignored = 0
 				 ORDER BY m.remote_file_id
 				 LIMIT 100 -- TODO paginate files too
 			`, t.TagId)
