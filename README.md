@@ -92,5 +92,5 @@ In case somebody wants to develop a different UI.
 ## Wishlist (help welcome)
 * Fix GitHub pipeline compilation for amd64 mac
 * Better icon
-* Faster SQL queries
-* Use cancelable PRAGMA optimize
+* Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
+* Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
