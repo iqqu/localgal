@@ -166,6 +166,12 @@
           <td>{{fmtDateMillis .File.UploadedTs.Int64}}</td>
         </tr>
       {{end}}
+      {{if .File.Urlid.Valid}}
+        <tr>
+          <td>File URL ID</td>
+          <td>{{.File.Urlid.String}}</td>
+        </tr>
+      {{end}}
       {{if .CurrentAlbum}}
         {{if .CurrentAlbum.Gid}}
           <tr>
