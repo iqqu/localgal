@@ -202,13 +202,18 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				list[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", list[i].RipperHost, list[i].Gid, list[i].Thumb.Filename.String)
 			}
 		}
+		// For speed, unfetched and ignored files are included in the total album count
+		// Albums without files are not included in the list, but are included in the page size,
+		// so to prevent the next page button from being shown when the last page has empty albums,
+		// calculate HasNext based on the total page count instead of using the list size
+		totalPageCount := getPageCount(int64(total), int64(size))
 		model := types.BrowsePage{
 			Albums:   list,
 			Page:     page,
 			PageSize: size,
 			Total:    total,
 			HasPrev:  page > 1,
-			HasNext:  offset+len(list) < total,
+			HasNext:  totalPageCount > int64(page),
 			Sort:     sort,
 			BasePage: &types.BasePage{Perf: perf},
 		}
