@@ -5,10 +5,10 @@ type BasePage struct {
 }
 
 type BasePager interface {
-	BasePage() *BasePage
+	GetBasePage() *BasePage
 }
 
-func (b *BasePage) BasePage() *BasePage {
+func (b *BasePage) GetBasePage() *BasePage {
 	return b
 }
 
@@ -21,7 +21,7 @@ type BrowsePage struct {
 	HasNext  bool    `json:"hasNext"`
 	Sort     string  `json:"sort,omitempty,omitzero"`
 	//Perf     Perf    `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type GalleryPage struct {
@@ -37,7 +37,7 @@ type GalleryPage struct {
 	AlbumBytes int64  `json:"albumBytes"`
 	Sort       string `json:"sort,omitempty,omitzero"`
 	//Perf      Perf   `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type SearchPage struct {
@@ -54,14 +54,14 @@ type SearchPage struct {
 	PageSize    int     `json:"pageSize"`
 	Sort        string  `json:"sort,omitempty,omitzero"`
 	//Perf      Perf   `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type SearchErrorPage struct {
 	Query   string `json:"query"`
 	Message string `json:"message"`
 	//Perf      Perf   `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type FilePage struct {
@@ -75,14 +75,14 @@ type FilePage struct {
 	ShowPrevNext bool    `json:"showPrevNext"` // whether to show prev/next rail
 	Autoplay     bool    `json:"-"`
 	//Perf         Perf    `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type TagsPage struct {
 	ImageTags []Tag `json:"imageTags"`
 	AlbumTags []Tag `json:"albumTags"`
 	//Perf      Perf  `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type TagDetailPage struct {
@@ -95,12 +95,12 @@ type TagDetailPage struct {
 	HasPrev  bool    `json:"hasPrev"`
 	HasNext  bool    `json:"hasNext"`
 	//Perf     Perf    `json:"perf"`
-	BasePage
+	*BasePage
 }
 
 type ErrorPage struct {
 	StatusText string `json:"statusText"`
 	Message    string `json:"message"`
 	//Perf       Perf   `json:"perf"`
-	BasePage
+	*BasePage
 }

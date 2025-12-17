@@ -377,7 +377,7 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 	}
 
 	if basePager, ok := data.(types.BasePager); ok {
-		p := basePager.BasePage().Perf
+		p := basePager.GetBasePage().Perf
 		pageTime := time.Since(p.Start)
 		pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
 		sqlTimeStr := strconv.FormatInt(p.SQLTime.Milliseconds(), 10)
@@ -420,7 +420,7 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 	}
 
 	if basePager, ok := data.(types.BasePager); ok {
-		p := basePager.BasePage().Perf
+		p := basePager.GetBasePage().Perf
 		pageTime := time.Since(p.Start)
 		pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
 		sqlTimeStr := strconv.FormatInt(p.SQLTime.Milliseconds(), 10)
@@ -470,7 +470,7 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 		err = nil
 	}
 	statusText := fmt.Sprintf("%d %s", status, http.StatusText(status))
-	model := types.ErrorPage{StatusText: statusText, BasePage: types.BasePage{Perf: perf}}
+	model := types.ErrorPage{StatusText: statusText, BasePage: &types.BasePage{Perf: perf}}
 	if err != nil {
 		model.Message = err.Error()
 	} else {
