@@ -24,11 +24,26 @@
 <ul style="line-height:1.5">
   <li>Click along the left or right edge of an image to go to the previous or next image in a gallery</li>
   <li>Hover along the left or right edge of the screen at the vertical start of the image to show the sticky previous or next links</li>
-  <li>The search box uses SQLite FTS5 syntax for queries:
+  <li>
+    <p>Search tips:</p>
     <ul>
-      <li>AND, OR, NOT</li>
-      <li>"double quoting" exact phrases</li>
-      <li>word prefixes with * (star* could match star, start, and staring)</li>
+      <li>Don't include punctuation in the search query.</li>
+      <li>If you want to include punctuation, surround it with double quotes.</li>
+      <li>
+        <p>Searching uses FTS5 query syntax.</p>
+        <ul>
+          <li>AND, OR, NOT</li>
+          <li>"Double quoting" exact phrases</li>
+          <li>Search on word prefixes with * (star* could match star, start, and staring)</li>
+        </ul>
+        <p>Examples:</p>
+        <ul>
+          <li><code>train station</code></li>
+          <li><code>buses AND trains</code></li>
+          <li><code>(buses OR trains) AND (red OR yellow)</code></li>
+          <li><code>"airport bus"</code></li>
+        </ul>
+      </li>
     </ul>
   </li>
 </ul>

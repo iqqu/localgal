@@ -5,17 +5,31 @@
   <div class="card">
     {{ if .Message }}
     <div>The database says:</div>
-    <div style="white-space: pre-wrap; word-break: break-word;">
+    <div style="white-space: pre-wrap; word-break: break-word; background: #f2f2f2; border: 1px solid #dbdbdb; border-radius: 8px; padding: .2rem; margin: .2rem;">
       {{.Message}}
     </div>
     {{else}}
       <div>Unexpected error. Please try again.</div>
     {{ end }}
-    <p>Tips:</p>
+    <p>Search tips:</p>
     <ul>
       <li>Don't include punctuation in the search query.</li>
       <li>If you want to include punctuation, surround it with double quotes.</li>
-      <li>Searching uses fts5 query syntax.</li>
+      <li>
+        <p>Searching uses FTS5 query syntax.</p>
+        <ul>
+          <li>AND, OR, NOT</li>
+          <li>"Double quoting" exact phrases</li>
+          <li>Search on word prefixes with * (star* could match star, start, and staring)</li>
+        </ul>
+        <p>Examples:</p>
+        <ul>
+          <li><code>train station</code></li>
+          <li><code>buses AND trains</code></li>
+          <li><code>(buses OR trains) AND (red OR yellow)</code></li>
+          <li><code>"airport bus"</code></li>
+        </ul>
+      </li>
     </ul>
   </div>
   {{template "base_end" .}}
