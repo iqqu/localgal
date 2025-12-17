@@ -1648,6 +1648,59 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleSearchFiles handles /search/files
+func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	searchQuery := q.Get("q")
+	if len(searchQuery) == 0 {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("Search query parameter must not be empty. Example: /search/files?q=foo"))
+		return
+	}
+	page, size := parsePageParams(r, 60)
+	offset := (page - 1) * size
+
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		var albumsTotal int
+		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+		var filesTotal int
+		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		if err != nil {
+			return err
+		}
+		var tagsTotal int
+		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		if err != nil {
+			return err
+		}
+
+		files, err := getSearchFilesPage(ctx, searchQuery, size, offset)
+		if err != nil {
+			return err
+		}
+
+		model := types.SearchPage{
+			Query:       searchQuery,
+			Files:       files,
+			AlbumsTotal: albumsTotal,
+			FilesTotal:  filesTotal,
+			TagsTotal:   tagsTotal,
+			HasPrev:     page > 1,
+			HasNext:     offset+len(files) < filesTotal,
+			Page:        page,
+			PageSize:    size,
+			BasePage:    types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "search_files.gohtml", model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
 func isClientJsOn(r *http.Request) bool {
 	_, err := r.Cookie("js")
 	if errors.Is(err, http.ErrNoCookie) {

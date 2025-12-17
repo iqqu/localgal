@@ -243,7 +243,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("/tag/{tag_name}", handleTagDetail)
 	mux.HandleFunc("/search", handleSearch)
 	mux.HandleFunc("/search/galleries", handleSearchGalleries)
-	//mux.HandleFunc("/search/files", handleSearchFiles)
+	mux.HandleFunc("/search/files", handleSearchFiles)
 	//mux.HandleFunc("/search/tags", handleSearchTags)
 	mux.HandleFunc("/random/gallery", handleRandomGallery)
 	mux.HandleFunc("/random/file", handleRandomFile)
@@ -258,6 +258,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
 	mux.HandleFunc("GET /api/search", asApi(handleSearch))
 	mux.HandleFunc("GET /api/search/galleries", asApi(handleSearchGalleries))
+	mux.HandleFunc("GET /api/search/files", asApi(handleSearchFiles))
 	mux.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
 	mux.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
 
