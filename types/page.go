@@ -4,6 +4,14 @@ type BasePage struct {
 	Perf *Perf `json:"perf"`
 }
 
+type BasePager interface {
+	BasePage() *BasePage
+}
+
+func (b *BasePage) BasePage() *BasePage {
+	return b
+}
+
 type BrowsePage struct {
 	Albums   []Album `json:"albums"`
 	Page     int     `json:"page"`

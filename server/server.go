@@ -374,6 +374,18 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 		return ctx.Err()
 	default:
 	}
+
+	if basePager, ok := data.(types.BasePager); ok {
+		p := basePager.BasePage().Perf
+		pageTime := time.Since(p.Start)
+		pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
+		sqlTimeStr := strconv.FormatInt(p.SQLTime.Milliseconds(), 10)
+		sqlCountStr := strconv.FormatInt(int64(p.SQLCount), 10)
+		w.Header().Set("X-App-Page-Time-Ms", pageTimeStr)
+		w.Header().Set("X-App-Sql-Time-Ms", sqlTimeStr)
+		w.Header().Set("X-App-Sql-Count", sqlCountStr)
+	}
+
 	renderMode := getRenderMode(ctx)
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -405,6 +417,18 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 		return ctx.Err()
 	default:
 	}
+
+	if basePager, ok := data.(types.BasePager); ok {
+		p := basePager.BasePage().Perf
+		pageTime := time.Since(p.Start)
+		pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
+		sqlTimeStr := strconv.FormatInt(p.SQLTime.Milliseconds(), 10)
+		sqlCountStr := strconv.FormatInt(int64(p.SQLCount), 10)
+		w.Header().Set("X-App-Page-Time-Ms", pageTimeStr)
+		w.Header().Set("X-App-Sql-Time-Ms", sqlTimeStr)
+		w.Header().Set("X-App-Sql-Count", sqlCountStr)
+	}
+
 	renderMode := getRenderMode(ctx)
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -428,6 +452,15 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 		return
 	default:
 	}
+
+	pageTime := time.Since(perf.Start)
+	pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
+	sqlTimeStr := strconv.FormatInt(perf.SQLTime.Milliseconds(), 10)
+	sqlCountStr := strconv.FormatInt(int64(perf.SQLCount), 10)
+	w.Header().Set("X-App-Page-Time-Ms", pageTimeStr)
+	w.Header().Set("X-App-Sql-Time-Ms", sqlTimeStr)
+	w.Header().Set("X-App-Sql-Count", sqlCountStr)
+
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return
 	}
