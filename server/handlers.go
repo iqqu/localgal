@@ -70,6 +70,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , a.modified_ts
 				     , a.hidden
 				     , a.removed
+				     , a.local_rating
 				     , a.last_fetch_ts
 				     , a.inserted_ts
 				     , (
@@ -115,6 +116,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					&a.ModifiedTs,
 					&a.Hidden,
 					&a.Removed,
+					&a.LocalRating,
 					&a.LastFetchTs,
 					&a.InsertedTs,
 					&a.FileCount,
@@ -190,6 +192,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , a.modified_ts
 				     , a.hidden
 				     , a.removed
+				     , a.local_rating
 				     , a.last_fetch_ts
 				     , a.inserted_ts
 				  FROM album a
@@ -209,6 +212,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				&a.ModifiedTs,
 				&a.Hidden,
 				&a.Removed,
+				&a.LocalRating,
 				&a.LastFetchTs,
 				&a.InsertedTs,
 			)
@@ -243,6 +247,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , rf.uploader
 				     , rf.hidden
 				     , rf.removed
+				     , rf.bytes
+				     , rf.local_rating
 				     , rf.inserted_ts
 				  FROM map_album_remote_file marf
 				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
@@ -271,6 +277,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 					&f.Uploader,
 					&f.Hidden,
 					&f.Removed,
+					&f.Bytes,
+					&f.LocalRating,
 					&f.InsertedTs,
 				); err != nil {
 					return err

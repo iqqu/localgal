@@ -25,6 +25,7 @@ type Album struct {
 	ModifiedTs  SqlJsonInt64  `json:"modifiedTs,omitempty,omitzero"`
 	Hidden      bool          `json:"hidden,omitempty,omitzero"`
 	Removed     bool          `json:"removed,omitempty,omitzero"`
+	LocalRating SqlJsonInt64  `json:"localRating,omitempty,omitzero"`
 	LastFetchTs SqlJsonInt64  `json:"lastFetchTs,omitempty,omitzero"`
 	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
 	FileCount   int           `json:"fileCount,omitempty,omitzero"`
@@ -45,6 +46,8 @@ type File struct {
 	Uploader    SqlJsonString `json:"uploader,omitempty,omitzero"`
 	Hidden      bool          `json:"hidden,omitempty,omitzero"`
 	Removed     bool          `json:"removed,omitempty,omitzero"`
+	Bytes       SqlJsonInt64  `json:"bytes,omitempty,omitzero"`
+	LocalRating SqlJsonInt64  `json:"localRating,omitempty,omitzero"`
 	InsertedTs  int64         `json:"insertedTs,omitempty,omitzero"`
 	HrefPage    string        `json:"hrefPage,omitempty,omitzero"`
 	HrefMedia   string        `json:"hrefMedia,omitempty,omitzero"`
@@ -52,9 +55,10 @@ type File struct {
 }
 
 type Tag struct {
-	TagId int64  `json:"-"`
-	Name  string `json:"name,omitempty,omitzero"`
-	Count int    `json:"count,omitempty,omitzero"` // optional usage count for tag listings
+	TagId   int64  `json:"-"`
+	Name    string `json:"name,omitempty,omitzero"`
+	IsLocal bool   `json:"isLocal,omitempty,omitzero"`
+	Count   int    `json:"count,omitempty,omitzero"` // optional usage count for tag listings
 }
 
 // SqlJsonString marshalls to the value of the string or null
