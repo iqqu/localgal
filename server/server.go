@@ -168,7 +168,7 @@ func StartServer(cfg Config) (*Controller, error) {
 	mux := newMux()
 	srv := &http.Server{
 		Addr:    cfg.Bind,
-		Handler: logMiddleware(mux),
+		Handler: mux,
 	}
 
 	ctx, cancel := context.WithCancelCause(context.Background())
@@ -227,7 +227,7 @@ func (c *Controller) Stop(ctx context.Context) error {
 	return firstErr
 }
 
-func newMux() *http.ServeMux {
+func newMux() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleBrowse)
 	mux.HandleFunc("/gallery/{ripper_host}/{gid}", handleGallery)
@@ -259,7 +259,10 @@ func newMux() *http.ServeMux {
 	//})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 
-	return mux
+	var wrapped http.Handler
+	wrapped = logMiddleware(mux)
+	wrapped = tinyOptimizeDb(mux)
+	return wrapped
 }
 
 func asApi(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -274,6 +277,32 @@ func logMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		dur := time.Since(start)
 		log.Printf("%s %s %v", r.Method, r.URL.Path, dur.Round(time.Millisecond))
+	})
+}
+
+// tinyOptimizeDb runs a row-limited optimize. It's probably faster to optimize queries on 400-10000 rows than it is to wait 2 minutes for a worse-case response.
+func tinyOptimizeDb(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+			return withSQL(ctx, func() error {
+				pragma1 := "PRAGMA analysis_limit=10000"
+				pragma2 := "PRAGMA optimize"
+				if _, err = vars.Db.ExecContext(ctx, pragma1); err != nil {
+					log.Printf("pragma error %q: %v", pragma1, err)
+					if _, err = vars.Db.ExecContext(ctx, pragma2); err != nil {
+						log.Printf("pragma error %q: %v", pragma2, err)
+					}
+				}
+				return err
+			})
+		})
+		if err != nil {
+			renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, err)
+			return
+		}
+		_ = p
+		next.ServeHTTP(w, r)
 	})
 }
 
