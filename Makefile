@@ -36,3 +36,7 @@ clean:
 
 test:
 	go test ./...
+
+update-deps:
+	go get -v -u
+	go mod tidy
