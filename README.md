@@ -31,6 +31,7 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 For notes on compiling from source, see [docs/developing.md](./docs/developing.md)
 
 ## Hotkeys
+* d: random page within current set
 * f: random file
 * g: random gallery
 * h or Arrow Left: previous item

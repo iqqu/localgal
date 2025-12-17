@@ -54,6 +54,10 @@
         }
 
         switch (event.key) {
+            case 'd':
+                document.location = '/random/page';
+                break;
+
             case 'f':
                 document.location = '/random/file';
                 break;
