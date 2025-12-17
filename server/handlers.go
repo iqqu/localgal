@@ -1188,6 +1188,133 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 	})
 	return albumsTotal, err
 }
+func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int) ([]types.Album, error) {
+	var albums []types.Album
+	if err := withSQL(ctx, func() error {
+		rows, err := vars.Db.QueryContext(ctx, `
+			  WITH matches AS (
+			      SELECT af5.ROWID
+			           , BM25(album_fts5, 9.0, 6.0) AS score
+			        FROM album_fts5 af5
+			       WHERE album_fts5 MATCH ?
+			         AND EXISTS(
+			           SELECT 1
+			             FROM map_album_remote_file marf
+			             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+			            WHERE marf.album_id = af5.ROWID
+			              AND rf.fetched = 1
+			              AND rf.ignored = 0
+			                   )
+			       ORDER BY score
+			       LIMIT ? OFFSET ?
+			                  )
+			SELECT m.score
+			     , a.album_id
+			     , a.ripper_id
+			     , r.name AS ripper_name
+			     , r.host AS ripper_host
+			     , a.gid
+			     , a.uploader
+			     , a.title
+			     , a.description
+			     , a.created_ts
+			     , a.modified_ts
+			     , a.hidden
+			     , a.removed
+			     , a.local_rating
+			     , a.last_fetch_ts
+			     , a.inserted_ts
+			     , (
+			    SELECT COUNT(*)
+			      FROM map_album_remote_file marf
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+			     WHERE marf.album_id = a.album_id
+			       AND rf.fetched = 1
+			       AND rf.ignored = 0
+			       ) AS file_count
+			     , (
+			    SELECT rf.remote_file_id
+			      FROM map_album_remote_file marf
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+			     WHERE marf.album_id = a.album_id
+			       AND rf.fetched = 1
+			       AND rf.ignored = 0
+			     ORDER BY marf.remote_file_id
+			     LIMIT 1
+			       ) AS thumb_remote_file_id
+			  FROM matches m
+			  JOIN album a ON a.album_id = m.ROWID
+			  JOIN ripper r ON r.ripper_id = a.ripper_id
+			 ORDER BY m.score
+		`, searchQuery, size, offset)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var a types.Album
+			var f types.File
+			var thumbFileId sql.NullInt64
+			var score *float64
+			if err := rows.Scan(
+				&score,
+				&a.AlbumId,
+				&a.RipperId,
+				&a.RipperName,
+				&a.RipperHost,
+				&a.Gid,
+				&a.Uploader,
+				&a.Title,
+				&a.Description,
+				&a.CreatedTs,
+				&a.ModifiedTs,
+				&a.Hidden,
+				&a.Removed,
+				&a.LocalRating,
+				&a.LastFetchTs,
+				&a.InsertedTs,
+				&a.FileCount,
+				&thumbFileId,
+			); err != nil {
+				return err
+			}
+			// If an album has no fetched files, thumb_remote_file_id will be null
+			if thumbFileId.Valid {
+				f.FileId = thumbFileId.Int64
+				a.Thumb = f
+				albums = append(albums, a)
+			}
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+	for i := range albums {
+		thumb := albums[i].Thumb
+		if err := withSQL(ctx, func() error {
+			return vars.Db.QueryRowContext(ctx, `
+				SELECT rf.filename
+				     , mt.name AS mime_type
+				  FROM remote_file rf
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+				 WHERE rf.remote_file_id = ?
+				   AND rf.fetched = 1
+			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+		}); err != nil {
+			return nil, err
+		}
+		albums[i].Thumb = thumb
+	}
+	// Populate href
+	for i := range albums {
+		albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
+		albums[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
+		if albums[i].Thumb.Filename.Valid {
+			albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
+		}
+	}
+	return albums, nil
+}
 
 func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
 	var err error
@@ -1293,129 +1420,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		var albums []types.Album
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
-				  WITH matches AS (
-				      SELECT ROWID
-				           , BM25(album_fts5, 9.0, 6.0) AS score
-				        FROM album_fts5 af5
-				       WHERE album_fts5 MATCH ?
-				         AND EXISTS(
-				           SELECT 1
-				             FROM map_album_remote_file marf
-				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				            WHERE marf.album_id = af5.ROWID
-				              AND rf.fetched = 1
-				              AND rf.ignored = 0
-				                   )
-				       ORDER BY score
-				       LIMIT ? OFFSET ?
-				                  )
-				SELECT m.score
-				     , a.album_id
-				     , a.ripper_id
-				     , r.name AS ripper_name
-				     , r.host AS ripper_host
-				     , a.gid
-				     , a.uploader
-				     , a.title
-				     , a.description
-				     , a.created_ts
-				     , a.modified_ts
-				     , a.hidden
-				     , a.removed
-				     , a.local_rating
-				     , a.last_fetch_ts
-				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				       ) AS file_count
-				     , (
-				    SELECT rf.remote_file_id
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				     ORDER BY marf.remote_file_id
-				     LIMIT 1
-				       ) AS thumb_remote_file_id
-				  FROM matches m
-				  JOIN album a ON a.album_id = m.ROWID
-				  JOIN ripper r ON r.ripper_id = a.ripper_id
-				 ORDER BY m.score
-			`, searchQuery, size, offset)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var a types.Album
-				var f types.File
-				var thumbFileId sql.NullInt64
-				var score *float64
-				if err := rows.Scan(
-					&score,
-					&a.AlbumId,
-					&a.RipperId,
-					&a.RipperName,
-					&a.RipperHost,
-					&a.Gid,
-					&a.Uploader,
-					&a.Title,
-					&a.Description,
-					&a.CreatedTs,
-					&a.ModifiedTs,
-					&a.Hidden,
-					&a.Removed,
-					&a.LocalRating,
-					&a.LastFetchTs,
-					&a.InsertedTs,
-					&a.FileCount,
-					&thumbFileId,
-				); err != nil {
-					return err
-				}
-				// If an album has no fetched files, thumb_remote_file_id will be null
-				if thumbFileId.Valid {
-					f.FileId = thumbFileId.Int64
-					a.Thumb = f
-					albums = append(albums, a)
-				}
-			}
-			return rows.Err()
-		}); err != nil {
+		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset)
+		if err != nil {
 			return err
-		}
-		for i := range albums {
-			thumb := albums[i].Thumb
-			if err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
-					SELECT rf.filename
-					     , mt.name AS mime_type
-					  FROM remote_file rf
-					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.remote_file_id = ?
-					   AND rf.fetched = 1
-				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
-			}); err != nil {
-				return err
-			}
-			albums[i].Thumb = thumb
-		}
-		// Populate href
-		for i := range albums {
-			albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
-			albums[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
-			if albums[i].Thumb.Filename.Valid {
-				albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
-			}
 		}
 
 		// 2: Search files
@@ -1600,129 +1607,9 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		var albums []types.Album
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
-				  WITH matches AS (
-				      SELECT af5.ROWID
-				           , BM25(album_fts5, 9.0, 6.0) AS score
-				        FROM album_fts5 af5
-				       WHERE album_fts5 MATCH ?
-				         AND EXISTS(
-				           SELECT 1
-				             FROM map_album_remote_file marf
-				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				            WHERE marf.album_id = af5.ROWID
-				              AND rf.fetched = 1
-				              AND rf.ignored = 0
-				                   )
-				       ORDER BY score
-				       LIMIT ? OFFSET ?
-				                  )
-				SELECT m.score
-				     , a.album_id
-				     , a.ripper_id
-				     , r.name AS ripper_name
-				     , r.host AS ripper_host
-				     , a.gid
-				     , a.uploader
-				     , a.title
-				     , a.description
-				     , a.created_ts
-				     , a.modified_ts
-				     , a.hidden
-				     , a.removed
-				     , a.local_rating
-				     , a.last_fetch_ts
-				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				       ) AS file_count
-				     , (
-				    SELECT rf.remote_file_id
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				     ORDER BY marf.remote_file_id
-				     LIMIT 1
-				       ) AS thumb_remote_file_id
-				  FROM matches m
-				  JOIN album a ON a.album_id = m.ROWID
-				  JOIN ripper r ON r.ripper_id = a.ripper_id
-				 ORDER BY m.score
-			`, searchQuery, size, offset)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var a types.Album
-				var f types.File
-				var thumbFileId sql.NullInt64
-				var score *float64
-				if err := rows.Scan(
-					&score,
-					&a.AlbumId,
-					&a.RipperId,
-					&a.RipperName,
-					&a.RipperHost,
-					&a.Gid,
-					&a.Uploader,
-					&a.Title,
-					&a.Description,
-					&a.CreatedTs,
-					&a.ModifiedTs,
-					&a.Hidden,
-					&a.Removed,
-					&a.LocalRating,
-					&a.LastFetchTs,
-					&a.InsertedTs,
-					&a.FileCount,
-					&thumbFileId,
-				); err != nil {
-					return err
-				}
-				// If an album has no fetched files, thumb_remote_file_id will be null
-				if thumbFileId.Valid {
-					f.FileId = thumbFileId.Int64
-					a.Thumb = f
-					albums = append(albums, a)
-				}
-			}
-			return rows.Err()
-		}); err != nil {
+		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset)
+		if err != nil {
 			return err
-		}
-		for i := range albums {
-			thumb := albums[i].Thumb
-			if err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
-					SELECT rf.filename
-					     , mt.name AS mime_type
-					  FROM remote_file rf
-					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.remote_file_id = ?
-					   AND rf.fetched = 1
-				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
-			}); err != nil {
-				return err
-			}
-			albums[i].Thumb = thumb
-		}
-		// Populate href
-		for i := range albums {
-			albums[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albums[i].RipperHost, albums[i].Gid)
-			albums[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.FileId)
-			if albums[i].Thumb.Filename.Valid {
-				albums[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albums[i].RipperHost, albums[i].Gid, albums[i].Thumb.Filename.String)
-			}
 		}
 
 		model := types.SearchPage{
