@@ -43,6 +43,7 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * `/search/tags`: Search tags
 * `/random/gallery`: Redirect to random gallery
 * `/random/file`: Redirect to random file
+* `/random/page`: Redirect to random page within the currently viewed page set
 * `/media/`: Direct file links
 * `/about`: About page
 * `/healthz`
@@ -63,6 +64,8 @@ In case somebody wants to develop a different UI.
 * `/api/search/tags`: Search tags
 * `/api/random/gallery`: Redirect to random gallery
 * `/api/random/file`: Redirect to random file
+
+Note: there is no `/api/random/page` for now, because that endpoint doesn't work nicely for JSON APIs.
 
 ## Hotkeys
 * f: random file
@@ -107,8 +110,6 @@ In case somebody wants to develop a different UI.
 ## Wishlist (help welcome)
 * Fix GitHub pipeline compilation for amd64 mac
 * Better icon
-* Button & key for "random file within this gallery" (if viewing file) or "random page within this gallery" (if viewing page)
-  * Not decided on implementation yet
 * Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
 * More sorting options
