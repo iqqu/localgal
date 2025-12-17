@@ -98,9 +98,9 @@ In case somebody wants to develop a different UI.
 
 ## TODO
 * Simplify Server Control GUI layout code
-* Sorting options
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
+* Reduce duplicated error handling code
 * ???
 
 ## Wishlist (help welcome)
@@ -111,6 +111,8 @@ In case somebody wants to develop a different UI.
   * Not decided on implementation yet
 * Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
+* More sorting options
+  * I think I've pushed sorting as far as it can go without materializing tables
 * Read-write functionality:
   * Ignored files
   * Local user-defined tags
