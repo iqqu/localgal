@@ -1379,6 +1379,84 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 	return filesTotal, err
 }
 
+func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int) ([]types.File, error) {
+	var files []types.File
+	if err := withSQL(ctx, func() error {
+		rows, err := vars.Db.QueryContext(ctx, `
+			  WITH matches AS (
+			      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
+			        FROM remote_file_fts5 rff5
+			        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
+			       WHERE remote_file_fts5 MATCH ?
+			         AND rf.fetched = 1
+			         AND rf.ignored = 0
+			       ORDER BY score
+			       LIMIT ? OFFSET ?
+			                  )
+			SELECT m.score
+			     , rf.remote_file_id
+			     , r.name AS ripper_name
+			     , r.host AS ripper_host
+			     , rf.urlid
+			     , rf.filename
+			     , mt.name AS mime_type
+			     , rf.title
+			     , rf.description
+			     , rf.uploaded_ts
+			     , rf.uploader
+			     , rf.hidden
+			     , rf.removed
+			     , rf.bytes
+			     , rf.local_rating
+			     , rf.inserted_ts
+			  FROM matches m
+			  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
+			  JOIN ripper r ON r.ripper_id = rf.ripper_id
+			  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+			 ORDER BY m.score
+		`, searchQuery, size, offset)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var f types.File
+			var score *float64
+			if err := rows.Scan(
+				&score,
+				&f.FileId,
+				&f.RipperName,
+				&f.RipperHost,
+				&f.Urlid,
+				&f.Filename,
+				&f.MimeType,
+				&f.Title,
+				&f.Description,
+				&f.UploadedTs,
+				&f.Uploader,
+				&f.Hidden,
+				&f.Removed,
+				&f.Bytes,
+				&f.LocalRating,
+				&f.InsertedTs,
+			); err != nil {
+				return err
+			}
+			files = append(files, f)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+	for i := range files {
+		files[i].HrefPage = fmt.Sprintf("/file/%s/%d", files[i].RipperHost, files[i].FileId)
+		if files[i].Filename.Valid {
+			files[i].HrefMedia = fmt.Sprintf("/media/%s/%s", files[i].RipperHost, files[i].Filename.String)
+		}
+	}
+	return files, nil
+}
+
 func getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
 	var err error
 	var tagsTotal int
@@ -1432,79 +1510,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		var files []types.File
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
-				  WITH matches AS (
-				      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
-				        FROM remote_file_fts5 rff5
-				        JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
-				       WHERE remote_file_fts5 MATCH ?
-				         AND rf.fetched = 1
-				         AND rf.ignored = 0
-				       ORDER BY score
-				       LIMIT ? OFFSET ?
-				                  )
-				SELECT m.score
-				     , rf.remote_file_id
-				     , r.name AS ripper_name
-				     , r.host AS ripper_host
-				     , rf.urlid
-				     , rf.filename
-				     , mt.name AS mime_type
-				     , rf.title
-				     , rf.description
-				     , rf.uploaded_ts
-				     , rf.uploader
-				     , rf.hidden
-				     , rf.removed
-				     , rf.bytes
-				     , rf.local_rating
-				     , rf.inserted_ts
-				  FROM matches m
-				  JOIN remote_file rf ON rf.remote_file_id = m.ROWID
-				  JOIN ripper r ON r.ripper_id = rf.ripper_id
-				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				 ORDER BY m.score
-			`, searchQuery, size, offset)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var f types.File
-				var score *float64
-				if err := rows.Scan(
-					&score,
-					&f.FileId,
-					&f.RipperName,
-					&f.RipperHost,
-					&f.Urlid,
-					&f.Filename,
-					&f.MimeType,
-					&f.Title,
-					&f.Description,
-					&f.UploadedTs,
-					&f.Uploader,
-					&f.Hidden,
-					&f.Removed,
-					&f.Bytes,
-					&f.LocalRating,
-					&f.InsertedTs,
-				); err != nil {
-					return err
-				}
-				files = append(files, f)
-			}
-			return rows.Err()
-		}); err != nil {
+		files, err := getSearchFilesPage(ctx, searchQuery, size, offset)
+		if err != nil {
 			return err
-		}
-		for i := range files {
-			files[i].HrefPage = fmt.Sprintf("/file/%s/%d", files[i].RipperHost, files[i].FileId)
-			if files[i].Filename.Valid {
-				files[i].HrefMedia = fmt.Sprintf("/media/%s/%s", files[i].RipperHost, files[i].Filename.String)
-			}
 		}
 
 		// 3: Search tags
