@@ -73,6 +73,7 @@ In case somebody wants to develop a different UI.
 * k: jump to top
 * l or Arrow Right: next item
 * Shift+j: Toggle autojump
+* Shift+p: Toggle autoplay
 * Ctrl+/: Focus search box
 
 ## Environment variables

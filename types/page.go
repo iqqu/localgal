@@ -65,6 +65,7 @@ type FilePage struct {
 	Albums       []Album `json:"albums"`
 	CurrentAlbum Album   `json:"currentAlbum"` // album when viewing within an album; nil for standalone
 	ShowPrevNext bool    `json:"showPrevNext"` // whether to show prev/next rail
+	Autoplay     bool    `json:"-"`
 	//Perf         Perf    `json:"perf"`
 	BasePage
 }

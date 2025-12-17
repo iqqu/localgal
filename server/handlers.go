@@ -842,9 +842,20 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		autoplay := isClientAutoplayOn(r)
 		asyncAlbums := isClientJsOn(r)
 		if asyncAlbums {
-			model := types.FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, AsyncAlbums: true, CurrentAlbum: a, ShowPrevNext: true, BasePage: types.BasePage{Perf: perf}}
+			model := types.FilePage{
+				File:         f,
+				Prev:         prev,
+				Next:         next,
+				FileTags:     fileTags,
+				AsyncAlbums:  true,
+				CurrentAlbum: a,
+				ShowPrevNext: true,
+				Autoplay:     autoplay,
+				BasePage:     types.BasePage{Perf: perf},
+			}
 			return render(ctx, w, "file.gohtml", model)
 		}
 		// Albums containing this file
@@ -852,7 +863,17 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		model := types.FilePage{File: f, Prev: prev, Next: next, FileTags: fileTags, Albums: albums, CurrentAlbum: a, ShowPrevNext: true, BasePage: types.BasePage{Perf: perf}}
+		model := types.FilePage{
+			File:         f,
+			Prev:         prev,
+			Next:         next,
+			FileTags:     fileTags,
+			Albums:       albums,
+			CurrentAlbum: a,
+			ShowPrevNext: true,
+			Autoplay:     autoplay,
+			BasePage:     types.BasePage{Perf: perf},
+		}
 		return render(ctx, w, "file.gohtml", model)
 	})
 	if err != nil {
@@ -1645,6 +1666,19 @@ func isClientJsOn(r *http.Request) bool {
 	}
 	// js cookie was present
 	return true
+}
+
+func isClientAutoplayOn(r *http.Request) bool {
+	cookie, err := r.Cookie("autoplay")
+	if errors.Is(err, http.ErrNoCookie) {
+		// autoplay cookie is not present in the request
+		return false
+	} else if err != nil {
+		// Unable to read cookies
+		return false
+	}
+	// autoplay cookie was present
+	return cookie.Value == "1"
 }
 
 // handleRandomGallery selects a random album and redirects to its gallery page.

@@ -32,6 +32,13 @@
                     return;
                 }
             }
+            if (event.key === 'P') {
+                let autoplayEl = document.querySelector('input#auto-play-checkbox');
+                if (autoplayEl) {
+                    autoplayEl.click();
+                    return;
+                }
+            }
             return;
         }
 
@@ -232,6 +239,55 @@
         });
     }
 
+    function autoPlay() {
+        // Auto play video on page load
+        const checkbox = document.getElementById('auto-play-checkbox');
+        const savedState = localStorage.getItem('autoPlayChecked');
+        if (savedState) {
+            checkbox.checked = JSON.parse(savedState);
+            const vidEl = document.querySelector('video.main-content-resource');
+            if (checkbox.checked && vidEl) {
+                const playPromise = vidEl.play();
+                if (playPromise == null) {
+                    return
+                }
+                playPromise.catch(err => {
+                    if (err.name === 'NotAllowedError') {
+                        console.warn('Playback blocked:', err);
+                        var notifyEl = document.querySelector('header .autoplay-error-notification');
+                        notifyEl.style.display = 'block';
+                        requestAnimationFrame(() => {
+                            notifyEl.classList.add('autoplay-error-notification-show');
+                            setTimeout(() => {
+                                notifyEl.classList.remove('autoplay-error-notification-show');
+                                setTimeout(() => {
+                                    notifyEl.style.display = 'none';
+                                }, 500);
+                            }, 4000);
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    function setupAutoPlayChangeListener() {
+        const checkbox = document.getElementById('auto-play-checkbox');
+        // Save state when checkbox changes
+        checkbox.addEventListener('change', function () {
+            if (checkbox.checked) {
+                document.cookie = 'autoplay=1; Path=/; SameSite=Strict';
+            } else {
+                document.cookie = 'autoplay=0; Path=/; SameSite=Strict';
+            }
+            localStorage.setItem('autoPlayChecked', JSON.stringify(this.checked));
+            const vidEl = document.querySelector('video.main-content-resource');
+            if (this.checked && vidEl) {
+                vidEl.play();
+            }
+        });
+    }
+
     function setupCellNavBtnTrackPointer() {
         const cellNavEls = document.querySelectorAll('.cell-nav');
         cellNavEls.forEach(cellNavEl => {
@@ -273,5 +329,8 @@
 
         autoJump();
         setupAutoJumpChangeListener();
+
+        autoPlay();
+        setupAutoPlayChangeListener();
     });
 })();

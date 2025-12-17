@@ -25,7 +25,7 @@
           <span class="nav-label">Tags</span>
         </a>
       </div>
-      <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 1ch;">
+      <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 8ch;">
         <form method="get" action="/search" style="flex: 1; display: flex;">
           <label style="flex: 1; display: flex;">
             <input id="search" type="search" name="q" placeholder="Search" autocomplete="off" style="flex: 1; width: 7ch;"{{if .query}} value="{{.query}}"{{end}} />
@@ -35,23 +35,31 @@
       </div>
       <div style="display: flex; align-items:center; gap: .1rem;">
         <a id="jump-to-content-link" href="#main-content">
-          <span class="nav-icon">&#x1F53D;</span><span class="nav-label">Jump to Content</span>
+          <span class="nav-icon">&#x1F53D;</span><span class="nav-label nav-label-collapse-narrow">Jump<span class="nav-label-collapse-widest"> to Content</span></span>
         </a>
-        <span class="js-required">
+        <div class="js-required" style="white-space: nowrap">
           <span class="muted"> | </span>
-          <label>
+          <label style="white-space: nowrap">
             <input type="checkbox" id="auto-jump-checkbox">
-            <span class="nav-label">Autojump</span><span class="nav-icon">&#x23EC;</span>
+            <span class="nav-label nav-label-collapse-wide">Autojump</span><span class="nav-icon">&#x23EC;</span>
           </label>
-        </span>
+          <span class="muted"> | </span>
+          <label style="white-space: nowrap">
+            <input type="checkbox" id="auto-play-checkbox">
+            <span class="nav-label nav-label-collapse-wide">Autoplay</span><span class="nav-icon">&#x23E9;</span>
+          </label>
+          <div class="autoplay-error-notification" style="display: none">
+            <span style="font-size: 1.2rem;">⚠️</span> Autoplay was blocked by the browser.
+          </div>
+        </div>
       </div>
       <div style="display: flex; align-items:center; gap: .1rem;">
-        <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery">
+        <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery" style="white-space: nowrap">
           <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F4C1;{{/*folder*/}}</span>
           <span class="nav-label">Gallery</span>
         </a>
         <span class="muted"> | </span>
-        <a id="random-file-link" href="/random/file" title="Go to a random file">
+        <a id="random-file-link" href="/random/file" title="Go to a random file" style="white-space: nowrap">
           <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F39E;&#xFE0F;{{/*film strip*/}}{{/*&#x1F5BC;&#xFE0F;framed picture*/}}</span>
           <span class="nav-label">File</span>
         </a>

@@ -23,7 +23,10 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; marg
 header { height: var(--header-height); background: #222; color: #fff; color-scheme: dark; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
 header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:flex; gap: .5rem; justify-content:space-between; align-items:center; }
 header nav .nav-icon { margin: 0 .2rem; }
-@media (max-width: 800px) { header nav .nav-label { display: none; } }
+@media (max-width: 900px) { header nav .nav-label-collapse-widest { display: none; } }
+@media (max-width: 800px) { header nav .nav-label-collapse-wide { display: none; } }
+@media (max-width: 700px) { header nav .nav-label-collapse-narrow { display: none; } }
+@media (max-width: 650px) { header nav .nav-label { display: none; } }
 header a { color: #fff; text-decoration: none; border-bottom: 1px dotted; display: inline-flex; align-items: center; }
 /*header nav input[type="search"] { width: 100px; }*/
 /*header img { display: inline;max-height: 1em;vertical-align: middle;}*/
@@ -95,6 +98,30 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
     75%  { background: var(--flash-color); }
     /*100% { color: #222; }*/
     100% { background: rgba(255,255,255,0); }
+}
+
+.autoplay-error-notification {
+    /*display: none;*/
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    border: 1px solid #ccc;
+    background: white;
+    color: black;
+    padding: 1rem;
+    z-index: 999;
+    border-radius: 8px;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, .2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .5s ease, visibility .5s ease;
+}
+
+.autoplay-error-notification.autoplay-error-notification-show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 /****** File page ******/
