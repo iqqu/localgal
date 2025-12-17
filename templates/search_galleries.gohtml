@@ -1,6 +1,6 @@
 {{ define "search_galleries.gohtml" }}
 {{$title := printf "Search Galleries: %s" .Query}}
-{{ template "base_start" (dict "title" $title ) }}
+{{ template "base_start" (dict "title" $title "query" .Query) }}
   <h1>Search Galleries: {{.Query}}</h1>
   <div class="tabs">
     <a class="tab" href="/search?q={{.Query | urlquery}}">Top Results</a>

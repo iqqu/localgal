@@ -28,7 +28,7 @@
       <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 1ch;">
         <form method="get" action="/search" style="flex: 1; display: flex;">
           <label style="flex: 1; display: flex;">
-            <input type="search" placeholder="Search" name="q" style="flex: 1; width: 7ch;" />
+            <input type="search" placeholder="Search" name="q" style="flex: 1; width: 7ch;"{{if .query}} value="{{.query}}"{{end}} />
             <span class="nav-icon">&#x1F50D;</span>
           </label>
         </form>
