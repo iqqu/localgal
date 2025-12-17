@@ -15,7 +15,7 @@
                       <video preload="metadata" src="{{.HrefMedia}}"></video>
                     </div>
                   {{ else }}{{/* assume image */}}
-                    <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
+                    <img src="{{.HrefMedia}}" fetchpriority="low" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
                   {{ end }}
                 {{ else }}
                   <p>[no thumbnail]</p>
