@@ -14,10 +14,16 @@
     // Hotkeys
     document.addEventListener('keydown', function (event) {
         // Ignore modifier keys and IME
-        if (event.metaKey || event.ctrlKey ||
-            event.altKey || event.isComposing) {
+        if (event.metaKey || event.altKey || event.isComposing) {
             return;
         }
+
+        // Check if the key is being pressed in an input or textarea
+        const target = event.target.tagName.toLowerCase();
+        if (['input', 'textarea'].includes(target) && event.target.type !== 'checkbox') {
+            return;
+        }
+
         if (event.shiftKey) {
             if (event.key === 'J') {
                 let autojumpEl = document.querySelector('input#auto-jump-checkbox');
@@ -29,9 +35,14 @@
             return;
         }
 
-        // Check if the key is being pressed in an input or textarea
-        const target = event.target.tagName.toLowerCase();
-        if (['input', 'textarea'].includes(target) && event.target.type !== 'checkbox') {
+        if (event.ctrlKey) {
+            if (event.key === '/') {
+                let searchEl = document.querySelector('input#search');
+                if (searchEl) {
+                    searchEl.focus();
+                    return;
+                }
+            }
             return;
         }
 

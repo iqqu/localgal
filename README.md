@@ -63,6 +63,7 @@ In case somebody wants to develop a different UI.
 * k: jump to top
 * l or Arrow Right: next item
 * Shift+j: Toggle autojump
+* Ctrl+/: Focus search box
 
 ## Environment variables
 * `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
