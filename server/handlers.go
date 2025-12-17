@@ -78,7 +78,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , (
 				    SELECT COUNT(*)
 				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				     WHERE marf.album_id = a.album_id
 				       AND rf.fetched = 1
 				       ) AS file_count
