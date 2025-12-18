@@ -32,7 +32,7 @@
         </form>
         <div>
           {{- if .HasNext }}
-            <a class="pager-next" href="/search/files?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+            <a class="pager-next" href="/search/files?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">Next &rarr;</a>
           {{- else }}
             <span class="muted">Next &rarr;</span>
           {{- end }}
@@ -82,7 +82,7 @@
       <div class="pager-controls">
         <div>
           {{- if .HasPrev }}
-            <a class="pager-prev" href="/search/files?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}">&larr; Previous</a>
+            <a class="pager-prev" href="/search/files?q={{.Query | urlquery}}&page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">&larr; Previous</a>
           {{- else }}
             <span class="muted">&larr; Previous</span>
           {{- end }}
@@ -93,12 +93,13 @@
             <input type="number" name="page" min="1" max="{{calcPages .FilesTotal .PageSize}}" value="{{.Page}}">
           </label>
           <input type="hidden" name="size" value="{{.PageSize}}">
+          <input type="hidden" name="sort" value="{{.Sort}}">
           <input type="hidden" name="q" value="{{.Query}}">
           <button type="submit">Go</button>
         </form>
         <div>
           {{- if .HasNext}}
-            <a class="pager-next" href="/search/files?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}">Next &rarr;</a>
+            <a class="pager-next" href="/search/files?q={{.Query | urlquery}}&page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">Next &rarr;</a>
           {{- else}}
             <span class="muted">Next &rarr;</span>
           {{- end}}
