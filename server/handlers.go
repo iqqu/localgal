@@ -269,6 +269,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
+				     , a.sum_rf_bytes
+				     , a.cnt_rf
 				     , a.last_fetch_ts
 				     , a.inserted_ts
 				  FROM album a
@@ -290,6 +292,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				&a.Hidden,
 				&a.Removed,
 				&a.LocalRating,
+				&a.Bytes,
+				&a.FileCount,
 				&a.LastFetchTs,
 				&a.InsertedTs,
 			)
@@ -300,21 +304,21 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		offset := (page - 1) * size
 		sort := getSortFiles(w, r)
 
-		var total int
-		var albumBytes int64
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
-				SELECT COUNT(*)
-				     , COALESCE(SUM(rf.bytes), 0)
-				  FROM map_album_remote_file marf
-				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				 WHERE marf.album_id = ?
-				   AND rf.fetched = 1
-				   AND rf.ignored = 0
-			`, a.AlbumId).Scan(&total, &albumBytes)
-		}); err != nil {
-			return err
-		}
+		//var total int
+		//var albumBytes int64
+		//if err := withSQL(ctx, func() error {
+		//	return vars.Db.QueryRowContext(ctx, `
+		//		SELECT COUNT(*)
+		//		     , COALESCE(SUM(rf.bytes), 0)
+		//		  FROM map_album_remote_file marf
+		//		  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+		//		 WHERE marf.album_id = ?
+		//		   AND rf.fetched = 1
+		//		   AND rf.ignored = 0
+		//	`, a.AlbumId).Scan(&total, &albumBytes)
+		//}); err != nil {
+		//	return err
+		//}
 		var files []types.File
 		if err := withSQL(ctx, func() error {
 			var orderBy string
@@ -451,6 +455,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		total := a.FileCount
+		albumBytes := a.Bytes
 		model := types.GalleryPage{
 			Album:      a,
 			Files:      files,
