@@ -124,8 +124,6 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Better icon
 * Faster SQL queries (tip: <https://sqlite.org/cli.html#index_recommendations_sqlite_expert_>)
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
-* More sorting options
-  * I think I've pushed sorting as far as it can go without materializing tables
 * FTS5 CJK tokenization / ICU
   * Needs to work for Java and Go, needs to work cross-platform, needs to be embeddable
 * Read-write functionality:
