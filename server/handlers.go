@@ -65,12 +65,12 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			case SortUploaded:
 				orderByPage = "ORDER BY a.created_ts DESC, a.inserted_ts DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY p.created_ts DESC, p.inserted_ts DESC, p.album_id DESC"
-			//case SortBytes:
-			//	orderByPage = "ORDER BY a.album_bytes DESC, a.album_id DESC"
-			//	orderByAgg = "ORDER BY p.album_bytes DESC, p.album_id DESC"
-			//case SortItems:
-			//	orderByPage = "ORDER BY a.file_count DESC, a.album_id DESC"
-			//	orderByAgg = "ORDER BY p.file_count DESC, p.album_id DESC"
+			case SortBytes:
+				orderByPage = "ORDER BY a.sum_rf_bytes DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.sum_rf_bytes DESC, p.album_id DESC"
+			case SortItems:
+				orderByPage = "ORDER BY a.cnt_rf DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY p.cnt_rf DESC, p.album_id DESC"
 			default:
 				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
@@ -91,6 +91,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           , a.hidden
 				           , a.removed
 				           , a.local_rating
+				           , a.sum_rf_bytes
+				           , a.cnt_rf
 				           , a.last_fetch_ts
 				           , a.inserted_ts
 				        FROM album a
@@ -100,9 +102,9 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				               )
 				     , agg AS (
 				      SELECT marf.album_id
-				           , COUNT(*) AS file_count
+				           --, COUNT(*) AS file_count
 				           , rf.remote_file_id AS thumb_remote_file_id
-				           , SUM(rf.bytes) AS album_bytes
+				           --, SUM(rf.bytes) AS album_bytes
 				        FROM map_album_remote_file marf
 				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 				       WHERE marf.album_id IN (
@@ -127,10 +129,12 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , p.hidden
 				     , p.removed
 				     , p.local_rating
+				     , p.sum_rf_bytes
+				     , p.cnt_rf
 				     , p.last_fetch_ts
 				     , p.inserted_ts
-				     , COALESCE(agg.file_count, 0) AS file_count
-				     , COALESCE(agg.album_bytes, 0) AS album_bytes
+				     --, COALESCE(agg.file_count, 0) AS file_count
+				     --, COALESCE(agg.album_bytes, 0) AS album_bytes
 				     , agg.thumb_remote_file_id
 				  FROM page p
 				  JOIN ripper r ON r.ripper_id = p.ripper_id
@@ -161,10 +165,10 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					&a.Hidden,
 					&a.Removed,
 					&a.LocalRating,
+					&a.Bytes,
+					&a.FileCount,
 					&a.LastFetchTs,
 					&a.InsertedTs,
-					&a.FileCount,
-					&a.Bytes,
 					&thumbFileId,
 				); err != nil {
 					return err

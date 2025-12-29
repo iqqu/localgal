@@ -117,16 +117,18 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
+				     , a.sum_rf_bytes
+				     , a.cnt_rf
 				     , a.last_fetch_ts
 				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				       ) AS file_count
+				--     , (
+				--    SELECT COUNT(*)
+				--      FROM map_album_remote_file marf
+				--      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				--     WHERE marf.album_id = a.album_id
+				--       AND rf.fetched = 1
+				--       AND rf.ignored = 0
+				--       ) AS file_count
 				     , (
 				    SELECT rf.remote_file_id
 				      FROM map_album_remote_file marf
@@ -150,6 +152,10 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				orderBy = "ORDER BY a.inserted_ts DESC, a.album_id DESC"
 			case SortUploaded:
 				orderBy = "ORDER BY a.created_ts DESC, a.album_id DESC"
+			case SortBytes:
+				orderBy = "ORDER BY a.sum_rf_bytes DESC, a.album_id DESC"
+			case SortItems:
+				orderBy = "ORDER BY a.cnt_rf DESC, a.album_id DESC"
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
 			//language=sqlite
@@ -182,16 +188,18 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
+				     , a.sum_rf_bytes
+				     , a.cnt_rf
 				     , a.last_fetch_ts
 				     , a.inserted_ts
-				     , (
-				    SELECT COUNT(*)
-				      FROM map_album_remote_file marf
-				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				     WHERE marf.album_id = a.album_id
-				       AND rf.fetched = 1
-				       AND rf.ignored = 0
-				       ) AS file_count
+				--     , (
+				--    SELECT COUNT(*)
+				--      FROM map_album_remote_file marf
+				--      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				--     WHERE marf.album_id = a.album_id
+				--       AND rf.fetched = 1
+				--       AND rf.ignored = 0
+				--       ) AS file_count
 				     , (
 				    SELECT rf.remote_file_id
 				      FROM map_album_remote_file marf
@@ -236,9 +244,10 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				&a.Hidden,
 				&a.Removed,
 				&a.LocalRating,
+				&a.Bytes,
+				&a.FileCount,
 				&a.LastFetchTs,
 				&a.InsertedTs,
-				&a.FileCount,
 				&thumbFileId,
 			); err != nil {
 				return err

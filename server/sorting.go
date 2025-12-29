@@ -12,16 +12,16 @@ const (
 	SortUploaded string = "uploaded"
 
 	// TODO materialize slow aggregate calculations
-	//SortItems string = "items"
+	SortItems string = "items"
 	SortBytes string = "bytes"
 
 	SortRank    string = "rank"
 	SortDefault string = ""
 )
 
-var GallerySorts = []string{SortFetched, SortUploaded}
+var GallerySorts = []string{SortFetched, SortUploaded, SortBytes, SortItems}
 var FileSorts = []string{SortFetched, SortUploaded, SortBytes}
-var GallerySearchSorts = []string{SortRank, SortFetched, SortUploaded}
+var GallerySearchSorts = []string{SortRank, SortFetched, SortUploaded, SortBytes, SortItems}
 var FileSearchSorts = []string{SortRank, SortFetched, SortUploaded, SortBytes}
 
 func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
