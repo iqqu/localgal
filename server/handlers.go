@@ -1732,7 +1732,7 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid), http.StatusFound)
+		http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid), http.StatusTemporaryRedirect)
 		return nil
 	})
 	if err != nil {
@@ -1792,9 +1792,9 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		}
 		fileIdString := strconv.FormatInt(fileId, 10)
 		if gid.Valid {
-			http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid.String)+"/"+url.PathEscape(fileIdString), http.StatusFound)
+			http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid.String)+"/"+url.PathEscape(fileIdString), http.StatusTemporaryRedirect)
 		} else {
-			http.Redirect(w, r, "/file/"+ripperHost+"/"+url.PathEscape(fileIdString), http.StatusFound)
+			http.Redirect(w, r, "/file/"+ripperHost+"/"+url.PathEscape(fileIdString), http.StatusTemporaryRedirect)
 		}
 		return nil
 	})
