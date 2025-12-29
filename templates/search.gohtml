@@ -8,16 +8,24 @@
     <a class="tab" href="/search/files?sort=rank&q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
     <a class="tab" href="/search/tags?q={{.Query | urlquery}}">Tags ({{.TagsTotal}})</a>
   </div>
-  {{if gt (len .AlbumIdMatches) 0}}
-    <h2>Gallery ID Matches</h2>
-    <div class="card">
-      {{template "frag_gallery_tiles.gohtml" (dict "Albums" .AlbumIdMatches)}}
-    </div>
-  {{end}}
-  {{if gt (len .FileIdMatches) 0}}
-    <h2>File ID Matches</h2>
-    <div class="card">
-      {{template "frag_file_tiles.gohtml" (dict "Files" .FileIdMatches)}}
+  {{if or (gt (len .AlbumIdMatches) 0) (gt (len .FileIdMatches) 0)}}
+    <div style="display: flex; flex-wrap: wrap; gap: var(--grid-gap)">
+      {{if gt (len .AlbumIdMatches) 0}}
+        <div style="min-width: 330px; flex: 1 1">
+          <h2>Gallery ID Matches</h2>
+          <div class="card">
+            {{template "frag_gallery_tiles.gohtml" (dict "Albums" .AlbumIdMatches)}}
+          </div>
+        </div>
+      {{end}}
+      {{if gt (len .FileIdMatches) 0}}
+        <div style="min-width: 330px; flex: 1 1">
+          <h2>File ID Matches</h2>
+          <div class="card">
+            {{template "frag_file_tiles.gohtml" (dict "Files" .FileIdMatches)}}
+          </div>
+        </div>
+      {{end}}
     </div>
   {{end}}
   <h2>Galleries</h2>

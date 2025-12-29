@@ -39,9 +39,13 @@ main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0/*
 .grid { display: grid; gap: var(--grid-gap); grid-template-columns: repeat(3, 1fr); }
 /* Masonry layout for variable-height thumbnails on gallery page */
 .masonry { column-gap: var(--grid-gap); column-count: 3; }
-@media (min-width: 730px) { .masonry { column-count: 4; } .grid { grid-template-columns: repeat(4, 1fr); } }
-@media (min-width: 920px) { .masonry { column-count: 5; } .grid { grid-template-columns: repeat(5, 1fr); } }
-@media (min-width: 1100px) { .masonry { column-count: 6; } .grid { grid-template-columns: repeat(6, 1fr); } }
+.grid-container { container-type: inline-size; container-name: grid-container; }
+@container grid-container (min-width: 200px) { .masonry { column-count: 1; } .grid { grid-template-columns: repeat(1, 1fr); } }
+@container grid-container (min-width: 330px) { .masonry { column-count: 2; } .grid { grid-template-columns: repeat(2, 1fr); } }
+@container grid-container (min-width: 530px) { .masonry { column-count: 3; } .grid { grid-template-columns: repeat(3, 1fr); } }
+@container grid-container (min-width: 730px) { .masonry { column-count: 4; } .grid { grid-template-columns: repeat(4, 1fr); } }
+@container grid-container (min-width: 920px) { .masonry { column-count: 5; } .grid { grid-template-columns: repeat(5, 1fr); } }
+@container grid-container (min-width: 1100px) { .masonry { column-count: 6; } .grid { grid-template-columns: repeat(6, 1fr); } }
 
 .masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; -moz-column-break-inside: avoid; display: block; margin: 0 0 0.6rem 0; }
 /* Override square thumbs within masonry to allow natural heights */

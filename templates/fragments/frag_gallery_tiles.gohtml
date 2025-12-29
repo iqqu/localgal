@@ -1,42 +1,44 @@
 {{define "frag_gallery_tiles.gohtml"}}
-  <div class="grid">
-    {{range .Albums}}
-      <div class="grid-tile">
-        <div class="card thumb joined">
-          <a class="card-link" href="{{.HrefPage}}">
-            {{ if .Thumb.MimeType.Valid }}
-              {{- if hasPrefix .Thumb.MimeType.String "video/" }}
-                <div class="video-container">
-                  <video preload="metadata" src="{{.Thumb.HrefMedia}}" disablePictureInPicture="true" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
-                </div>
-              {{- else }}{{- /* assume image */ -}}
-              <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
+  <div class="grid-container">
+    <div class="grid">
+      {{range .Albums}}
+        <div class="grid-tile">
+          <div class="card thumb joined">
+            <a class="card-link" href="{{.HrefPage}}">
+              {{ if .Thumb.MimeType.Valid }}
+                {{- if hasPrefix .Thumb.MimeType.String "video/" }}
+                  <div class="video-container">
+                    <video preload="metadata" src="{{.Thumb.HrefMedia}}" disablePictureInPicture="true" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
+                  </div>
+                {{- else }}{{- /* assume image */ -}}
+                <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
+                {{- end }}
+              {{- else }}
+                <p>[no thumbnail]</p>
               {{- end }}
-            {{- else }}
-              <p>[no thumbnail]</p>
-            {{- end }}
-            <h2>{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
-          </a>
-          <div class="thumb-text">
-            {{- if .Hidden }}<span class="hidden">Hidden</span>{{ end }}
-            {{- if .Removed }}<span class="removed">Removed</span>{{ end }}
-            {{- if eq .FetchCount 0 }}<span class="unfetched">Unfetched</span>{{ end }}
-            {{- if .Description.Valid }}
-              <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
-            {{- end -}}
-            <div class="muted">
-              {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}
-              {{- if .CreatedTs.Valid }} | <span title="Created">{{fmtDateMillis .CreatedTs.Int64}}</span>{{ end }}
-              | <span title="Host">{{.RipperHost}}</span>
-              {{- if .Uploader.Valid }} | <span title="Uploader">{{.Uploader.String}}</span>{{ end }}
-              {{/*              {{- if .ModifiedTs.Valid }} | Updated {{fmtDateMillis .ModifiedTs.Int64}}{{ end }}*/}}
-              {{/*              {{- if .LastFetchTs.Valid }} | Last Fetched {{fmtDateMillis .LastFetchTs.Int64}}{{ end }}*/}}
-              {{/*              | First Fetched {{fmtDateMillis .InsertedTs}}*/}}
-              {{/*              | {{.Gid}}*/}}
+              <h2>{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
+            </a>
+            <div class="thumb-text">
+              {{- if .Hidden }}<span class="hidden">Hidden</span>{{ end }}
+              {{- if .Removed }}<span class="removed">Removed</span>{{ end }}
+              {{- if eq .FetchCount 0 }}<span class="unfetched">Unfetched</span>{{ end }}
+              {{- if .Description.Valid }}
+                <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
+              {{- end -}}
+              <div class="muted">
+                {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}
+                {{- if .CreatedTs.Valid }} | <span title="Created">{{fmtDateMillis .CreatedTs.Int64}}</span>{{ end }}
+                | <span title="Host">{{.RipperHost}}</span>
+                {{- if .Uploader.Valid }} | <span title="Uploader">{{.Uploader.String}}</span>{{ end }}
+                {{/*              {{- if .ModifiedTs.Valid }} | Updated {{fmtDateMillis .ModifiedTs.Int64}}{{ end }}*/}}
+                {{/*              {{- if .LastFetchTs.Valid }} | Last Fetched {{fmtDateMillis .LastFetchTs.Int64}}{{ end }}*/}}
+                {{/*              | First Fetched {{fmtDateMillis .InsertedTs}}*/}}
+                {{/*              | {{.Gid}}*/}}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    {{end}}
+      {{end}}
+    </div>
   </div>
 {{end}}
