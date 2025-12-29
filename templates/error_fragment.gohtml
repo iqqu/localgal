@@ -1,0 +1,10 @@
+{{define "error_fragment.gohtml"}}
+  <article style="display: flex; flex-direction: column; justify-content: center; align-items: center;gap: .5rem;">
+    <div class="card" style="width: calc(min(100%,80ch));text-align: center;margin-top: 1rem;">
+      <p>{{if .StatusText}}{{.StatusText}}{{else}}Error{{end}}</p>
+      <div style="white-space: pre-wrap; word-break: break-word;">
+        {{- if .Message }}{{.Message}}{{else}}Unexpected error. Please try again.{{ end -}}
+      </div>
+    </div>
+  </article>
+{{end}}

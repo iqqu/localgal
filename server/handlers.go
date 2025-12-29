@@ -570,7 +570,8 @@ func handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Request) {
 		return renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		err = fmt.Errorf("unable to load gallery's file tags: %w", err)
+		renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -1183,7 +1184,8 @@ func handleFileGalleryFragment(w http.ResponseWriter, r *http.Request) {
 		return renderFragment(ctx, w, "file_galleries.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		err = fmt.Errorf("unable to load file's related galleries: %w", err)
+		renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }

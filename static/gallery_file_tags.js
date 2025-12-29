@@ -26,7 +26,8 @@
             if (response.ok) {
                 return response.text();
             } else {
-                throw new Error('Unable to load related galleries');
+                return response.text();
+                // throw new Error('Unable to load related galleries');
             }
         })
         .then(function (text) {

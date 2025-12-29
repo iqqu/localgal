@@ -315,6 +315,8 @@ func tinyOptimizeDb(next http.Handler) http.Handler {
 	})
 }
 
+type renderErrorTemplateKey struct{}
+
 type renderModeKey struct{}
 type RenderMode int
 
@@ -455,7 +457,17 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = vars.Tpl.ExecuteTemplate(w, "error.gohtml", model)
+
+	tpl := "error.gohtml"
+	if v, ok := ctx.Value(renderErrorTemplateKey{}).(string); ok {
+		tpl = v
+	}
+	_ = vars.Tpl.ExecuteTemplate(w, tpl, model)
+}
+
+func renderErrorFragment(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
+	errorFragmentCtx := context.WithValue(ctx, renderErrorTemplateKey{}, "error_fragment.gohtml")
+	renderError(errorFragmentCtx, w, perf, status, err)
 }
 
 func httpRedirect(ctx context.Context, w http.ResponseWriter, r *http.Request, perf *types.Perf, url string, code int) {
