@@ -75,6 +75,7 @@ func main() {
 		fmt.Println("  GUI:\tforce GUI mode with `1` or CLI mode with `0`. flag takes precedence")
 		fmt.Println("Notes:")
 		fmt.Println("  If stdin, stdout, and stderr are not a tty, GUI mode gets chosen by default. In containers, use GUI=0 or -cli")
+		fmt.Println("  If environment variables are not specified, localgal looks for the ripme configuration file")
 		os.Exit(0)
 	}
 

@@ -103,7 +103,6 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * User accounts
 
 ## TODO
-* Read paths from RipMe3 configuration file (~/.config/ripme/rip.properties or ./rip.properties)
 * Improve keyboard accessibility (tabindex, etc)
 * Add search pages:
   * Search galleries containing files that match a query
