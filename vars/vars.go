@@ -10,6 +10,8 @@ import (
 	"os"
 )
 
+const MinimumSchemaVersion = 11 // "011"
+
 type Env string
 
 func (key Env) GetValue() string {

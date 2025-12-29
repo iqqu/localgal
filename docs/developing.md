@@ -44,6 +44,7 @@ Manual test checklist:
 * Gallery / file totals are correct
 * Gallery detail link flashes the gallery detail header when clicked
 * Whitespace in generated pages isn't excessive
+* `vars.MinimumSchemaVersion` is correct
 
 Implementation notes:
 * I specifically chose not to use an ORM so that I could get the most flexibility in improving query performance

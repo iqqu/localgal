@@ -72,6 +72,10 @@ func StartServer(cfg Config) (*Controller, error) {
 		return nil, err
 	}
 
+	if err := checkMinimumDbSchemaVersion(vars.Db); err != nil {
+		return nil, err
+	}
+
 	vars.CacheDb, err = GetCacheDb()
 	if err != nil {
 		return nil, err

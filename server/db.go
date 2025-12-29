@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,6 +113,31 @@ func initDB(db *sql.DB, filename string) error {
 		}
 	}
 	return nil
+}
+
+func checkMinimumDbSchemaVersion(db *sql.DB) error {
+	var version sql.NullString
+	err := db.QueryRow(`
+		SELECT version
+		  FROM flyway_schema_history
+		 WHERE success = 1
+		 ORDER BY installed_rank DESC
+		 LIMIT 1
+	`).Scan(&version)
+	if err != nil {
+		return fmt.Errorf("unable to check minimum schema version: %w", err)
+	}
+	if !version.Valid {
+		return fmt.Errorf("minimum schema version is not valid")
+	}
+	versionInt, err := strconv.Atoi(version.String)
+	if err != nil {
+		return fmt.Errorf("unable to parse minimum schema version: %w", err)
+	}
+	if versionInt >= vars.MinimumSchemaVersion {
+		return nil
+	}
+	return fmt.Errorf("schema version is too old. upgrade by running the latest ripme3. minimum: %03d; found: %s", vars.MinimumSchemaVersion, version.String)
 }
 
 func DsnWithReadOnly(dsn string) string {
