@@ -28,6 +28,16 @@
       {{end}}
     </div>
   {{end}}
+  {{if gt (len .UserIdMatches) 0}}
+    <h2>User ID Matches</h2>
+      <div class="card">
+        <ul>
+          {{range .UserIdMatches}}
+            <li>{{.RipperHost}}: <a href="/user/{{.RipperHost}}/{{.UserName}}">{{.UserName}}</a></li>
+          {{end}}
+        </ul>
+      </div>
+  {{end}}
   <h2>Galleries</h2>
   <div class="card">
     {{- if .Albums }}

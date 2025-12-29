@@ -45,6 +45,7 @@ type SearchPage struct {
 	Query          string  `json:"query"`
 	AlbumIdMatches []Album `json:"albumIdMatches,omitempty"`
 	FileIdMatches  []File  `json:"fileIdMatches,omitempty"`
+	UserIdMatches  []User  `json:"userIdMatches,omitempty"`
 	Albums         []Album `json:"albums"`
 	AlbumsTotal    int     `json:"albumsTotal"`
 	Files          []File  `json:"files"`

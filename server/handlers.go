@@ -1744,6 +1744,43 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		var userIdMatches []types.User
+		{
+			if err := withSQL(ctx, func() error {
+				rows, err := vars.Db.QueryContext(ctx, `
+				SELECT DISTINCT both.uploader, r.host
+				  FROM (
+				      SELECT rf.uploader, rf.ripper_id
+				        FROM remote_file rf
+				       WHERE rf.uploader IS NOT NULL
+				         AND rf.fetched = 1
+				         AND rf.ignored = 0
+				       UNION ALL
+				      SELECT a.uploader, a.ripper_id
+				        FROM album a
+				       WHERE a.uploader IS NOT NULL
+				         AND a.cnt_rf > 0
+				       ) both
+				  JOIN ripper r ON r.ripper_id = both.ripper_id
+				 WHERE uploader COLLATE NOCASE = ?;
+				`, searchQuery)
+				if err != nil {
+					return err
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var u types.User
+					if err := rows.Scan(&u.UserName, &u.RipperHost); err != nil {
+						return err
+					}
+					userIdMatches = append(userIdMatches, u)
+				}
+				return rows.Err()
+			}); err != nil {
+				return err
+			}
+		}
+
 		// 1: Search albums
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
@@ -1784,6 +1821,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			Query:          searchQuery,
 			AlbumIdMatches: albumIdMatches,
 			FileIdMatches:  fileIdMatches,
+			UserIdMatches:  userIdMatches,
 			Albums:         albums,
 			AlbumsTotal:    albumsTotal,
 			Files:          files,

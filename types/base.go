@@ -63,6 +63,11 @@ type Tag struct {
 	Count   int    `json:"count,omitempty,omitzero"` // optional usage count for tag listings
 }
 
+type User struct {
+	UserName   string `json:"userName"`
+	RipperHost string `json:"ripperHost"`
+}
+
 // SqlJsonString marshalls to the value of the string or null
 type SqlJsonString struct {
 	sql.NullString
