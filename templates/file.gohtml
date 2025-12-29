@@ -12,7 +12,7 @@
                 {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}
                     <div class="video-container">
-                      <video preload="metadata" src="{{.HrefMedia}}"></video>
+                      <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
                     </div>
                   {{ else }}{{/* assume image */}}
                     <img src="{{.HrefMedia}}" fetchpriority="low" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
@@ -43,7 +43,7 @@
                 {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}
                     <div class="video-container">
-                      <video preload="metadata" src="{{.HrefMedia}}"></video>
+                      <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
                     </div>
                   {{ else }}{{/* assume image */}}
                     <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">

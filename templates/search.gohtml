@@ -22,7 +22,7 @@
                 {{ if .Thumb.MimeType.Valid }}
                   {{- if hasPrefix .Thumb.MimeType.String "video/" }}
                     <div class="video-container">
-                      <video preload="metadata" src="{{.Thumb.HrefMedia}}" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
+                      <video preload="metadata" src="{{.Thumb.HrefMedia}}" disablePictureInPicture="true" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
                     </div>
                   {{- else }}{{- /* assume image */ -}}
                     <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>
@@ -68,7 +68,7 @@
               {{ if .MimeType.Valid }}
                 {{ if hasPrefix .MimeType.String "video/" }}
                   <div class="video-container">
-                    <video preload="metadata" src="{{.HrefMedia}}"></video>
+                    <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
                   </div>
                 {{ else }}{{/* assume image */}}
                 <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
