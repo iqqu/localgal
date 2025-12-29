@@ -74,6 +74,7 @@
             <div class="thumb-text muted">
               {{- if .Title.Valid }}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{ end -}}
               {{- if .Hidden }} <span class="hidden">Hidden</span>{{ end -}}
+              {{- if .Removed }} <span class="removed">Removed</span>{{ end -}}
             </div>
           </div>
         </a>
