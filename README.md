@@ -116,6 +116,7 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Reduce duplicated error handling code
 * Find a nice UX for random video and random image
   * The header bar is full already - create a drop-down menu for more space?
+* Filter search to video or image
 * ???
 
 ## Wishlist (help welcome)
