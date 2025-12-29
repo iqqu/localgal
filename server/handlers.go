@@ -968,7 +968,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return render(ctx, w, "file.gohtml", &model)
 		}
 		// Albums containing this file
-		albums, err := getRelatedAlbums(r.Context(), fileId)
+		albums, err := getRelatedAlbums(ctx, fileId)
 		if err != nil {
 			return err
 		}
@@ -1512,7 +1512,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(r.Context(), w, "search_noquery.gohtml", &model)
+			return render(ctx, w, "search_noquery.gohtml", &model)
 		}
 
 		var albumIdMatches []types.Album
@@ -1761,7 +1761,7 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(r.Context(), w, "search_noquery.gohtml", &model)
+			return render(ctx, w, "search_noquery.gohtml", &model)
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
@@ -1830,7 +1830,7 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(r.Context(), w, "search_noquery.gohtml", &model)
+			return render(ctx, w, "search_noquery.gohtml", &model)
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
@@ -1899,7 +1899,7 @@ func handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(r.Context(), w, "search_noquery.gohtml", &model)
+			return render(ctx, w, "search_noquery.gohtml", &model)
 		}
 
 		var albumsTotal int
