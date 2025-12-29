@@ -96,13 +96,20 @@
     </p>
   {{end}}
 
-  {{if .FileTags}}
-    <h3>File Tags in Gallery</h3>
-    <p class="chips">
-      {{range .FileTags}}
-        <a class="chip" href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
-      {{end}}
-    </p>
+  {{if .AsyncFileTags}}
+    {{/*Load an HTML fragment with JS*/}}
+    <div id="async-file-tags">
+      <div style="display: flex; align-items: center"><img src="/static/spinner.svg" alt="Loading"/>Loading file tags...</div>
+    </div>
+    <script src="/static/gallery_file_tags.js">
+      {{/*  const host = {{.Album.RipperHost}};*/}}
+      {{/*  const galleryId = {{.Album.Gid}};*/}}
+    </script>
+  {{else if .FileTags}}
+    {{/*Client does not have JS on, or first page load*/}}
+    <div>
+      {{template "gallery_file_tags.gohtml" .}}
+    </div>
   {{end}}
 {{template "base_end" .}}
 {{end}}

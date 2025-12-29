@@ -466,7 +466,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		// Fetch tags for album and distinct tags from its files
-		var albumTags, fileTags []types.Tag
+		var albumTags []types.Tag
 		if err := withSQL(ctx, func() error {
 			rows, e := vars.Db.QueryContext(ctx, `
 				SELECT t.tag_id, t.name
@@ -490,35 +490,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
-				SELECT t.name, COUNT(*) as count
-				  FROM tag t
-				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
-				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
-				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				 WHERE marf.album_id = ?
-				   AND rf.fetched = 1
-				   AND rf.ignored = 0
-				 GROUP BY t.tag_id
-				 ORDER BY count DESC
-				 LIMIT 100 -- some albums might have a million tags...
-			`, a.AlbumId)
-			if e != nil {
-				return e
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var t types.Tag
-				if err := rows.Scan(&t.Name, &t.Count); err != nil {
-					return err
-				}
-				fileTags = append(fileTags, t)
-			}
-			return rows.Err()
-		}); err != nil {
-			return err
-		}
+
 		// Populate href
 		a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
 		for i := range files {
@@ -530,6 +502,30 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 
 		total := a.FileCount
 		albumBytes := a.Bytes
+
+		asyncFileTags := isClientJsOn(r)
+		if asyncFileTags {
+			model := types.GalleryPage{
+				Album:         a,
+				Files:         files,
+				Page:          page,
+				PageSize:      size,
+				Total:         total,
+				HasPrev:       page > 1,
+				HasNext:       offset+len(files) < total,
+				AlbumTags:     albumTags,
+				AsyncFileTags: true,
+				AlbumBytes:    albumBytes,
+				Sort:          sort,
+				BasePage:      &types.BasePage{Perf: perf},
+			}
+			return render(ctx, w, "gallery.gohtml", &model)
+		}
+
+		fileTags, err := getGalleryFileTags(ctx, gid)
+		if err != nil {
+			return err
+		}
 		model := types.GalleryPage{
 			Album:      a,
 			Files:      files,
@@ -550,6 +546,68 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
+}
+
+// handleGalleryFileTagsFragment handles /gallery-file-tags/{ripper_host}/{gid}
+func handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	gid := r.PathValue("gid")
+	if ripperHost == "" || gid == "" {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery-file-tags/{ripper_host}/{gid}"))
+		return
+	}
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		// Fetch tags for album and distinct tags from its files
+		var fileTags []types.Tag
+		fileTags, err := getGalleryFileTags(ctx, gid)
+		if err != nil {
+			return err
+		}
+		model := types.GalleryPage{
+			FileTags: fileTags,
+			BasePage: &types.BasePage{Perf: perf},
+		}
+		return renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+func getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
+	var fileTags []types.Tag
+	if err := withSQL(ctx, func() error {
+		rows, e := vars.Db.QueryContext(ctx, `
+				SELECT t.name, COUNT(*) as count
+				  FROM tag t
+				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
+				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
+				  JOIN album a ON a.album_id = marf.album_id
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				 WHERE a.gid = ?
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
+				 GROUP BY t.tag_id
+				 ORDER BY count DESC
+				 LIMIT 100 -- some albums might have a million tags...
+			`, gid)
+		if e != nil {
+			return e
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var t types.Tag
+			if err := rows.Scan(&t.Name, &t.Count); err != nil {
+				return err
+			}
+			fileTags = append(fileTags, t)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+	return fileTags, nil
 }
 
 // handleGallery handles /gallery/{ripper_host}/{gid}/{file_id}

@@ -1,0 +1,8 @@
+{{define "gallery_file_tags.gohtml"}}
+  <h3>File Tags in Gallery</h3>
+  <p class="chips">
+    {{range .FileTags}}
+      <a class="chip" href="/tag/{{.Name | urlquery}}">{{.Name}} ({{.Count}})</a>
+    {{end}}
+  </p>
+{{end}}
