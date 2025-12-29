@@ -24,9 +24,9 @@ func atoiDefault(s string, def int) int {
 
 func getPageParams(w http.ResponseWriter, r *http.Request, url *url.URL) (page, size int) {
 	defaultPageSize := DefaultPageSize
-	defaultSort, err := r.Cookie("defaultPageSize")
+	defaultSize, err := r.Cookie("defaultPageSize")
 	if err == nil {
-		defaultPageSize = atoiDefault(defaultSort.Value, defaultPageSize)
+		defaultPageSize = atoiDefault(defaultSize.Value, defaultPageSize)
 	}
 
 	page, size = parsePageParams(url, defaultPageSize)
