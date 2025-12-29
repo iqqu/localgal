@@ -114,9 +114,6 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Improve keyboard accessibility (tabindex, etc)
 * Add search pages:
   * Search galleries containing files that match a query
-* Add uploader page:
-  * Uploaded galleries and files, similar to search page
-  * No extra index or separate table should be needed
 * Simplify Server Control GUI layout code
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
