@@ -120,6 +120,11 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Find a nice UX for random video and random image
   * The header bar is full already - create a drop-down menu for more space?
 * Filter search to video or image
+* Read-write functionality:
+    * Ignored files
+    * Local user-defined tags
+    * Local user ratings (1=worst, 5=best)
+      <table> <tr> <td>&#128169;</td> <td>&#128078;</td> <td>&#11093;</td> <td>&#128077;</td> <td>&#10084;&#65039;</td> </tr> </table>
 * ???
 
 ## Wishlist (help welcome)
@@ -130,8 +135,3 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Use cancelable PRAGMA optimize (or is this automatically handled by the sqlite driver?)
 * FTS5 CJK tokenization / ICU
   * Needs to work for Java and Go, needs to work cross-platform, needs to be embeddable
-* Read-write functionality:
-  * Ignored files
-  * Local user-defined tags
-  * Local user ratings (1=worst, 5=best)
-    <table> <tr> <td>&#128169;</td> <td>&#128078;</td> <td>&#11093;</td> <td>&#128077;</td> <td>&#10084;&#65039;</td> </tr> </table>
