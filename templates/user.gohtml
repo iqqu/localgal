@@ -1,0 +1,33 @@
+{{ define "user.gohtml" }}
+{{$title := printf "User: %s - %s" .User .Host}}
+{{ template "base_start" (dict "title" $title) }}
+  <h1>User: {{.User}} - {{.Host}}</h1>
+  <div class="tabs">
+    <a class="tab tab-selected" href="/user/{{.Host}}/{{.User}}">Summary</a>
+    <a class="tab" href="/user/{{.Host}}/{{.User}}/galleries">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab" href="/user/{{.Host}}/{{.User}}/files">Files ({{.FilesTotal}})</a>
+  </div>
+  <h2>Galleries</h2>
+  <div class="card">
+    {{- if .Albums }}
+      {{- if (gt .AlbumsTotal (len .Albums)) }}
+        <p class="muted">Showing {{ len .Albums }} of {{ .AlbumsTotal }} total galleries.</p>
+      {{- end }}
+      {{template "frag_gallery_tiles.gohtml" .}}
+    {{- else }}
+      <p class="muted">No galleries to show.</p>
+    {{- end}}
+  </div>
+  <h2>Files</h2>
+  <div class="card">
+    {{- if .Files }}
+      {{- if gt .FilesTotal (len .Files) }}
+        <p class="muted">Showing {{ len .Files }} of {{ .FilesTotal }} total files.</p>
+      {{- end }}
+      {{template "frag_file_tiles.gohtml" .}}
+    {{- else }}
+      <p class="muted">No files to show.</p>
+    {{- end}}
+  </div>
+{{template "base_end" .}}
+{{end}}

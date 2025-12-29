@@ -138,7 +138,7 @@
       {{if .File.Uploader.Valid}}
         <tr>
           <td>Uploader</td>
-          <td>{{.File.Uploader.String}}</td>
+          <td><a href="/user/{{.File.RipperHost}}/{{.File.Uploader.String}}">{{.File.Uploader.String}}</a></td>
         </tr>
       {{end}}
       {{if .File.UploadedTs.Valid}}

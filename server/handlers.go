@@ -1715,6 +1715,160 @@ func handleSearchTags(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleUser handles /user/{ripper_host}/{user_name}
+func handleUser(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	userName := r.PathValue("user_name")
+	if ripperHost == "" || userName == "" {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}"))
+		return
+	}
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		size := 10
+		offset := 0
+
+		var albumsTotal int
+		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		albums, err := getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		if err != nil {
+			return err
+		}
+
+		var filesTotal int
+		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		files, err := getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		if err != nil {
+			return err
+		}
+
+		model := types.UserPage{
+			Host:        ripperHost,
+			User:        userName,
+			Albums:      albums,
+			AlbumsTotal: albumsTotal,
+			Files:       files,
+			FilesTotal:  filesTotal,
+			Sort:        SortFetched,
+			BasePage:    &types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "user.gohtml", &model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+// handleUser handles /user/{ripper_host}/{user_name}/galleries
+func handleUserGalleries(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	userName := r.PathValue("user_name")
+	if ripperHost == "" || userName == "" {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/galleries"))
+		return
+	}
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		page, size := getPageParams(w, r, r.URL)
+		offset := (page - 1) * size
+		order := getSortGalleries(w, r)
+
+		var albumsTotal int
+		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		var filesTotal int
+		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		albums, err := getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order)
+		if err != nil {
+			return err
+		}
+
+		model := types.UserPage{
+			Host:        ripperHost,
+			User:        userName,
+			Albums:      albums,
+			AlbumsTotal: albumsTotal,
+			FilesTotal:  filesTotal,
+			HasPrev:     page > 1,
+			HasNext:     offset+len(albums) < albumsTotal,
+			Page:        page,
+			PageSize:    size,
+			Sort:        order,
+			BasePage:    &types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "user_galleries.gohtml", &model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
+// handleUser handles /user/{ripper_host}/{user_name}/files
+func handleUserFiles(w http.ResponseWriter, r *http.Request) {
+	ripperHost := r.PathValue("ripper_host")
+	userName := r.PathValue("user_name")
+	if ripperHost == "" || userName == "" {
+		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/files"))
+		return
+	}
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		page, size := getPageParams(w, r, r.URL)
+		offset := (page - 1) * size
+		order := getSortFiles(w, r)
+
+		var albumsTotal int
+		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		var filesTotal int
+		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		if err != nil {
+			return err
+		}
+
+		files, err := getUserFilesPage(ctx, ripperHost, userName, size, offset, order)
+		if err != nil {
+			return err
+		}
+
+		model := types.UserPage{
+			Host:        ripperHost,
+			User:        userName,
+			Files:       files,
+			FilesTotal:  filesTotal,
+			AlbumsTotal: albumsTotal,
+			HasPrev:     page > 1,
+			HasNext:     offset+len(files) < filesTotal,
+			Page:        page,
+			PageSize:    size,
+			Sort:        order,
+			BasePage:    &types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "user_files.gohtml", &model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
 func isClientJsOn(r *http.Request) bool {
 	_, err := r.Cookie("js")
 	if errors.Is(err, http.ErrNoCookie) {

@@ -1,0 +1,46 @@
+{{define "frag_pager_files_user.gohtml"}}
+  <div class="pager">
+    <div class="pager-total">{{.FilesTotal}} item{{if ne .FilesTotal 1}}s{{end}}</div>
+    <div class="pager-controls">
+      <div>
+        {{- if .HasPrev }}
+          <a class="pager-prev" href="/user/{{.Host}}/{{.User}}/files?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">&larr; Previous</a>
+        {{- else }}
+          <span class="muted">&larr; Previous</span>
+        {{- end }}
+      </div>
+      <div>Page {{.Page}} / {{calcPages .FilesTotal .PageSize}}</div>
+      <form method="get" action="/user/{{.Host}}/{{.User}}/files">
+        <label class="muted">
+          <input type="number" name="page" min="1" max="{{calcPages .FilesTotal .PageSize}}" value="{{.Page}}">
+        </label>
+        <input type="hidden" name="size" value="{{.PageSize}}">
+        <input type="hidden" name="sort" value="{{.Sort}}">
+        <button type="submit">Go</button>
+      </form>
+      <div>
+        {{- if .HasNext }}
+          <a class="pager-next" href="/user/{{.Host}}/{{.User}}/files?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}">Next &rarr;</a>
+        {{- else }}
+          <span class="muted">Next &rarr;</span>
+        {{- end }}
+      </div>
+    </div>
+    <div class="pager-sort">
+      <form method="get" action="/user/{{.Host}}/{{.User}}/files">
+        <input type="hidden" name="page" value="1">
+        <input type="hidden" name="size" value="{{.PageSize}}">
+        <label>
+          <span>Sort:</span>
+          <select name="sort">
+            <option value="fetched"{{if eq .Sort "fetched"}} selected{{end}}>Fetch Date</option>
+            <option value="uploaded"{{if eq .Sort "uploaded"}} selected{{end}}>Upload Date</option>
+            <option value="bytes"{{if eq .Sort "bytes"}} selected{{end}}>File Size</option>
+          </select>
+          {{/*<pre>&#x25b2;</pre>up<pre>&#x25bc;</pre>down<div>&#x2699;&#xFE0F;</div>*/}}
+        </label>
+        <input type="submit" value="Apply">
+      </form>
+    </div>
+  </div>
+{{end}}

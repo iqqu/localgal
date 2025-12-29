@@ -78,6 +78,22 @@ type FilePage struct {
 	*BasePage
 }
 
+type UserPage struct {
+	Host        string  `json:"-"`
+	User        string  `json:"-"`
+	Albums      []Album `json:"albums,omitempty,omitzero"`
+	AlbumsTotal int     `json:"albumsTotal,omitempty,omitzero"`
+	Files       []File  `json:"files,omitempty,omitzero"`
+	FilesTotal  int     `json:"filesTotal,omitempty,omitzero"`
+	HasNext     bool    `json:"hasNext"`
+	HasPrev     bool    `json:"hasPrev"`
+	Page        int     `json:"page"`
+	PageSize    int     `json:"pageSize"`
+	Sort        string  `json:"sort,omitempty,omitzero"`
+	//Perf      Perf   `json:"perf"`
+	*BasePage
+}
+
 type TagsPage struct {
 	ImageTags []Tag `json:"imageTags"`
 	AlbumTags []Tag `json:"albumTags"`

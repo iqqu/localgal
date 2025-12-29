@@ -43,7 +43,7 @@
       {{if .Album.Uploader.Valid}}
         <tr>
           <td>Uploader</td>
-          <td>{{.Album.Uploader.String}}</td>
+          <td><a href="/user/{{.Album.RipperHost}}/{{.Album.Uploader.String}}">{{.Album.Uploader.String}}</a></td>
         </tr>
       {{end}}
       {{if .Album.CreatedTs.Valid}}

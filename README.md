@@ -55,6 +55,9 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * `/search/galleries`: Search galleries
 * `/search/files`: Search files
 * `/search/tags`: Search tags
+* `/user/{ripper}/{user}`: View user/uploader summary
+* `/user/{ripper}/{user}/galleries`: View user/uploader galleries
+* `/user/{ripper}/{user}/files`: View user/uploader files
 * `/random/gallery`: Redirect to random gallery
 * `/random/file`: Redirect to random file
 * `/random/page`: Redirect to random page within the currently viewed page set
@@ -76,6 +79,9 @@ In case somebody wants to develop a different UI.
 * `/api/search/galleries`: Search galleries
 * `/api/search/files`: Search files
 * `/api/search/tags`: Search tags
+* `/api/user/{ripper}/{user}`: View user/uploader summary
+* `/api/user/{ripper}/{user}/galleries`: View user/uploader galleries
+* `/api/user/{ripper}/{user}/files`: View user/uploader files
 * `/api/random/gallery`: Redirect to random gallery
 * `/api/random/file`: Redirect to random file
 

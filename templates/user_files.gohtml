@@ -1,0 +1,19 @@
+{{ define "user_files.gohtml" }}
+{{$title := printf "User Files: %s - %s" .User .Host}}
+{{ template "base_start" (dict "title" $title) }}
+  <h1>User: {{.User}} - {{.Host}}</h1>
+  <div class="tabs">
+    <a class="tab" href="/user/{{.Host}}/{{.User}}">Summary</a>
+    <a class="tab" href="/user/{{.Host}}/{{.User}}/galleries">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab tab-selected" href="/user/{{.Host}}/{{.User}}/files">Files ({{.FilesTotal}})</a>
+  </div>
+  <h2>Files</h2>
+  {{- if .Files }}
+    {{template "frag_pager_files_user.gohtml" .}}
+    {{template "frag_file_tiles.gohtml" .}}
+    {{template "frag_pager_files_user.gohtml" .}}
+  {{- else }}
+    <p class="muted">No files to show.</p>
+  {{- end}}
+{{template "base_end" .}}
+{{end}}
