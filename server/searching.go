@@ -150,7 +150,9 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 			case SortUploaded:
 				orderBy = "ORDER BY a.created_ts DESC, a.album_id DESC"
 			}
-			rows, err = vars.Db.QueryContext(ctx, strings.Replace(`
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
+			//language=sqlite
+			rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT af5.ROWID
 				        FROM album_fts5 af5
@@ -204,7 +206,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				 --ORDER BY m.score
 				  /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`, "/*ORDER_BY*/", orderBy, 1), searchQuery, size, offset)
+			`), searchQuery, size, offset)
 
 		}
 		if err != nil {
@@ -391,7 +393,9 @@ func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offse
 			case SortUploaded:
 				orderBy = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC"
 			}
-			rows, err = vars.Db.QueryContext(ctx, strings.Replace(`
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
+			//language=sqlite
+			rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT rff5.ROWID
 				        FROM remote_file_fts5 rff5
@@ -423,7 +427,7 @@ func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offse
 				 --ORDER BY m.score
 				  /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`, "/*ORDER_BY*/", orderBy, 1), searchQuery, size, offset)
+			`), searchQuery, size, offset)
 		}
 
 		if err != nil {
