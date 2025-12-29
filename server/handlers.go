@@ -223,7 +223,6 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
-	_ = p
 }
 
 func getTotalAlbumCount(ctx context.Context) (int, error) {
