@@ -110,7 +110,7 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 
 .autoplay-error-notification {
     /*display: none;*/
-    position: absolute;
+    position: fixed;
     top: 1rem;
     left: 1rem;
     border: 1px solid #ccc;
