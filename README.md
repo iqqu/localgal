@@ -91,7 +91,7 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 
 ## Notes
 * If queries take abnormally long, click the "Optimize" button in the Server Control GUI, or run `localgal --optimize`. The command could take some minutes when optimization is needed on large databases, so do not run it while the database is being actively used.
-  * Alternatively, manually execute `PRAGMA optimize;` on the database
+  * Alternatively, manually execute `ANALYZE; PRAGMA optimize;` on the database
 
 ## Goals
 * Be simple
