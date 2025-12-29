@@ -9,10 +9,10 @@
             -
             <span class="chip">{{.FileCount}} item{{if ne .FileCount 1}}s{{end}}</span>
           </span>
-          {{if .Hidden}}<span class="hidden" title="This gallery is hidden">Hidden</span>{{end}}
-          {{if .Removed}}<span class="removed" title="This gallery is removed">Removed</span>{{end}}
+          {{if .Hidden}}<span class="hidden">Hidden</span>{{end}}
+          {{if .Removed}}<span class="removed">Removed</span>{{end}}
           {{if eq .FetchCount 0}}
-            <span class="unfetched" title="This gallery is not fetched">Unfetched</span>
+            <span class="unfetched">Unfetched</span>
           {{else}}
             <span class="chip">{{if eq .FetchCount 0}}Unfetched{{else}}Fetched {{.FetchCount}} times{{end}}</span>
           {{end}}

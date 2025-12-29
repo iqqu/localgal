@@ -65,9 +65,9 @@
               {{- end }}
               <h2 style="margin: 0.1rem 0">{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
             </a>
-            {{ if .Hidden }}<span class="hidden" title="This gallery is hidden" style="">Hidden</span>{{ end }}
-            {{- if .Removed }}<span class="removed" title="This gallery is removed" style="">Removed</span>{{ end }}
-            {{- if eq .FetchCount 0 }}<span class="unfetched" title="This gallery is not fetched" style="">Unfetched</span>{{ end }}
+            {{ if .Hidden }}<span class="hidden">Hidden</span>{{ end }}
+            {{- if .Removed }}<span class="removed">Removed</span>{{ end }}
+            {{- if eq .FetchCount 0 }}<span class="unfetched">Unfetched</span>{{ end }}
             {{ if .Description.Valid }}
               <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
             {{- end -}}

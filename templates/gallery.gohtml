@@ -3,8 +3,8 @@
 {{template "base_start" (dict "title" $title)}}
   <div style="display: grid; grid-template-columns: auto auto">
     <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}
-      {{- if .Album.Hidden }} <span class="muted hidden" title="This gallery is hidden">Hidden</span>{{ end }}
-      {{- if .Album.Removed }} <span class="muted removed" title="This gallery is removed">Removed</span>{{ end -}}
+      {{- if .Album.Hidden }} <span class="hidden">Hidden</span>{{ end }}
+      {{- if .Album.Removed }} <span class="removed">Removed</span>{{ end -}}
     </h1>
     <a href="#detail" style="align-self: end; justify-self: end;">[scroll to detail]</a>
   </div>
@@ -55,7 +55,7 @@
     </div>
     <div class="masonry">
       {{range .Files}}
-        <a class="card-link masonry-item" href="{{.HrefPage}}" title="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}">
+        <a class="card-link masonry-item" href="{{.HrefPage}}">
           <div class="card thumb">
             {{ if .MimeType.Valid }}
               {{ if hasPrefix .MimeType.String "video/" }}
@@ -71,7 +71,7 @@
             {{/*<div>*/}}
             {{/*  {{if .UploadedTs.Valid}}{{fmtDateMillis .UploadedTs.Value}}{{end}}*/}}
             {{/*</div>*/}}
-            <div class="muted" style="margin-top: 0.2rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span title="This file is hidden" style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
+            <div class="muted" style="margin-top: 0.2rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
           </div>
         </a>
       {{end}}
@@ -131,9 +131,9 @@
       </span>
     </h2>
     <div>
-      {{- if .Album.Hidden }} <span class="hidden" title="This gallery is hidden">Hidden</span>{{ end }}
-      {{- if .Album.Removed }} <span class="removed" title="This gallery is removed">Removed</span>{{ end }}
-      {{- if eq .Album.FetchCount 0 }} <span class="unfetched" title="This gallery is not fetched">Unfetched</span>{{ end -}}
+      {{- if .Album.Hidden }} <span class="hidden">Hidden</span>{{ end }}
+      {{- if .Album.Removed }} <span class="removed">Removed</span>{{ end }}
+      {{- if eq .Album.FetchCount 0 }} <span class="unfetched">Unfetched</span>{{ end -}}
     </div>
 
     {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
