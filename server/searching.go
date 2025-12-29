@@ -273,6 +273,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE rf.remote_file_id = ?
 				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 		}); err != nil {
 			return nil, err
