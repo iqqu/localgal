@@ -41,18 +41,20 @@ type GalleryPage struct {
 }
 
 type SearchPage struct {
-	Query       string  `json:"query"`
-	Albums      []Album `json:"albums"`
-	AlbumsTotal int     `json:"albumsTotal"`
-	Files       []File  `json:"files"`
-	FilesTotal  int     `json:"filesTotal"`
-	Tags        []Tag   `json:"tags"`
-	TagsTotal   int     `json:"tagsTotal"`
-	HasNext     bool    `json:"hasNext"`
-	HasPrev     bool    `json:"hasPrev"`
-	Page        int     `json:"page"`
-	PageSize    int     `json:"pageSize"`
-	Sort        string  `json:"sort,omitempty,omitzero"`
+	Query          string  `json:"query"`
+	AlbumIdMatches []Album `json:"albumIdMatches,omitempty"`
+	FileIdMatches  []File  `json:"fileIdMatches,omitempty"`
+	Albums         []Album `json:"albums"`
+	AlbumsTotal    int     `json:"albumsTotal"`
+	Files          []File  `json:"files"`
+	FilesTotal     int     `json:"filesTotal"`
+	Tags           []Tag   `json:"tags"`
+	TagsTotal      int     `json:"tagsTotal"`
+	HasNext        bool    `json:"hasNext"`
+	HasPrev        bool    `json:"hasPrev"`
+	Page           int     `json:"page"`
+	PageSize       int     `json:"pageSize"`
+	Sort           string  `json:"sort,omitempty,omitzero"`
 	//Perf      Perf   `json:"perf"`
 	*BasePage
 }

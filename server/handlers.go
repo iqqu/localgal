@@ -1507,6 +1507,174 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			return render(r.Context(), w, "search_noquery.gohtml", &model)
 		}
 
+		var albumIdMatches []types.Album
+		{ // Just a block for code folding
+			if err := withSQL(ctx, func() error {
+				rows, err := vars.Db.QueryContext(ctx, `
+					SELECT a.album_id
+					     , a.ripper_id
+					     , r.name AS ripper_name
+					     , r.host AS ripper_host
+					     , a.gid
+					     , a.uploader
+					     , a.title
+					     , a.description
+					     , a.created_ts
+					     , a.modified_ts
+					     , a.fetch_count
+					     , a.hidden
+					     , a.removed
+					     , a.local_rating
+					     , a.sum_rf_bytes
+					     , a.cnt_rf
+					     , a.last_fetch_ts
+					     , a.inserted_ts
+					     , (
+					    SELECT rf.remote_file_id
+					      FROM map_album_remote_file marf
+					      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+					     WHERE marf.album_id = a.album_id
+					       AND rf.fetched = 1
+					       AND rf.ignored = 0
+					     ORDER BY marf.remote_file_id DESC
+					     LIMIT 1
+					       ) AS thumb_remote_file_id
+					  FROM album a
+					  JOIN ripper r ON r.ripper_id = a.ripper_id
+					 WHERE a.gid = ?
+					 ORDER BY a.album_id DESC
+				`, searchQuery)
+				if err != nil {
+					return err
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var a types.Album
+					var f types.File
+					var thumbFileId sql.NullInt64
+					if err := rows.Scan(
+						&a.AlbumId,
+						&a.RipperId,
+						&a.RipperName,
+						&a.RipperHost,
+						&a.Gid,
+						&a.Uploader,
+						&a.Title,
+						&a.Description,
+						&a.CreatedTs,
+						&a.ModifiedTs,
+						&a.FetchCount,
+						&a.Hidden,
+						&a.Removed,
+						&a.LocalRating,
+						&a.Bytes,
+						&a.FileCount,
+						&a.LastFetchTs,
+						&a.InsertedTs,
+						&thumbFileId,
+					); err != nil {
+						return err
+					}
+					// If an album has no fetched files, thumb_remote_file_id will be null
+					if thumbFileId.Valid {
+						f.FileId = thumbFileId.Int64
+						a.Thumb = f
+						albumIdMatches = append(albumIdMatches, a)
+					}
+				}
+				return rows.Err()
+			}); err != nil {
+				return err
+			}
+			for i := range albumIdMatches {
+				thumb := albumIdMatches[i].Thumb
+				if err := withSQL(ctx, func() error {
+					return vars.Db.QueryRowContext(ctx, `
+					SELECT rf.filename
+					     , mt.name AS mime_type
+					  FROM remote_file rf
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.remote_file_id = ?
+					   AND rf.fetched = 1
+					   AND rf.ignored = 0
+				`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
+				}); err != nil {
+					return err
+				}
+				albumIdMatches[i].Thumb = thumb
+			}
+			// Populate href
+			for i := range albumIdMatches {
+				albumIdMatches[i].HrefPage = fmt.Sprintf("/gallery/%s/%s", albumIdMatches[i].RipperHost, albumIdMatches[i].Gid)
+				albumIdMatches[i].Thumb.HrefPage = fmt.Sprintf("/media/%s/%s/%d", albumIdMatches[i].RipperHost, albumIdMatches[i].Gid, albumIdMatches[i].Thumb.FileId)
+				if albumIdMatches[i].Thumb.Filename.Valid {
+					albumIdMatches[i].Thumb.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", albumIdMatches[i].RipperHost, albumIdMatches[i].Gid, albumIdMatches[i].Thumb.Filename.String)
+				}
+			}
+		}
+
+		var fileIdMatches []types.File
+		{
+			if err := withSQL(ctx, func() error {
+				rows, err := vars.Db.QueryContext(ctx, `
+					SELECT rf.remote_file_id
+					     , r.name AS ripper_name
+					     , r.host AS ripper_host
+					     , rf.urlid
+					     , rf.filename
+					     , mt.name AS mime_type
+					     , rf.title
+					     , rf.description
+					     , rf.uploaded_ts
+					     , rf.uploader
+					     , rf.hidden
+					     , rf.removed
+					     , rf.bytes
+					     , rf.local_rating
+					     , rf.inserted_ts
+					  FROM remote_file rf
+					  JOIN ripper r ON r.ripper_id = rf.ripper_id
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+					 WHERE rf.urlid = ?
+					   AND rf.fetched = 1
+					   AND rf.ignored = 0
+					 ORDER BY rf.remote_file_id DESC
+				`, searchQuery)
+				if err != nil {
+					return err
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var f types.File
+					if err := rows.Scan(
+						&f.FileId,
+						&f.RipperName,
+						&f.RipperHost,
+						&f.Urlid,
+						&f.Filename,
+						&f.MimeType,
+						&f.Title,
+						&f.Description,
+						&f.UploadedTs,
+						&f.Uploader,
+						&f.Hidden,
+						&f.Removed,
+						&f.Bytes,
+						&f.LocalRating,
+						&f.InsertedTs,
+					); err != nil {
+						return err
+					}
+					f.HrefPage = fmt.Sprintf("/file/%s/%d", f.RipperHost, f.FileId)
+					f.HrefMedia = fmt.Sprintf("/media/%s/%s", f.RipperHost, f.Filename.String)
+					fileIdMatches = append(fileIdMatches, f)
+				}
+				return rows.Err()
+			}); err != nil {
+				return err
+			}
+		}
+
 		// 1: Search albums
 		var albumsTotal int
 		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
@@ -1544,15 +1712,17 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		model := types.SearchPage{
-			Query:       searchQuery,
-			Albums:      albums,
-			AlbumsTotal: albumsTotal,
-			Files:       files,
-			FilesTotal:  filesTotal,
-			Tags:        tags,
-			TagsTotal:   tagsTotal,
-			Sort:        SortRank,
-			BasePage:    &types.BasePage{Perf: perf},
+			Query:          searchQuery,
+			AlbumIdMatches: albumIdMatches,
+			FileIdMatches:  fileIdMatches,
+			Albums:         albums,
+			AlbumsTotal:    albumsTotal,
+			Files:          files,
+			FilesTotal:     filesTotal,
+			Tags:           tags,
+			TagsTotal:      tagsTotal,
+			Sort:           SortRank,
+			BasePage:       &types.BasePage{Perf: perf},
 		}
 		return render(ctx, w, "search.gohtml", &model)
 	})
