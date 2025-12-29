@@ -39,6 +39,13 @@
                     return;
                 }
             }
+            if (event.key === 'G') {
+                let backToGalleryEl = document.querySelector('a#back-to-gallery');
+                if (backToGalleryEl) {
+                    backToGalleryEl.click();
+                    return;
+                }
+            }
             return;
         }
 

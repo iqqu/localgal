@@ -41,6 +41,7 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * l or Arrow Right: next item
 * Shift+j: Toggle autojump
 * Shift+p: Toggle autoplay
+* Shift+g: Back to gallery
 * Ctrl+/: Focus search box
 
 ## Pages
