@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const DefaultPageSize = 60
+const DefaultPageSize = 30
 
 func atoiDefault(s string, def int) int {
 	n, err := strconv.Atoi(s)
