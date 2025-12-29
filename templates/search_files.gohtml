@@ -72,7 +72,10 @@
             {{ else }}
               <p>[no thumbnail]</p>
             {{ end }}
-            <div class="muted" style="margin-top: 0.5rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
+            <div class="thumb-text muted">
+              {{- if .Title.Valid }}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{ end -}}
+              {{- if .Hidden }} <span class="hidden">Hidden</span>{{ end -}}
+            </div>
           </div>
         </a>
       {{end}}

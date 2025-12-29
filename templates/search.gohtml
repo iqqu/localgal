@@ -32,21 +32,23 @@
                 {{- end }}
                 <h2 style="margin: 0.1rem 0">{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
               </a>
-              {{ if .Hidden }}<span class="hidden">Hidden</span>{{ end }}
-              {{- if .Removed }}<span class="removed">Removed</span>{{ end }}
-              {{- if eq .FetchCount 0 }}<span class="unfetched">Unfetched</span>{{ end }}
-              {{ if .Description.Valid }}
-                <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
-              {{- end -}}
-              <div class="muted">
-                {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}
-                {{- if .CreatedTs.Valid }} | <span title="Created">{{fmtDateMillis .CreatedTs.Int64}}</span>{{ end }}
-                | <span title="Host">{{.RipperHost}}</span>
-                {{- if .Uploader.Valid }} | <span title="Uploader">{{.Uploader.String}}</span>{{ end }}
-  {{/*              {{- if .ModifiedTs.Valid }} | Updated {{fmtDateMillis .ModifiedTs.Int64}}{{ end }}*/}}
-  {{/*              {{- if .LastFetchTs.Valid }} | Last Fetched {{fmtDateMillis .LastFetchTs.Int64}}{{ end }}*/}}
-  {{/*              | First Fetched {{fmtDateMillis .InsertedTs}}*/}}
-  {{/*              | {{.Gid}}*/}}
+              <div class="thumb-text">
+                {{- if .Hidden }}<span class="hidden">Hidden</span>{{ end }}
+                {{- if .Removed }}<span class="removed">Removed</span>{{ end }}
+                {{- if eq .FetchCount 0 }}<span class="unfetched">Unfetched</span>{{ end }}
+                {{- if .Description.Valid }}
+                  <div class="muted fade-bottom" style="max-height: 3.7em;">{{.Description.String}}</div>
+                {{- end -}}
+                <div class="muted">
+                  {{.FileCount}} item{{if ne .FileCount 1}}s{{end}}
+                  {{- if .CreatedTs.Valid }} | <span title="Created">{{fmtDateMillis .CreatedTs.Int64}}</span>{{ end }}
+                  | <span title="Host">{{.RipperHost}}</span>
+                  {{- if .Uploader.Valid }} | <span title="Uploader">{{.Uploader.String}}</span>{{ end }}
+                  {{/*              {{- if .ModifiedTs.Valid }} | Updated {{fmtDateMillis .ModifiedTs.Int64}}{{ end }}*/}}
+                  {{/*              {{- if .LastFetchTs.Valid }} | Last Fetched {{fmtDateMillis .LastFetchTs.Int64}}{{ end }}*/}}
+                  {{/*              | First Fetched {{fmtDateMillis .InsertedTs}}*/}}
+                  {{/*              | {{.Gid}}*/}}
+              </div>
               </div>
             </div>
           </div>
@@ -77,7 +79,10 @@
               {{ else }}
                 <p>[no thumbnail]</p>
               {{ end }}
-              <div class="muted" style="margin-top: 0.5rem;">{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}{{if .Hidden}} <span style="font-size:0.75em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px;">Hidden</span>{{end}}</div>
+              <div class="thumb-text muted">
+                {{- if .Title.Valid }}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{ end -}}
+                {{- if .Hidden }} <span class="hidden">Hidden</span>{{ end -}}
+              </div>
             </div>
           </a>
         {{end}}
