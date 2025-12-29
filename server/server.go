@@ -148,7 +148,7 @@ func StartServer(cfg Config) (*Controller, error) {
 		"appVersion":   func() string { return vars.BuildInfo.Version },
 		"appCommit":    func() string { return vars.BuildInfo.Commit },
 		"appBuildDate": func() string { return vars.BuildInfo.BuildDate },
-	}).ParseFS(vars.TemplatesFS, "templates/*.gohtml"))
+	}).ParseFS(vars.TemplatesFS, "templates/*.gohtml", "templates/fragments/*.gohtml"))
 
 	vars.MediaRoot = cfg.MediaRoot
 

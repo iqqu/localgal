@@ -7,25 +7,7 @@
         <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
           {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card muted" style="text-align:center;">Start</div></div>{{end}}
           {{range .Prev}}
-            <a class="card-link" href="{{.HrefPage}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
-              <div class="card thumb">
-                {{ if .MimeType.Valid }}
-                  {{ if hasPrefix .MimeType.String "video/" }}
-                    <div class="video-container">
-                      <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
-                    </div>
-                  {{ else }}{{/* assume image */}}
-                    <img src="{{.HrefMedia}}" fetchpriority="low" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
-                  {{ end }}
-                {{ else }}
-                  <p>[no thumbnail]</p>
-                {{ end }}
-              </div>
-              {{/*<div>*/}}
-              {{/*  {{if .Bytes.Valid}}{{bytesToHumanReadable .Bytes.Value}}{{end}}*/}}
-              {{/*  {{if .UploadedTs.Valid}}{{fmtDateMillis .UploadedTs.Value}}{{end}}*/}}
-              {{/*</div>*/}}
-            </a>
+            {{template "frag_rail_thumbnail.gohtml" (dict "item" . "title" "Previous")}}
           {{end}}
         </div>
       </div>
@@ -38,25 +20,7 @@
       <div style="flex:1; overflow:hidden;">
         <div class="pv-next" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-start;">
           {{range .Next}}
-            <a class="card-link" href="{{.HrefPage}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
-              <div class="card thumb">
-                {{ if .MimeType.Valid }}
-                  {{ if hasPrefix .MimeType.String "video/" }}
-                    <div class="video-container">
-                      <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
-                    </div>
-                  {{ else }}{{/* assume image */}}
-                    <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
-                  {{ end }}
-                {{ else }}
-                  <p>[no thumbnail]</p>
-                {{ end }}
-              </div>
-              {{/*<div>*/}}
-              {{/*  {{if .Bytes.Valid}}{{bytesToHumanReadable .Bytes.Value}}{{end}}*/}}
-              {{/*  {{if .UploadedTs.Valid}}{{fmtDateMillis .UploadedTs.Value}}{{end}}*/}}
-              {{/*</div>*/}}
-            </a>
+            {{template "frag_rail_thumbnail.gohtml" (dict "item" . "title" "Next")}}
           {{end}}
           {{if lt (len .Next) 3}}<div style="flex-grow:1;"><div class="card muted" style="text-align:center;">End</div></div>{{end}}
         </div>
