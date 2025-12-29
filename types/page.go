@@ -114,6 +114,15 @@ type TagDetailPage struct {
 	*BasePage
 }
 
+type StatsPage struct {
+	DbBytes       int64  `json:"dbBytes"`
+	SchemaVersion string `json:"schemaVersion"`
+	GalleryCount  int    `json:"galleryCount"`
+	FileCount     int    `json:"fileCount"`
+	TagCount      int    `json:"tagCount"`
+	*BasePage
+}
+
 type ErrorPage struct {
 	StatusText string `json:"statusText"`
 	Message    string `json:"message"`

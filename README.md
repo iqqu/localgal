@@ -63,6 +63,7 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * `/random/page`: Redirect to random page within the currently viewed page set
 * `/media/`: Direct file links
 * `/about`: About page
+* `/stats`: Statistics page
 * `/healthz`
 
 ### JSON API
@@ -84,6 +85,7 @@ In case somebody wants to develop a different UI.
 * `/api/user/{ripper}/{user}/files`: View user/uploader files
 * `/api/random/gallery`: Redirect to random gallery
 * `/api/random/file`: Redirect to random file
+* `/api/stats`: Statistics
 
 Note: there is no `/api/random/page` for now, because that endpoint doesn't work nicely for JSON APIs.
 
@@ -112,10 +114,6 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Improve keyboard accessibility (tabindex, etc)
 * Add search pages:
   * Search galleries containing files that match a query
-* Add statistics page:
-  * Summary of gallery, file, tag counts
-  * List popular files added to many galleries
-  * Schema info
 * Add uploader page:
   * Uploaded galleries and files, similar to search page
   * No extra index or separate table should be needed

@@ -1,0 +1,38 @@
+{{define "stats.gohtml"}}
+{{$title := "Statistics" }}
+{{template "base_start" (dict "title" $title)}}
+  <h1>Statistics</h1>
+  <div class="card">
+    <table>
+      <thead>
+      <tr>
+        <td>Property</td>
+        <td>Value</td>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>Database Size</td>
+        <td>{{bytesToHumanReadable .DbBytes}}</td>
+      </tr>
+      <tr>
+        <td>Schema Version</td>
+        <td>{{.SchemaVersion}}</td>
+      </tr>
+      <tr>
+        <td>Gallery Count</td>
+        <td>{{.GalleryCount}}</td>
+      </tr>
+      <tr>
+        <td>File Count</td>
+        <td>{{.FileCount}}</td>
+      </tr>
+      <tr>
+        <td>Tag Count</td>
+        <td>{{.TagCount}}</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+{{template "base_end" .}}
+{{end}}

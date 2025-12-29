@@ -38,6 +38,64 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleStats(w http.ResponseWriter, r *http.Request) {
+	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		var dbBytes int64
+		var schemaVersion string
+		var albumCount int
+		var fileCount int
+		var tagCount int
+
+		err := withSQL(ctx, func() error {
+			return vars.Db.QueryRowContext(ctx, `
+				SELECT (
+				           SELECT page_size
+				             FROM pragma_page_size()
+				       ) * (
+				           SELECT page_count
+				             FROM pragma_page_count()
+				           ) AS main_db_bytes
+				     , COALESCE((
+				                    SELECT version
+				                      FROM flyway_schema_history
+				                     WHERE success = 1
+				                     ORDER BY installed_rank DESC
+				                     LIMIT 1
+				                ), 'unknown') AS schema_version
+				     , (
+				    SELECT COUNT(*)
+				      FROM album
+				       ) AS album_count
+				     , (
+				    SELECT COUNT(*)
+				      FROM remote_file
+				       ) AS file_count
+				     , (
+				    SELECT COUNT(*)
+				      FROM tag
+				       ) AS tag_count
+			`).Scan(&dbBytes, &schemaVersion, &albumCount, &fileCount, &tagCount)
+		})
+		if err != nil {
+			return err
+		}
+
+		model := types.StatsPage{
+			DbBytes:       dbBytes,
+			SchemaVersion: schemaVersion,
+			GalleryCount:  albumCount,
+			FileCount:     fileCount,
+			TagCount:      tagCount,
+			BasePage:      &types.BasePage{Perf: perf},
+		}
+		return render(ctx, w, "stats.gohtml", &model)
+	})
+	if err != nil {
+		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+}
+
 func handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if !(r.URL.Path == "/" || r.URL.Path == "/api/galleries") {
 		renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)

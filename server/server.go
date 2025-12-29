@@ -233,6 +233,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("/random/gallery", handleRandomGallery)
 	mux.HandleFunc("/random/file", handleRandomFile)
 	mux.HandleFunc("/random/page", handleRandomPage)
+	mux.HandleFunc("/stats", handleStats)
 
 	mux.HandleFunc("GET /api/", asApi(handle404))
 	mux.HandleFunc("GET /api/galleries", asApi(handleBrowse))
@@ -251,6 +252,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}/files", asApi(handleUserFiles))
 	mux.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
 	mux.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
+	mux.HandleFunc("GET /api/stats", asApi(handleStats))
 
 	mux.HandleFunc("/media/", handleMedia)
 
