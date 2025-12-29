@@ -37,7 +37,7 @@ p { margin: 0.35rem 0; text-wrap: balance; }
 main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0/* 1rem*/; }
 .grid { display: grid; gap: var(--grid-gap); grid-template-columns: repeat(3, 1fr); }
 /* Masonry layout for variable-height thumbnails on gallery page */
-.masonry { column-gap: var(--base-padding); column-count: 3; }
+.masonry { column-gap: var(--grid-gap); column-count: 3; }
 @media (min-width: 730px) { .masonry { column-count: 4; } .grid { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 920px) { .masonry { column-count: 5; } .grid { grid-template-columns: repeat(5, 1fr); } }
 @media (min-width: 1100px) { .masonry { column-count: 6; } .grid { grid-template-columns: repeat(6, 1fr); } }
