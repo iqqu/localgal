@@ -293,7 +293,7 @@ func newMux() http.Handler {
 	mux.HandleFunc("/media/", handleMedia)
 
 	// For development:
-	//mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/media/data/code/golocalgal_public/static"))))
+	//mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.HandleFunc("/static/", handleStatic)
 
 	mux.HandleFunc("/about", handleAbout)
