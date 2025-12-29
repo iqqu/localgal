@@ -166,9 +166,13 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 .stack-cell {position: relative;display: inline-grid;}
 .stack-cell > * {grid-area: 1 / 1;position: relative;}
 
-.sticky-prev-next-container {z-index: 1;position: sticky; top: 0;width: 40px; display: block;}
+.sticky-prev-next-container {z-index: 2;position: sticky; top: 0;width: 39px; display: block;}
 .sticky-prev, .sticky-next {visibility: hidden;}
 .sticky-prev-next-container:hover .sticky-prev, .sticky-prev-next-container:hover .sticky-next {visibility: visible;}
+
+.sticky-back-to-top-container {z-index: 1;position: fixed; bottom: 0; right: 0; width: 52px; display: block;}
+.sticky-back-to-top {visibility: hidden;}
+.sticky-back-to-top-container:hover .sticky-back-to-top {visibility: visible;}
 
 .stack-cell .cell-media {min-width: 180px;} /* ensure there is space for next/prev buttons */
 .stack-cell:has(.video-container) .cell-nav {
