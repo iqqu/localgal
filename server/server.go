@@ -13,6 +13,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -461,4 +463,38 @@ func httpRedirect(ctx context.Context, w http.ResponseWriter, r *http.Request, p
 	w.Header().Set("X-App-Sql-Time-Ms", sqlTimeStr)
 	w.Header().Set("X-App-Sql-Count", sqlCountStr)
 	http.Redirect(w, r, url, code)
+}
+
+// sendFile sends a static file to the client. true = sent, false = not sent
+func sendFile(file string, w http.ResponseWriter, r *http.Request) bool {
+	st, err := os.Stat(file)
+	if err != nil || !st.Mode().IsRegular() {
+		return false
+	}
+	// Compute ETag from size and modtime
+	etag := fmt.Sprintf("\"%x-%x\"", st.ModTime().Unix(), st.Size())
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Last-Modified", st.ModTime().UTC().Format(http.TimeFormat))
+	// Set sensible cache headers for media files
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	if match := r.Header.Get("If-None-Match"); match != "" && strings.Contains(match, etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	if ims := r.Header.Get("If-Modified-Since"); ims != "" {
+		if t, err := time.Parse(http.TimeFormat, ims); err == nil {
+			if !st.ModTime().After(t) {
+				w.WriteHeader(http.StatusNotModified)
+				return true
+			}
+		}
+	}
+	// Use ServeContent to respect range requests
+	f, err := os.Open(file)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	http.ServeContent(w, r, filepath.Base(file), st.ModTime(), f)
+	return true
 }

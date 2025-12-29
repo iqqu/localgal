@@ -10,12 +10,10 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/mattn/go-sqlite3"
 )
@@ -2074,6 +2072,11 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		//model := map[string]any{"Perf": *perf}
 		//return render(ctx, w, "about.gohtml", &model)
 
+		var ripperHost string
+		var name string
+		var gid string
+		var mangledName string
+
 		// path after /media/
 		rest := strings.TrimPrefix(r.URL.Path, "/media/")
 		rest = strings.TrimLeft(rest, "/")
@@ -2081,9 +2084,9 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		var tryFiles []string
 		// /media/{ripper_host}/{gid}/{filename}
 		if len(parts) >= 3 {
-			ripperHost := parts[0]
-			gid := parts[1]
-			name := parts[2]
+			ripperHost = parts[0]
+			gid = parts[1]
+			name = parts[2]
 
 			// prefer direct path under mediaRoot/ripperHost_gid/
 			preferredPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+gid, name)
@@ -2091,36 +2094,10 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 
 			// first fallback: ripme-mangled path
 			mangledGid := filesystemSafe(gid)
-			mangledName := sanitizedFilename(name)
+			mangledName = sanitizedFilename(name)
 			if mangledGid != gid || mangledName != name {
 				mangledPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+mangledGid, mangledName)
 				tryFiles = append(tryFiles, mangledPath)
-			}
-
-			// second fallback: oldest gid
-			var oldestGid string
-			err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
-					SELECT a.gid
-					  FROM remote_file rf
-					  JOIN ripper r ON r.ripper_id = rf.ripper_id
-					  JOIN map_album_remote_file marf ON marf.remote_file_id = rf.remote_file_id
-					  JOIN album a ON a.album_id = marf.album_id
-					 WHERE r.host = ?
-					   AND rf.filename IN (?, ?)
-					   AND a.fetch_count > 0
-					 ORDER BY a.inserted_ts
-					 LIMIT 1
-				`, ripperHost, name, mangledName).Scan(&oldestGid)
-			})
-			if err == nil && oldestGid != gid && oldestGid != mangledGid {
-				preferredPathOldestGid := cleanJoin(vars.MediaRoot, ripperHost+"_"+oldestGid, name)
-				tryFiles = append(tryFiles, preferredPathOldestGid)
-				mangledOldestGid := filesystemSafe(oldestGid)
-				if mangledOldestGid != oldestGid || mangledName != name {
-					mangledPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+mangledOldestGid, mangledName)
-					tryFiles = append(tryFiles, mangledPath)
-				}
 			}
 
 			// fallback to knownFilePaths by name
@@ -2130,19 +2107,43 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		} else if len(parts) >= 2 { // fallback: /media/{ripper_host}/{filename}
-			ripperHost := parts[0]
-			name := parts[1]
+			ripperHost = parts[0]
+			name = parts[1]
 			// prefer direct path under mediaRoot
 			tryFiles = append(tryFiles, cleanJoin(vars.MediaRoot, ripperHost, name))
 
 			// first fallback: ripme-mangled path
-			mangledName := sanitizedFilename(name)
+			mangledName = sanitizedFilename(name)
 			if mangledName != name {
 				mangledPath := cleanJoin(vars.MediaRoot, ripperHost, mangledName)
 				tryFiles = append(tryFiles, mangledPath)
 			}
 
-			// second fallback: oldest gid
+			// fallback to knownFilePaths by name
+			if list, ok := vars.KnownFilePaths[name]; ok {
+				for _, p := range list {
+					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
+				}
+			}
+		} else if len(parts) == 1 && parts[0] != "" { // last resort: find by filename only
+			name = parts[0]
+			if list, ok := vars.KnownFilePaths[name]; ok {
+				for _, p := range list {
+					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
+				}
+			}
+		}
+
+		for _, fp := range tryFiles {
+			sent := sendFile(fp, w, r)
+			if sent {
+				return nil
+			}
+		}
+		tryFiles = nil
+
+		// final fallback: check database for likely path
+		if len(ripperHost) > 0 && len(name) > 0 && len(mangledName) > 0 {
 			var oldestGid string
 			err := withSQL(ctx, func() error {
 				return vars.Db.QueryRowContext(ctx, `
@@ -2158,7 +2159,7 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 					 LIMIT 1
 				`, ripperHost, name, mangledName).Scan(&oldestGid)
 			})
-			if err == nil {
+			if err == nil && oldestGid != gid {
 				preferredPathOldestGid := cleanJoin(vars.MediaRoot, ripperHost+"_"+oldestGid, name)
 				tryFiles = append(tryFiles, preferredPathOldestGid)
 				mangledOldestGid := filesystemSafe(oldestGid)
@@ -2167,52 +2168,16 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 					tryFiles = append(tryFiles, mangledPath)
 				}
 			}
-
-			// fallback to knownFilePaths by name
-			if list, ok := vars.KnownFilePaths[name]; ok {
-				for _, p := range list {
-					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
-				}
-			}
-		} else if len(parts) == 1 && parts[0] != "" { // last resort: find by filename only
-			name := parts[0]
-			if list, ok := vars.KnownFilePaths[name]; ok {
-				for _, p := range list {
-					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
-				}
-			}
 		}
 
 		for _, fp := range tryFiles {
-			if st, err := os.Stat(fp); err == nil && st.Mode().IsRegular() {
-				// Compute ETag from size and modtime
-				etag := fmt.Sprintf("\"%x-%x\"", st.ModTime().Unix(), st.Size())
-				w.Header().Set("ETag", etag)
-				w.Header().Set("Last-Modified", st.ModTime().UTC().Format(http.TimeFormat))
-				// Set sensible cache headers for media files
-				w.Header().Set("Cache-Control", "public, max-age=86400")
-				if match := r.Header.Get("If-None-Match"); match != "" && strings.Contains(match, etag) {
-					w.WriteHeader(http.StatusNotModified)
-					return nil
-				}
-				if ims := r.Header.Get("If-Modified-Since"); ims != "" {
-					if t, err := time.Parse(http.TimeFormat, ims); err == nil {
-						if !st.ModTime().After(t) {
-							w.WriteHeader(http.StatusNotModified)
-							return nil
-						}
-					}
-				}
-				// Use ServeContent to respect range requests
-				f, err := os.Open(fp)
-				if err != nil {
-					break
-				}
-				defer f.Close()
-				http.ServeContent(w, r, filepath.Base(fp), st.ModTime(), f)
+			sent := sendFile(fp, w, r)
+			if sent {
 				return nil
 			}
 		}
+		tryFiles = nil
+
 		return fmt.Errorf("not found")
 	})
 	if err != nil {
