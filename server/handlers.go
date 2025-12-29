@@ -116,11 +116,11 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			var orderByAgg string
 			switch sort {
 			case SortFetched:
-				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
-				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
+				orderByPage = "ORDER BY (a.last_fetch_ts IS NULL), a.last_fetch_ts DESC, a.inserted_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY (p.last_fetch_ts IS NULL), p.last_fetch_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			case SortUploaded:
-				orderByPage = "ORDER BY a.created_ts DESC, a.inserted_ts DESC, a.album_id DESC"
-				orderByAgg = "ORDER BY p.created_ts DESC, p.inserted_ts DESC, p.album_id DESC"
+				orderByPage = "ORDER BY (a.created_ts IS NULL), (a.modified_ts IS NULL), a.created_ts DESC, a.modified_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY (p.created_ts IS NULL), (p.modified_ts IS NULL), p.created_ts DESC, p.modified_ts DESC, p.album_id DESC"
 			case SortBytes:
 				orderByPage = "ORDER BY a.sum_rf_bytes DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY p.sum_rf_bytes DESC, p.album_id DESC"
@@ -128,8 +128,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByPage = "ORDER BY a.cnt_rf DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY p.cnt_rf DESC, p.album_id DESC"
 			default:
-				orderByPage = "ORDER BY a.last_fetch_ts DESC, a.album_id DESC"
-				orderByAgg = "ORDER BY p.last_fetch_ts DESC, p.album_id DESC"
+				orderByPage = "ORDER BY (a.last_fetch_ts IS NULL), a.last_fetch_ts DESC, a.inserted_ts DESC, a.album_id DESC"
+				orderByAgg = "ORDER BY (p.last_fetch_ts IS NULL), p.last_fetch_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg)
 			//language=sqlite
@@ -152,6 +152,14 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           , a.last_fetch_ts
 				           , a.inserted_ts
 				        FROM album a
+				       WHERE EXISTS(
+				           SELECT 1
+				             FROM map_album_remote_file marf
+				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				            WHERE marf.album_id = a.album_id
+				              AND rf.fetched = 1
+				              AND rf.ignored = 0
+				                   )
 				-- ORDER BY a.album_id
 				/*ORDER_BY_PAGE*/
 				       LIMIT ? OFFSET ?
@@ -392,9 +400,9 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			case SortFetched:
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			case SortBytes:
-				orderBy = "ORDER BY rf.bytes DESC, rf.remote_file_id DESC"
+				orderBy = "ORDER BY (rf.bytes IS NULL), rf.bytes DESC, rf.remote_file_id DESC"
 			case SortUploaded:
-				orderBy = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC"
+				orderBy = "ORDER BY (rf.uploaded_ts IS NULL), rf.uploaded_ts DESC, rf.remote_file_id DESC"
 			default:
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
@@ -674,9 +682,9 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				               AND (rf.uploaded_ts IS NOT NULL
 				                   OR rf.remote_file_id > t.remote_file_id))
 				           )
-				       ORDER BY rf.uploaded_ts ASC, rf.remote_file_id ASC
+				       ORDER BY (rf.uploaded_ts IS NULL) DESC, rf.uploaded_ts ASC, rf.remote_file_id ASC
 				`
-				prevOrderKey2 = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC"
+				prevOrderKey2 = "ORDER BY (rf.uploaded_ts IS NULL) ASC, rf.uploaded_ts DESC, rf.remote_file_id DESC"
 			case SortBytes:
 				prevOrderKey1 = `
 				         AND (
@@ -689,9 +697,9 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				               AND (rf.bytes IS NOT NULL
 				                   OR rf.remote_file_id > t.remote_file_id))
 				           )
-				       ORDER BY rf.bytes ASC, rf.remote_file_id ASC
+				       ORDER BY (rf.bytes IS NULL) DESC, rf.bytes ASC, rf.remote_file_id ASC
 				`
-				prevOrderKey2 = "ORDER BY rf.bytes DESC, rf.remote_file_id DESC"
+				prevOrderKey2 = "ORDER BY (rf.bytes IS NULL) ASC, rf.bytes DESC, rf.remote_file_id DESC"
 			default:
 				prevOrderKey1 = `
 				         AND (
@@ -805,7 +813,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				     (t.uploaded_ts IS NULL AND rf.uploaded_ts IS NULL
 				         AND rf.remote_file_id < t.remote_file_id)
 				     )
-				 ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC
+				 ORDER BY (rf.uploaded_ts IS NULL) ASC, rf.uploaded_ts DESC, rf.remote_file_id DESC
 				`
 			case SortBytes:
 				nextOrderKey = `
@@ -819,7 +827,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				     (t.bytes IS NULL AND rf.bytes IS NULL
 				         AND rf.remote_file_id < t.remote_file_id)
 				     )
-				 ORDER BY rf.bytes DESC, rf.remote_file_id DESC
+				 ORDER BY (rf.bytes IS NULL) ASC, rf.bytes DESC, rf.remote_file_id DESC
 				`
 			default:
 				nextOrderKey = `
