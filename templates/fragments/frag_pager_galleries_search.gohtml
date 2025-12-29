@@ -1,6 +1,6 @@
 {{define "frag_pager_galleries_search.gohtml"}}
   <div class="pager">
-    <div class="pager-total">{{.AlbumsTotal}} items</div>
+    <div class="pager-total">{{.AlbumsTotal}} item{{if ne .AlbumsTotal 1}}s{{end}}</div>
     <div class="pager-controls">
       <div>
         {{- if .HasPrev }}

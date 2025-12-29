@@ -1,6 +1,6 @@
 {{define "frag_pager_files.gohtml"}}
   <div class="pager">
-    <div class="pager-total">{{.Total}} items</div>
+    <div class="pager-total">{{.Total}} item{{if ne .Total 1}}s{{end}}</div>
     <div class="pager-controls">
       <div>
         {{if .HasPrev}}
