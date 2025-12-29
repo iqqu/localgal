@@ -45,7 +45,7 @@ main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0/*
 .masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; -moz-column-break-inside: avoid; display: block; margin: 0 0 0.6rem 0; }
 /* Override square thumbs within masonry to allow natural heights */
 .masonry .thumb img, .masonry .thumb video { aspect-ratio: auto; height: auto; object-fit: contain; }
-.card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: var(--card-padding); word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.card { background: #fff; border: var(--card-border-width) solid #e5e5e5; border-radius: 8px; padding: var(--card-padding); word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .muted { color: #666; font-size: 0.9rem; }
 a.card-link { text-decoration: none; color: inherit; }
 .fade-bottom {position: relative;overflow: hidden;}
@@ -163,7 +163,7 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 }
 /* main content */
 #main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
-    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2)));
+    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)));
 }
 
 .stack-cell {position: relative;display: inline-grid;}
