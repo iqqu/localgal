@@ -2580,7 +2580,8 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		return fmt.Errorf("not found")
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusNotFound, err)
+		_ = p // TODO add performance response headers...
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
