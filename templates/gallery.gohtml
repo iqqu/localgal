@@ -20,7 +20,7 @@
           {{end}}
         </div>
         <div>Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
-        <form method="get" action="{{.Album.HrefPage}}" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <form method="get" action="{{.Album.HrefPage}}">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
           </label>
@@ -36,7 +36,7 @@
           {{end}}
         </div>
       </div>
-      <div>
+      <div class="pager-sort">
         <form method="get" action="{{.Album.HrefPage}}">
           <input type="hidden" name="page" value="1">
           <input type="hidden" name="size" value="{{.PageSize}}">
@@ -87,7 +87,7 @@
           {{end}}
         </div>
         <div>Page {{.Page}} / {{calcPages .Total .PageSize}}</div>
-        <form method="get" action="{{.Album.HrefPage}}" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <form method="get" action="{{.Album.HrefPage}}">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .Total .PageSize}}" value="{{.Page}}">
           </label>
@@ -103,7 +103,7 @@
           {{end}}
         </div>
       </div>
-      <div>
+      <div class="pager-sort">
         <form method="get" action="{{.Album.HrefPage}}">
           <input type="hidden" name="page" value="1">
           <input type="hidden" name="size" value="{{.PageSize}}">

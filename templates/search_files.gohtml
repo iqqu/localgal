@@ -21,7 +21,7 @@
           {{- end }}
         </div>
         <div>Page {{.Page}} / {{calcPages .FilesTotal .PageSize}}</div>
-        <form method="get" action="/search/files" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <form method="get" action="/search/files">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .FilesTotal .PageSize}}" value="{{.Page}}">
           </label>
@@ -38,7 +38,7 @@
           {{- end }}
         </div>
       </div>
-      <div>
+      <div class="pager-sort">
         <form method="get" action="/search/files">
           <input type="hidden" name="page" value="1">
           <input type="hidden" name="size" value="{{.PageSize}}">
@@ -88,7 +88,7 @@
           {{- end }}
         </div>
         <div>Page {{.Page}} / {{calcPages .FilesTotal .PageSize}}</div>
-        <form method="get" action="/search/files" style="display:inline-flex; align-items:center; gap:0.4rem;">
+        <form method="get" action="/search/files">
           <label class="muted">
             <input type="number" name="page" min="1" max="{{calcPages .FilesTotal .PageSize}}" value="{{.Page}}">
           </label>
@@ -105,7 +105,7 @@
           {{- end}}
         </div>
       </div>
-      <div>
+      <div class="pager-sort">
         <form method="get" action="/search/files">
           <input type="hidden" name="page" value="1">
           <input type="hidden" name="size" value="{{.PageSize}}">
