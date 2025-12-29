@@ -30,10 +30,10 @@ header nav .nav-icon { margin: 0 .2rem; }
 header a { color: #fff; text-decoration: none; border-bottom: 1px dotted; display: inline-flex; align-items: center; }
 /*header nav input[type="search"] { width: 100px; }*/
 /*header img { display: inline;max-height: 1em;vertical-align: middle;}*/
-h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; word-wrap: break-word; }
-h2 { margin: 0.35rem 0 0.5rem; font-size: 1.2rem; word-wrap: break-word; }
-h3 { margin: 0.3rem 0 0.4rem; font-size: 1.1rem; word-wrap: break-word; }
-p { margin: 0.35rem 0; }
+h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; word-wrap: break-word; text-wrap: balance; }
+h2 { margin: 0.35rem 0 0.5rem; font-size: 1.2rem; word-wrap: break-word; text-wrap: balance; }
+h3 { margin: 0.3rem 0 0.4rem; font-size: 1.1rem; word-wrap: break-word; text-wrap: balance; }
+p { margin: 0.35rem 0; text-wrap: balance; }
 main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0/* 1rem*/; }
 .grid { display: grid; gap: var(--grid-gap); grid-template-columns: repeat(3, 1fr); }
 /* Masonry layout for variable-height thumbnails on gallery page */
