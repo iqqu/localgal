@@ -94,25 +94,25 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           , a.last_fetch_ts
 				           , a.inserted_ts
 				        FROM album a
-				        -- ORDER BY a.album_id
-				        /*ORDER_BY_PAGE*/
-				        LIMIT ? OFFSET ?
+				-- ORDER BY a.album_id
+				/*ORDER_BY_PAGE*/
+				       LIMIT ? OFFSET ?
 				               )
-				     , agg AS (
-				      SELECT marf.album_id
-				           --, COUNT(*) AS file_count
-				           , rf.remote_file_id AS thumb_remote_file_id
-				           --, SUM(rf.bytes) AS album_bytes
-				        FROM map_album_remote_file marf
-				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-				       WHERE marf.album_id IN (
-				           SELECT album_id
-				             FROM page
-				                              )
-				         AND rf.fetched = 1
-				         AND rf.ignored = 0
-				       GROUP BY marf.album_id
-				               )
+				--      , agg AS (
+				--       SELECT marf.album_id
+				--            , COUNT(*) AS file_count
+				--            , MAX(rf.remote_file_id) AS thumb_remote_file_id
+				--            , SUM(rf.bytes) AS album_bytes
+				--         FROM map_album_remote_file marf
+				--         JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				--        WHERE marf.album_id IN (
+				--            SELECT album_id
+				--              FROM page
+				--                               )
+				--          AND rf.fetched = 1
+				--          AND rf.ignored = 0
+				--        GROUP BY marf.album_id
+				--                )
 				SELECT p.album_id
 				     , p.ripper_id
 				     , r.name AS ripper_name
@@ -131,13 +131,22 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , p.cnt_rf
 				     , p.last_fetch_ts
 				     , p.inserted_ts
-				     --, COALESCE(agg.file_count, 0) AS file_count
-				     --, COALESCE(agg.album_bytes, 0) AS album_bytes
-				     , agg.thumb_remote_file_id
+				    --, COALESCE(agg.file_count, 0) AS file_count
+				    --, COALESCE(agg.album_bytes, 0) AS album_bytes
+				    --, agg.thumb_remote_file_id
+				     , (
+				    SELECT rf.remote_file_id
+				      FROM map_album_remote_file marf
+				      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				     WHERE marf.album_id = p.album_id
+				       AND rf.fetched = 1
+				       AND rf.ignored = 0
+				     ORDER BY marf.remote_file_id DESC
+				     LIMIT 1
+				       ) AS thumb_remote_file_id
 				  FROM page p
 				  JOIN ripper r ON r.ripper_id = p.ripper_id
-				  LEFT JOIN agg ON agg.album_id = p.album_id
-				 -- ORDER BY p.album_id
+				  -- ORDER BY p.album_id
 				  /*ORDER_BY_AGG*/
 			`), size, offset)
 			if err != nil {

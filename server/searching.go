@@ -136,7 +136,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     WHERE marf.album_id = a.album_id
 				       AND rf.fetched = 1
 				       AND rf.ignored = 0
-				     ORDER BY marf.remote_file_id
+				     ORDER BY marf.remote_file_id DESC
 				     LIMIT 1
 				       ) AS thumb_remote_file_id
 				  FROM matches m
@@ -207,7 +207,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     WHERE marf.album_id = a.album_id
 				       AND rf.fetched = 1
 				       AND rf.ignored = 0
-				     ORDER BY marf.remote_file_id
+				     ORDER BY marf.remote_file_id DESC
 				     LIMIT 1
 				       ) AS thumb_remote_file_id
 				  FROM matches m
