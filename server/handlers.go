@@ -1065,20 +1065,25 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 			     , (
 			    SELECT COUNT(*)
 			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 			     WHERE marf.album_id = a.album_id
+			       AND rf.fetched = 1
+			       AND rf.ignored = 0
 			       ) AS file_count
 			     , (
 			    SELECT rf.remote_file_id
 			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id AND rf.fetched = 1
+			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 			     WHERE marf.album_id = a.album_id
+			       AND rf.fetched = 1
+			       AND rf.ignored = 0
 			-- ORDER BY rf.remote_file_id ASC
 			     LIMIT 1
 			       ) AS thumb
 			  FROM album a
 			  JOIN ripper r ON r.ripper_id = a.ripper_id
-			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id AND marf.remote_file_id = ?
+			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
+			 WHERE marf.remote_file_id = ?
 			 ORDER BY a.album_id
 		`, fileId)
 		if e != nil {
@@ -1125,7 +1130,8 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 				  FROM remote_file rf
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 WHERE rf.remote_file_id = ?
-				   AND fetched = 1
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 			`, thumb.FileId).Scan(&thumb.Filename, &thumb.MimeType)
 		}); err != nil {
 			return nil, err
@@ -1199,10 +1205,14 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				  LEFT JOIN (
 				          SELECT m.album_id, COUNT(*) c, MIN(m.remote_file_id) AS min_rf
 				            FROM map_album_remote_file m
-				            JOIN remote_file rf2 ON rf2.remote_file_id = m.remote_file_id AND rf2.fetched = 1
+				            JOIN remote_file rf2 ON rf2.remote_file_id = m.remote_file_id
+				           WHERE rf2.fetched = 1
+				             AND rf2.ignored = 0
 				           GROUP BY m.album_id
 				            ) cnt ON a.album_id = cnt.album_id
 				  LEFT JOIN remote_file rf ON rf.remote_file_id = cnt.min_rf
+				 WHERE rf.fetched = 1
+				   AND rf.ignored = 0
 				 ORDER BY a.album_id
 				 LIMIT ? OFFSET ?
 			`, t.TagId, size, offset)
@@ -1276,9 +1286,10 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				     , rf.inserted_ts
 				  FROM remote_file rf
 				  JOIN ripper r ON r.ripper_id = rf.ripper_id
-				  JOIN map_remote_file_tag m ON m.remote_file_id = rf.remote_file_id AND m.tag_id = ?
+				  JOIN map_remote_file_tag m ON m.remote_file_id = rf.remote_file_id
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-				 WHERE rf.fetched = 1
+				 WHERE m.tag_id = ?
+				   AND rf.fetched = 1
 				   AND rf.ignored = 0
 				 ORDER BY m.remote_file_id
 				 LIMIT 100 -- TODO paginate files too
@@ -1770,8 +1781,10 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 				     SELECT MAX(remote_file_id)
 				       FROM remote_file rf
 				      WHERE rf.fetched = 1
+				        AND rf.ignored = 0
 				                                          ))
 				   AND rf.fetched = 1
+				   AND rf.ignored = 0
 				 ORDER BY remote_file_id
 				 LIMIT 1
 			`).Scan(&ripperHost, &fileId, &gid)
