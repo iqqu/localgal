@@ -52,6 +52,7 @@ a.card-link { text-decoration: none; color: inherit; }
 .fade-bottom::after {content: '';position: absolute;left: 0;right: 0;bottom: 0;height: 2em;background-image: linear-gradient(to top, rgba(255, 255, 255, 1), transparent);}
 .hidden { font-size:0.8em; border:1px solid #fbbf24; color:#92400e; background:#fef3c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
 .removed { font-size:0.8em; border:1px solid #fb8276; color:#952438; background:#fed1c7; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
+.unfetched { font-size:0.8em; border:1px solid #f3b53f; color: #715624; background: #ffe6cb; padding:0.05rem 0.35rem; border-radius:999px; vertical-align:middle; white-space:nowrap; }
 ul { padding-left: 1.2rem; }
 .file { padding: 0.5rem 0; border-bottom: 1px dashed #eee; }
 .file:last-child { border-bottom: none; }

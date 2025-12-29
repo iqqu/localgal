@@ -87,6 +87,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           , a.description
 				           , a.created_ts
 				           , a.modified_ts
+				           , a.fetch_count
 				           , a.hidden
 				           , a.removed
 				           , a.local_rating
@@ -122,6 +123,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , p.description
 				     , p.created_ts
 				     , p.modified_ts
+				     , p.fetch_count
 				     , p.hidden
 				     , p.removed
 				     , p.local_rating
@@ -155,6 +157,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 					&a.Description,
 					&a.CreatedTs,
 					&a.ModifiedTs,
+					&a.FetchCount,
 					&a.Hidden,
 					&a.Removed,
 					&a.LocalRating,
@@ -258,6 +261,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				     , a.description
 				     , a.created_ts
 				     , a.modified_ts
+				     , a.fetch_count
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
@@ -278,6 +282,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				&a.Description,
 				&a.CreatedTs,
 				&a.ModifiedTs,
+				&a.FetchCount,
 				&a.Hidden,
 				&a.Removed,
 				&a.LocalRating,
@@ -1192,6 +1197,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				     , a.description
 				     , a.created_ts
 				     , a.modified_ts
+				     , a.fetch_count
 				     , a.hidden
 				     , a.removed
 				     , a.last_fetch_ts
@@ -1233,6 +1239,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 					&a.Description,
 					&a.CreatedTs,
 					&a.ModifiedTs,
+					&a.FetchCount,
 					&a.Hidden,
 					&a.Removed,
 					&a.LastFetchTs,

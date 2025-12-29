@@ -128,10 +128,13 @@
     <h2>Detail:
       <span style="font-weight: normal;">
         {{- if .Album.Title.Valid }}{{.Album.Title.String}}{{ else }}{{.Album.Gid}}{{ end }}
-        {{- if .Album.Hidden }} <span class="muted hidden" title="This gallery is hidden">Hidden</span>{{ end }}
-        {{- if .Album.Removed }} <span class="muted removed" title="This gallery is removed">Removed</span>{{ end -}}
       </span>
     </h2>
+    <div>
+      {{- if .Album.Hidden }} <span class="hidden" title="This gallery is hidden">Hidden</span>{{ end }}
+      {{- if .Album.Removed }} <span class="removed" title="This gallery is removed">Removed</span>{{ end }}
+      {{- if eq .Album.FetchCount 0 }} <span class="unfetched" title="This gallery is not fetched">Unfetched</span>{{ end -}}
+    </div>
 
     {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
       <p>{{.Album.Description.String}}</p>
@@ -163,6 +166,10 @@
           <td>{{fmtDateMillis .Album.ModifiedTs.Int64}}</td>
         </tr>
       {{end}}
+      <tr>
+        <td>Fetch Count</td>
+        <td>{{.Album.FetchCount}}</td>
+      </tr>
       {{if .Album.LastFetchTs.Valid}}
         <tr>
           <td>Last Fetch</td>

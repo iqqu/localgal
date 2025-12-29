@@ -113,6 +113,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     , a.description
 				     , a.created_ts
 				     , a.modified_ts
+				     , a.fetch_count
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
@@ -177,6 +178,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				     , a.description
 				     , a.created_ts
 				     , a.modified_ts
+				     , a.fetch_count
 				     , a.hidden
 				     , a.removed
 				     , a.local_rating
@@ -230,6 +232,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 				&a.Description,
 				&a.CreatedTs,
 				&a.ModifiedTs,
+				&a.FetchCount,
 				&a.Hidden,
 				&a.Removed,
 				&a.LocalRating,
