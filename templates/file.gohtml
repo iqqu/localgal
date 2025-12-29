@@ -7,7 +7,7 @@
         <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
           {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">Start</div></div>{{end}}
           {{range .Prev}}
-            <a class="card-link" href="{{.HrefPage}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+            <a class="card-link" href="{{.HrefPage}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
               <div class="card thumb">
                 {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}
@@ -38,7 +38,7 @@
       <div style="flex:1; overflow:hidden;">
         <div class="pv-next" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-start;">
           {{range .Next}}
-            <a class="card-link" href="{{.HrefPage}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else}}{{.FileId}}{{end}}" style="flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);">
+            <a class="card-link" href="{{.HrefPage}}" title="Next: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
               <div class="card thumb">
                 {{ if .MimeType.Valid }}
                   {{ if hasPrefix .MimeType.String "video/" }}

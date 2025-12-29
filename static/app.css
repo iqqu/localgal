@@ -134,6 +134,9 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 .pv-rail img, .pv-rail video {
     height: calc(var(--pv-rail-height) - 2 * (var(--thumb-border-width) + var(--thumb-padding)));
 }
+.pv-rail a.card-link {
+    flex:0 0 calc((100% - 1rem) / 3); max-width: calc((100% - 1rem) / 3);
+}
 
 .full-bleed {text-align: center;}
 .fb-wrap {display: block;text-align: center;}
