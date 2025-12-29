@@ -484,7 +484,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := withSQL(ctx, func() error {
 			rows, e := vars.Db.QueryContext(ctx, `
-				SELECT t.tag_id, t.name, COUNT(*) as count
+				SELECT t.name, COUNT(*) as count
 				  FROM tag t
 				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
 				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
@@ -492,7 +492,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				 WHERE marf.album_id = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
-				 GROUP BY t.tag_id, t.name
+				 GROUP BY t.tag_id
 				 ORDER BY count DESC
 				 LIMIT 100 -- some albums might have a million tags...
 			`, a.AlbumId)
@@ -502,7 +502,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			defer rows.Close()
 			for rows.Next() {
 				var t types.Tag
-				if err := rows.Scan(&t.TagId, &t.Name, &t.Count); err != nil {
+				if err := rows.Scan(&t.Name, &t.Count); err != nil {
 					return err
 				}
 				fileTags = append(fileTags, t)
