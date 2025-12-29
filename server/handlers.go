@@ -309,9 +309,10 @@ func getTotalAlbumCount(ctx context.Context) (int, error) {
 	var total int
 	err := withSQL(ctx, func() error {
 		return vars.Db.QueryRowContext(ctx, `
-				SELECT COUNT(*)
-				  FROM album
-			`).Scan(&total)
+			SELECT COUNT(*)
+			  FROM album a
+			 WHERE a.cnt_rf > 0
+		`).Scan(&total)
 	})
 	return total, err
 }
