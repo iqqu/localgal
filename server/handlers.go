@@ -101,7 +101,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 				     , agg AS (
 				      SELECT marf.album_id
 				           , COUNT(*) AS file_count
-				           , MIN(rf.remote_file_id) AS thumb_remote_file_id
+				           , rf.remote_file_id AS thumb_remote_file_id
 				           , SUM(rf.bytes) AS album_bytes
 				        FROM map_album_remote_file marf
 				        JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
@@ -1208,7 +1208,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
 				  JOIN map_album_tag mat ON mat.album_id = a.album_id AND mat.tag_id = ?
 				  LEFT JOIN (
-				          SELECT m.album_id, COUNT(*) c, MIN(m.remote_file_id) AS min_rf
+				          SELECT m.album_id, COUNT(*) c, m.remote_file_id AS min_rf
 				            FROM map_album_remote_file m
 				            JOIN remote_file rf2 ON rf2.remote_file_id = m.remote_file_id
 				           WHERE rf2.fetched = 1
