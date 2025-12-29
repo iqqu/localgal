@@ -110,6 +110,9 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
   * Summary of gallery, file, tag counts
   * List popular files added to many galleries
   * Schema info
+* Add uploader page:
+  * Uploaded galleries and files, similar to search page
+  * No extra index or separate table should be needed
 * Simplify Server Control GUI layout code
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
