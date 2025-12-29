@@ -1,11 +1,12 @@
 :root {
     --base-padding: 0.75rem;
-    --grid-gap: 0.5rem;
+    --grid-gap: 0.3rem;
     --header-height: 35px;
     --main-margin: var(--base-padding);
     --full-bleed-margin: 1rem;
     --thumb-padding: 0.25rem;
     --thumb-border-width: 1px;
+    --thumb-border-radius: 8px;
     --card-padding: 0.75rem;
     --card-border-width: 1px;
     --pv-rail-height: 100px;
@@ -46,7 +47,8 @@ main { max-width: /*960px*/1200px; margin: var(--main-margin) auto; padding: 0/*
 /* Override square thumbs within masonry to allow natural heights */
 .masonry .thumb img, .masonry .thumb video { aspect-ratio: auto; height: auto; object-fit: contain; }
 .card { background: #fff; border: var(--card-border-width) solid #e5e5e5; border-radius: 8px; padding: var(--card-padding); word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-.thumb-text { margin-top: 0.2rem; }
+.thumb-text { margin: 0 .2rem .2rem .2rem; }
+.thumb.joined h2 { font-size: .9rem; margin: .1rem .2rem; }
 .muted { color: #666; font-size: 0.9rem; }
 a.card-link { text-decoration: none; color: inherit; }
 .fade-bottom {position: relative;overflow: hidden;}
@@ -58,8 +60,10 @@ ul { padding-left: 1.2rem; }
 .file { padding: 0.5rem 0; border-bottom: 1px dashed #eee; }
 .file:last-child { border-bottom: none; }
 code { background: #f5f5f5; padding: 0.1rem 0.3rem; border-radius: 4px; }
-.thumb { padding: var(--thumb-padding); }
+.thumb { padding: var(--thumb-padding); border-radius: var(--thumb-border-radius); }
+.thumb.joined { padding: 0; }
 .thumb img, .thumb video { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 6px; display: block; background: #f3f4f6; }
+.thumb.joined img, .thumb.joined video { border-radius: var(--thumb-border-radius); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .thumb video {pointer-events: none;}
 .chip { display:inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.4rem; background: #f0f0f0; border-radius: 999px; font-size: 0.9rem; text-decoration: none; color: inherit; }
 .tabs { display: flex; gap: 1rem; }

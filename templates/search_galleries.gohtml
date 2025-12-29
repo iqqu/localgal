@@ -60,7 +60,7 @@
     <div class="grid">
       {{range .Albums}}
         <div class="grid-tile">
-          <div class="card thumb">
+          <div class="card thumb joined">
             <a class="card-link" href="{{.HrefPage}}">
               {{ if .Thumb.MimeType.Valid }}
                 {{- if hasPrefix .Thumb.MimeType.String "video/" }}
@@ -73,7 +73,7 @@
               {{- else }}
                 <p>[no thumbnail]</p>
               {{- end }}
-              <h2 style="margin: 0.1rem 0">{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
+              <h2>{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}</h2>
             </a>
             <div class="thumb-text">
               {{- if .Hidden }}<span class="hidden">Hidden</span>{{ end }}

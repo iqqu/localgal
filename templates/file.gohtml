@@ -5,7 +5,7 @@
     <div class="pv-rail" style="display:flex; gap: 1rem; align-items:stretch; margin: 0.75rem 0;">
       <div style="flex:1; overflow:hidden;">
         <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
-          {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">Start</div></div>{{end}}
+          {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card muted" style="text-align:center;">Start</div></div>{{end}}
           {{range .Prev}}
             <a class="card-link" href="{{.HrefPage}}" title="Previous: {{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
               <div class="card thumb">
@@ -58,7 +58,7 @@
               {{/*</div>*/}}
             </a>
           {{end}}
-          {{if lt (len .Next) 3}}<div style="flex-grow:1;"><div class="card thumb muted" style="text-align:center;">End</div></div>{{end}}
+          {{if lt (len .Next) 3}}<div style="flex-grow:1;"><div class="card muted" style="text-align:center;">End</div></div>{{end}}
         </div>
       </div>
     </div>

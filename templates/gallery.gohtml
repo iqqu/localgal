@@ -56,7 +56,7 @@
     <div class="masonry">
       {{range .Files}}
         <a class="card-link masonry-item" href="{{.HrefPage}}">
-          <div class="card thumb">
+          <div class="card thumb joined">
             {{ if .MimeType.Valid }}
               {{ if hasPrefix .MimeType.String "video/" }}
                 <div class="video-container">
