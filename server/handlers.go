@@ -1210,14 +1210,7 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 			     , a.removed
 			     , a.last_fetch_ts
 			     , a.inserted_ts
-			     , (
-			    SELECT COUNT(*)
-			      FROM map_album_remote_file marf
-			      JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
-			     WHERE marf.album_id = a.album_id
-			       AND rf.fetched = 1
-			       AND rf.ignored = 0
-			       ) AS file_count
+			     , a.cnt_rf
 			     , (
 			    SELECT rf.remote_file_id
 			      FROM map_album_remote_file marf
