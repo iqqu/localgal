@@ -2,5 +2,12 @@
 
 /localgal.sqlite*
 /ripme.sqlite*
+
+/rips/
+/rip.properties
+/history.json
+/ripme.downloaded.files.log
+/ripme.log
+
 /bin/
 /dist/
