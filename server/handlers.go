@@ -1340,7 +1340,7 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				     , a.last_fetch_ts
 				     , a.inserted_ts
 				     , COALESCE(cnt.c, 0) as file_count
-				     , rf.filename AS thumb -- TODO use correlated subquery for performance
+				     , rf.remote_file_id AS thumb
 				  FROM album a
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
 				  JOIN map_album_tag mat ON mat.album_id = a.album_id AND mat.tag_id = ?
