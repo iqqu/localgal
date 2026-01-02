@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"golocalgal/types"
 	"golocalgal/vars"
@@ -12,7 +13,8 @@ import (
 )
 
 func handleMedia(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	rCtx := r.Context()
+	p, err := perfTracker(rCtx, func(ctx context.Context, perf *types.Perf) error {
 		//model := map[string]any{"Perf": *perf}
 		//return render(ctx, w, "about.gohtml", &model)
 
@@ -126,6 +128,11 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		_ = p // TODO add performance response headers...
+		ctxErr := rCtx.Err()
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(ctxErr, context.Canceled) || errors.Is(ctxErr, context.DeadlineExceeded) {
+			return
+		}
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
