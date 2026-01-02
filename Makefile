@@ -23,6 +23,9 @@ all: build
 build:
 	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags fts5,gio -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN)$(EXT) $(PKG)
 
+build-placeholders:
+	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags fts5,gio,placeholders -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(BIN)$(EXT) $(PKG)
+
 build-dist:
 	@mkdir -p $(DISTDIR)
 	CGO_ENABLED=1 GO111MODULE=on go build -trimpath -tags fts5,gio -ldflags "-s -w $(LDFLAGS)" -o $(DISTBIN) $(PKG)
