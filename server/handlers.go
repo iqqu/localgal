@@ -1603,7 +1603,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 					       ) AS thumb_remote_file_id
 					  FROM album a
 					  JOIN ripper r ON r.ripper_id = a.ripper_id
-					 WHERE a.gid = ?
+					 WHERE a.gid COLLATE NOCASE = ?
 					 ORDER BY a.album_id DESC
 				`, searchQuery)
 				if err != nil {
@@ -1697,7 +1697,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 					  FROM remote_file rf
 					  JOIN ripper r ON r.ripper_id = rf.ripper_id
 					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
-					 WHERE rf.urlid = ?
+					 WHERE rf.urlid COLLATE NOCASE = ?
 					   AND rf.fetched = 1
 					   AND rf.ignored = 0
 					 ORDER BY rf.remote_file_id DESC
