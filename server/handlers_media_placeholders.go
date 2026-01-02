@@ -146,7 +146,7 @@ func generatePlaceholderImage(randSeeded *rand.Rand) *image.RGBA {
 	}
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			colPx := lerp(colBase, colShift, (float32(x)/float32(width))*float32(y)/float32(height))
+			colPx := lerp(colBase, colShift, (float32(x)/float32(width))*(1-float32(y)/float32(height)))
 			img.Set(x, y, colPx)
 		}
 	}
