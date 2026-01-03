@@ -215,6 +215,11 @@ func (c *Controller) Stop(ctx context.Context) error {
 			firstErr = err
 		}
 	}
+	if vars.CacheDb != nil {
+		if err := vars.CacheDb.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	return firstErr
 }
 
