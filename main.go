@@ -13,6 +13,10 @@ import (
 	"os"
 )
 
+// - Putting the version vars in a non-main package requires ldflags to fully qualify the package
+// - Embedding doesn't support ../, and I don't want another top-level go file,
+//   so we leave the declarations here and propagate with server.SetDefaultDeps().
+
 // Version metadata populated via -ldflags at build time
 var (
 	Version   = "dev"
@@ -26,21 +30,15 @@ var TemplatesFS embed.FS
 //go:embed static/*
 var StaticFS embed.FS
 
-// The Go runtime calls init() before main().
-//   - Putting the version vars in a non-main package requires ldflags to fully qualify the package
-//   - Embedding doesn't support ../, and I don't want another top-level go file,
-//     so we leave the declarations here and put them into the vars package in init().
-func init() {
-	vars.StaticFSHandler = http.FileServerFS(StaticFS)
-	vars.TemplatesFS = TemplatesFS
-	vars.BuildInfo = types.BuildInfo{
+func main() {
+	buildInfo := types.BuildInfo{
 		Version:   Version,
 		Commit:    Commit,
 		BuildDate: BuildDate,
 	}
-}
+	staticFSHandler := http.FileServerFS(StaticFS)
+	server.SetDefaultDeps(buildInfo, TemplatesFS, staticFSHandler)
 
-func main() {
 	var help bool
 	flag.BoolVar(&help, "h", false, "show help")
 	flag.BoolVar(&help, "help", false, "show help")

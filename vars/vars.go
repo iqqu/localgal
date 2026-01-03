@@ -1,16 +1,9 @@
 package vars
 
 import (
-	"database/sql"
-	"embed"
-	"golocalgal/types"
-	"html/template"
 	"log"
-	"net/http"
 	"os"
 )
-
-const MinimumSchemaVersion = 11 // "011"
 
 type Env string
 
@@ -53,19 +46,3 @@ var GuiFlag struct {
 	IsSet bool
 	Value bool
 }
-
-var BuildInfo types.BuildInfo
-
-var TemplatesFS embed.FS
-
-var StaticFSHandler http.Handler
-
-var Db *sql.DB
-var CacheDb *sql.DB
-
-var Tpl *template.Template
-
-var KnownFilePaths map[string][]string
-var MediaRoot string
-var DfLogRoot string
-var SlowSqlMs int

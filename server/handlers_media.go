@@ -7,16 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"net/http"
 	"strings"
 )
 
-func handleMedia(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 	rCtx := r.Context()
-	p, err := perfTracker(rCtx, func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(rCtx, func(ctx context.Context, perf *types.Perf) error {
 		//model := map[string]any{"Perf": *perf}
-		//return render(ctx, w, "about.gohtml", &model)
+		//return app.render(ctx, w, "about.gohtml", &model)
 
 		var ripperHost string
 		var name string
@@ -35,47 +34,47 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 			name = parts[2]
 
 			// prefer direct path under mediaRoot/ripperHost_gid/
-			preferredPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+gid, name)
+			preferredPath := app.cleanJoin(app.MediaRoot, ripperHost+"_"+gid, name)
 			tryFiles = append(tryFiles, preferredPath)
 
 			// first fallback: ripme-mangled path
 			mangledGid := filesystemSafe(gid)
 			mangledName = sanitizedFilename(name)
 			if mangledGid != gid || mangledName != name {
-				mangledPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+mangledGid, mangledName)
+				mangledPath := app.cleanJoin(app.MediaRoot, ripperHost+"_"+mangledGid, mangledName)
 				tryFiles = append(tryFiles, mangledPath)
 			}
 
 			// fallback to knownFilePaths by name
-			if list, ok := vars.KnownFilePaths[name]; ok {
+			if list, ok := app.KnownFilePaths[name]; ok {
 				for _, p := range list {
-					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
+					tryFiles = append(tryFiles, app.cleanJoin(app.DfLogRoot, p))
 				}
 			}
 		} else if len(parts) >= 2 { // fallback: /media/{ripper_host}/{filename}
 			ripperHost = parts[0]
 			name = parts[1]
 			// prefer direct path under mediaRoot
-			tryFiles = append(tryFiles, cleanJoin(vars.MediaRoot, ripperHost, name))
+			tryFiles = append(tryFiles, app.cleanJoin(app.MediaRoot, ripperHost, name))
 
 			// first fallback: ripme-mangled path
 			mangledName = sanitizedFilename(name)
 			if mangledName != name {
-				mangledPath := cleanJoin(vars.MediaRoot, ripperHost, mangledName)
+				mangledPath := app.cleanJoin(app.MediaRoot, ripperHost, mangledName)
 				tryFiles = append(tryFiles, mangledPath)
 			}
 
 			// fallback to knownFilePaths by name
-			if list, ok := vars.KnownFilePaths[name]; ok {
+			if list, ok := app.KnownFilePaths[name]; ok {
 				for _, p := range list {
-					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
+					tryFiles = append(tryFiles, app.cleanJoin(app.DfLogRoot, p))
 				}
 			}
 		} else if len(parts) == 1 && parts[0] != "" { // last resort: find by filename only
 			name = parts[0]
-			if list, ok := vars.KnownFilePaths[name]; ok {
+			if list, ok := app.KnownFilePaths[name]; ok {
 				for _, p := range list {
-					tryFiles = append(tryFiles, cleanJoin(vars.DfLogRoot, p))
+					tryFiles = append(tryFiles, app.cleanJoin(app.DfLogRoot, p))
 				}
 			}
 		}
@@ -91,8 +90,8 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 		// final fallback: check database for likely path
 		if len(ripperHost) > 0 && len(name) > 0 && len(mangledName) > 0 {
 			var oldestGid string
-			err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
+			err := app.withSQL(ctx, func() error {
+				return app.Db.QueryRowContext(ctx, `
 					SELECT a.gid
 					  FROM remote_file rf
 					  JOIN ripper r ON r.ripper_id = rf.ripper_id
@@ -106,11 +105,11 @@ func handleMedia(w http.ResponseWriter, r *http.Request) {
 				`, ripperHost, name, mangledName).Scan(&oldestGid)
 			})
 			if err == nil && oldestGid != gid {
-				preferredPathOldestGid := cleanJoin(vars.MediaRoot, ripperHost+"_"+oldestGid, name)
+				preferredPathOldestGid := app.cleanJoin(app.MediaRoot, ripperHost+"_"+oldestGid, name)
 				tryFiles = append(tryFiles, preferredPathOldestGid)
 				mangledOldestGid := filesystemSafe(oldestGid)
 				if mangledOldestGid != oldestGid || mangledName != name {
-					mangledPath := cleanJoin(vars.MediaRoot, ripperHost+"_"+mangledOldestGid, mangledName)
+					mangledPath := app.cleanJoin(app.MediaRoot, ripperHost+"_"+mangledOldestGid, mangledName)
 					tryFiles = append(tryFiles, mangledPath)
 				}
 			}

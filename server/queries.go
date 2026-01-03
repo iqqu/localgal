@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"strings"
 )
 
-func getUserAlbumHits(ctx context.Context, host string, uploader string) (int, error) {
+func (app *App) getUserAlbumHits(ctx context.Context, host string, uploader string) (int, error) {
 	var albumsTotal int
-	err := withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err := app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a
 			  JOIN ripper r ON r.ripper_id = a.ripper_id
@@ -24,9 +23,9 @@ func getUserAlbumHits(ctx context.Context, host string, uploader string) (int, e
 	return albumsTotal, err
 }
 
-func getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, size int, offset int, order string) ([]types.Album, error) {
+func (app *App) getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, size int, offset int, order string) ([]types.Album, error) {
 	var albums []types.Album
-	if err := withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func() error {
 		var rows *sql.Rows
 		var err error
 
@@ -45,7 +44,7 @@ func getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, 
 		}
 		replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
 		//language=sqlite
-		rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
+		rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 			SELECT a.album_id
 			     , a.ripper_id
 			     , r.name AS ripper_name
@@ -126,8 +125,8 @@ func getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, 
 	}
 	for i := range albums {
 		thumb := albums[i].Thumb
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.filename
 				     , mt.name AS mime_type
 				  FROM remote_file rf
@@ -152,10 +151,10 @@ func getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, 
 	return albums, nil
 }
 
-func getUserFileHits(ctx context.Context, host string, uploader string) (int, error) {
+func (app *App) getUserFileHits(ctx context.Context, host string, uploader string) (int, error) {
 	var filesTotal int
-	err := withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err := app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM remote_file rf
 			  JOIN ripper r ON r.ripper_id = rf.ripper_id
@@ -168,9 +167,9 @@ func getUserFileHits(ctx context.Context, host string, uploader string) (int, er
 	return filesTotal, err
 }
 
-func getUserFilesPage(ctx context.Context, host string, uploader string, size int, offset int, order string) ([]types.File, error) {
+func (app *App) getUserFilesPage(ctx context.Context, host string, uploader string, size int, offset int, order string) ([]types.File, error) {
 	var files []types.File
-	if err := withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func() error {
 		var rows *sql.Rows
 		var err error
 
@@ -187,7 +186,7 @@ func getUserFilesPage(ctx context.Context, host string, uploader string, size in
 		}
 		replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
 		//language=sqlite
-		rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
+		rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 			SELECT rf.remote_file_id
 			     , r.name AS ripper_name
 			     , r.host AS ripper_host

@@ -2,8 +2,11 @@ package server
 
 import (
 	"bufio"
+	"embed"
+	"golocalgal/types"
 	"golocalgal/vars"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,12 +16,15 @@ import (
 
 // Config holds configuration for starting the HTTP server.
 type Config struct {
-	Bind      string
-	Dsn       string
-	MediaRoot string
-	DfLog     string
-	DfLogRoot string
-	SlowSqlMs int
+	Bind            string
+	Dsn             string
+	MediaRoot       string
+	DfLog           string
+	DfLogRoot       string
+	SlowSqlMs       int
+	BuildInfo       types.BuildInfo
+	TemplatesFS     embed.FS
+	StaticFSHandler http.Handler
 }
 
 const RipMeConfigFile = "rip.properties"
@@ -84,6 +90,18 @@ func parseRipMeConfig(dir string) (ripsDir string, dfLog string, dbPath string, 
 	return
 }
 
+var (
+	buildInfo       types.BuildInfo
+	templatesFS     embed.FS
+	staticFSHandler http.Handler
+)
+
+func SetDefaultDeps(bi types.BuildInfo, tfs embed.FS, sfsh http.Handler) {
+	buildInfo = bi
+	templatesFS = tfs
+	staticFSHandler = sfsh
+}
+
 func GetServerConfig() Config {
 	dfLog := "./ripme.downloaded.files.log"
 	sqlitePath := "./ripme.sqlite"
@@ -111,12 +129,15 @@ func GetServerConfig() Config {
 	dfLogRoot := vars.EnvDflogRoot.GetValueDefault(defaultDfLogRoot)
 
 	serverConfig := Config{
-		Bind:      vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
-		Dsn:       vars.EnvSqliteDsn.GetValueDefault("file:" + sqlitePath),
-		MediaRoot: vars.EnvMediaRoot.GetValueDefault(ripsDir),
-		DfLog:     dfLog,
-		DfLogRoot: dfLogRoot,
-		SlowSqlMs: slowSqlMs,
+		Bind:            vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
+		Dsn:             vars.EnvSqliteDsn.GetValueDefault("file:" + sqlitePath),
+		MediaRoot:       vars.EnvMediaRoot.GetValueDefault(ripsDir),
+		DfLog:           dfLog,
+		DfLogRoot:       dfLogRoot,
+		SlowSqlMs:       slowSqlMs,
+		BuildInfo:       buildInfo,
+		TemplatesFS:     templatesFS,
+		StaticFSHandler: staticFSHandler,
 	}
 	return serverConfig
 }

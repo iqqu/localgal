@@ -28,9 +28,9 @@ import (
 
 var PlaceholderVideoCache = make(map[int][]byte)
 
-func handleMedia(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 	rCtx := r.Context()
-	p, err := perfTracker(rCtx, func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(rCtx, func(ctx context.Context, perf *types.Perf) error {
 		return sendPlaceholderMedia(r.URL.Path, w, r)
 	})
 	if err != nil {

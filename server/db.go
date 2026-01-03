@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"golocalgal/vars"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +17,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+const MinimumSchemaVersion = 11 // "011"
 
 func GetDb(dsn string) (*sql.DB, error) {
 	log.Printf("Using SQLite DSN: %s", dsn)
@@ -134,10 +135,10 @@ func checkMinimumDbSchemaVersion(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse minimum schema version: %w", err)
 	}
-	if versionInt >= vars.MinimumSchemaVersion {
+	if versionInt >= MinimumSchemaVersion {
 		return nil
 	}
-	return fmt.Errorf("schema version is too old. upgrade by running the latest ripme3. minimum: %03d; found: %s", vars.MinimumSchemaVersion, version.String)
+	return fmt.Errorf("schema version is too old. upgrade by running the latest ripme3. minimum: %03d; found: %s", MinimumSchemaVersion, version.String)
 }
 
 func DsnWithReadOnly(dsn string) string {
@@ -236,7 +237,7 @@ func OptimizeDb(db *sql.DB) error {
 }
 
 // loadKnownFiles builds knownFilePaths from a log file: each line is a relative or absolute path to a file.
-func loadKnownFiles(ctx context.Context, path string) error {
+func (app *App) loadKnownFiles(ctx context.Context, path string) error {
 	log.Printf("Loading known files")
 	knownFilePaths := map[string][]string{}
 	dir := filepath.Dir(path)
@@ -260,9 +261,9 @@ func loadKnownFiles(ctx context.Context, path string) error {
 		base := filepath.Base(p)
 		target := filepath.Join(dir, p)
 		if !filepath.IsAbs(target) {
-			target = filepath.Join(vars.DfLogRoot, target)
+			target = filepath.Join(app.DfLogRoot, target)
 			target = filepath.Clean(target)
-			target, err = filepath.Rel(vars.DfLogRoot, target)
+			target, err = filepath.Rel(app.DfLogRoot, target)
 			if err != nil {
 				log.Printf("Not able to resolve clean relative path for %v: %v", p, err)
 			}
@@ -277,7 +278,7 @@ func loadKnownFiles(ctx context.Context, path string) error {
 		return ctx.Err()
 	default:
 	}
-	vars.KnownFilePaths = knownFilePaths
-	log.Printf("known file log loaded %d filenames", len(vars.KnownFilePaths))
+	app.KnownFilePaths = knownFilePaths
+	log.Printf("known file log loaded %d filenames", len(app.KnownFilePaths))
 	return nil
 }

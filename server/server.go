@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"html/template"
 	"log"
 	"net"
@@ -20,8 +19,22 @@ import (
 	"time"
 )
 
+// App holds the dependencies for the server handlers
+type App struct {
+	Db              *sql.DB
+	CacheDb         *sql.DB
+	Tpl             *template.Template
+	StaticFSHandler http.Handler
+	BuildInfo       types.BuildInfo
+	MediaRoot       string
+	DfLogRoot       string
+	SlowSqlMs       int
+	KnownFilePaths  map[string][]string
+}
+
 // Controller controls a running server instance for the GUI
 type Controller struct {
+	app    *App
 	srv    *http.Server
 	ctx    context.Context
 	cancel context.CancelCauseFunc
@@ -54,34 +67,39 @@ func StartServer(cfg Config) (*Controller, error) {
 
 	var err error
 
-	vars.SlowSqlMs = cfg.SlowSqlMs
-	vars.DfLogRoot = cfg.DfLogRoot
+	app := &App{
+		SlowSqlMs:       cfg.SlowSqlMs,
+		DfLogRoot:       cfg.DfLogRoot,
+		MediaRoot:       cfg.MediaRoot,
+		BuildInfo:       cfg.BuildInfo,
+		StaticFSHandler: cfg.StaticFSHandler,
+	}
 
 	cfg.Dsn = DsnWithReadOnly(cfg.Dsn)
 	cfg.Dsn = DsnWithDefaultTimeout(cfg.Dsn)
 	cfg.Dsn = DsnWithForeignKeys(cfg.Dsn)
 
-	vars.Db, err = GetDb(cfg.Dsn)
+	app.Db, err = GetDb(cfg.Dsn)
 	if err != nil {
 		return nil, err
 	}
 
 	dbFilename := getFileFromDsn(cfg.Dsn)
-	if err = initDB(vars.Db, dbFilename); err != nil {
+	if err = initDB(app.Db, dbFilename); err != nil {
 		log.Printf("init db: %v", err)
 		return nil, err
 	}
 
-	if err := checkMinimumDbSchemaVersion(vars.Db); err != nil {
+	if err := checkMinimumDbSchemaVersion(app.Db); err != nil {
 		return nil, err
 	}
 
-	vars.CacheDb, err = GetCacheDb()
+	app.CacheDb, err = GetCacheDb()
 	if err != nil {
 		return nil, err
 	}
 
-	vars.Tpl = template.Must(template.New("").Funcs(template.FuncMap{
+	app.Tpl = template.Must(template.New("").Funcs(template.FuncMap{
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("dict must have key-value pairs")
@@ -149,24 +167,22 @@ func StartServer(cfg Config) (*Controller, error) {
 			return p.PageTime.Round(time.Millisecond).String()
 		},
 		// Version info helpers for templates
-		"appVersion":   func() string { return vars.BuildInfo.Version },
-		"appCommit":    func() string { return vars.BuildInfo.Commit },
-		"appBuildDate": func() string { return vars.BuildInfo.BuildDate },
-	}).ParseFS(vars.TemplatesFS, "templates/*.gohtml", "templates/fragments/*.gohtml"))
+		"appVersion":   func() string { return app.BuildInfo.Version },
+		"appCommit":    func() string { return app.BuildInfo.Commit },
+		"appBuildDate": func() string { return app.BuildInfo.BuildDate },
+	}).ParseFS(cfg.TemplatesFS, "templates/*.gohtml", "templates/fragments/*.gohtml"))
 
-	vars.MediaRoot = cfg.MediaRoot
-
-	mux := newMux()
+	mux := app.newMux()
 	srv := &http.Server{
 		Addr:    cfg.Bind,
 		Handler: mux,
 	}
 
 	ctx, cancel := context.WithCancelCause(context.Background())
-	ctrl := Controller{srv: srv, ctx: ctx, cancel: cancel, ready: make(chan struct{})}
+	ctrl := Controller{app: app, srv: srv, ctx: ctx, cancel: cancel, ready: make(chan struct{})}
 
 	go func() {
-		if err := loadKnownFiles(ctx, cfg.DfLog); err != nil {
+		if err := app.loadKnownFiles(ctx, cfg.DfLog); err != nil {
 			if ctx.Err() != nil {
 				log.Println("startup canceled while loading known files")
 				cancel(ctx.Err())
@@ -210,86 +226,86 @@ func (c *Controller) Stop(ctx context.Context) error {
 			firstErr = err
 		}
 	}
-	if vars.Db != nil {
-		if err := vars.Db.Close(); err != nil && firstErr == nil {
+	if c != nil && c.app != nil && c.app.Db != nil {
+		if err := c.app.Db.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
-	if vars.CacheDb != nil {
-		if err := vars.CacheDb.Close(); err != nil && firstErr == nil {
+	if c != nil && c.app != nil && c.app.CacheDb != nil {
+		if err := c.app.CacheDb.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
 	return firstErr
 }
 
-func newMux() http.Handler {
+func (app *App) newMux() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleBrowse)
-	mux.HandleFunc("/gallery/{ripper_host}/{gid}", handleGallery)
-	mux.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", handleGalleryFile)
-	mux.HandleFunc("/gallery-file-tags/{ripper_host}/{gid}", handleGalleryFileTagsFragment)
-	mux.HandleFunc("/file/{ripper_host}/{file_id}", handleFileStandalone)
-	mux.HandleFunc("/file/{ripper_host}/{file_id}/galleries", handleFileGalleryFragment)
-	mux.HandleFunc("/tags", handleTags)
-	mux.HandleFunc("/tag/{tag_name}", handleTagDetail)
-	mux.HandleFunc("/search", handleSearch)
-	mux.HandleFunc("/search/galleries", handleSearchGalleries)
-	mux.HandleFunc("/search/files", handleSearchFiles)
-	mux.HandleFunc("/search/tags", handleSearchTags)
-	mux.HandleFunc("/user/{ripper_host}/{user_name}", handleUser)
-	mux.HandleFunc("/user/{ripper_host}/{user_name}/galleries", handleUserGalleries)
-	mux.HandleFunc("/user/{ripper_host}/{user_name}/files", handleUserFiles)
-	mux.HandleFunc("/random/gallery", handleRandomGallery)
-	mux.HandleFunc("/random/file", handleRandomFile)
-	mux.HandleFunc("/random/page", handleRandomPage)
-	mux.HandleFunc("/stats", handleStats)
+	mux.HandleFunc("/", app.handleBrowse)
+	mux.HandleFunc("/gallery/{ripper_host}/{gid}", app.handleGallery)
+	mux.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", app.handleGalleryFile)
+	mux.HandleFunc("/gallery-file-tags/{ripper_host}/{gid}", app.handleGalleryFileTagsFragment)
+	mux.HandleFunc("/file/{ripper_host}/{file_id}", app.handleFileStandalone)
+	mux.HandleFunc("/file/{ripper_host}/{file_id}/galleries", app.handleFileGalleryFragment)
+	mux.HandleFunc("/tags", app.handleTags)
+	mux.HandleFunc("/tag/{tag_name}", app.handleTagDetail)
+	mux.HandleFunc("/search", app.handleSearch)
+	mux.HandleFunc("/search/galleries", app.handleSearchGalleries)
+	mux.HandleFunc("/search/files", app.handleSearchFiles)
+	mux.HandleFunc("/search/tags", app.handleSearchTags)
+	mux.HandleFunc("/user/{ripper_host}/{user_name}", app.handleUser)
+	mux.HandleFunc("/user/{ripper_host}/{user_name}/galleries", app.handleUserGalleries)
+	mux.HandleFunc("/user/{ripper_host}/{user_name}/files", app.handleUserFiles)
+	mux.HandleFunc("/random/gallery", app.handleRandomGallery)
+	mux.HandleFunc("/random/file", app.handleRandomFile)
+	mux.HandleFunc("/random/page", app.handleRandomPage)
+	mux.HandleFunc("/stats", app.handleStats)
 
-	mux.HandleFunc("GET /api/", asApi(handle404))
-	mux.HandleFunc("GET /api/galleries", asApi(handleBrowse))
-	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", asApi(handleGallery))
-	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", asApi(handleGalleryFile))
-	mux.HandleFunc("GET /api/gallery-file-tags/{ripper_host}/{gid}", asApi(handleGalleryFileTagsFragment))
-	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}", asApi(handleFileStandalone))
-	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", asApi(handleFileGalleryFragment))
-	mux.HandleFunc("GET /api/tags", asApi(handleTags))
-	mux.HandleFunc("GET /api/tag/{tag_name}", asApi(handleTagDetail))
-	mux.HandleFunc("GET /api/search", asApi(handleSearch))
-	mux.HandleFunc("GET /api/search/galleries", asApi(handleSearchGalleries))
-	mux.HandleFunc("GET /api/search/tags", asApi(handleSearchTags))
-	mux.HandleFunc("GET /api/search/files", asApi(handleSearchFiles))
-	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}", asApi(handleUser))
-	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}/galleries", asApi(handleUserGalleries))
-	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}/files", asApi(handleUserFiles))
-	mux.HandleFunc("GET /api/random/gallery", asApi(handleRandomGallery))
-	mux.HandleFunc("GET /api/random/file", asApi(handleRandomFile))
-	mux.HandleFunc("GET /api/stats", asApi(handleStats))
+	mux.HandleFunc("GET /api/", app.asApi(app.handle404))
+	mux.HandleFunc("GET /api/galleries", app.asApi(app.handleBrowse))
+	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}", app.asApi(app.handleGallery))
+	mux.HandleFunc("GET /api/gallery/{ripper_host}/{gid}/{file_id}", app.asApi(app.handleGalleryFile))
+	mux.HandleFunc("GET /api/gallery-file-tags/{ripper_host}/{gid}", app.asApi(app.handleGalleryFileTagsFragment))
+	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}", app.asApi(app.handleFileStandalone))
+	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", app.asApi(app.handleFileGalleryFragment))
+	mux.HandleFunc("GET /api/tags", app.asApi(app.handleTags))
+	mux.HandleFunc("GET /api/tag/{tag_name}", app.asApi(app.handleTagDetail))
+	mux.HandleFunc("GET /api/search", app.asApi(app.handleSearch))
+	mux.HandleFunc("GET /api/search/galleries", app.asApi(app.handleSearchGalleries))
+	mux.HandleFunc("GET /api/search/tags", app.asApi(app.handleSearchTags))
+	mux.HandleFunc("GET /api/search/files", app.asApi(app.handleSearchFiles))
+	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}", app.asApi(app.handleUser))
+	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}/galleries", app.asApi(app.handleUserGalleries))
+	mux.HandleFunc("GET /api/user/{ripper_host}/{user_name}/files", app.asApi(app.handleUserFiles))
+	mux.HandleFunc("GET /api/random/gallery", app.asApi(app.handleRandomGallery))
+	mux.HandleFunc("GET /api/random/file", app.asApi(app.handleRandomFile))
+	mux.HandleFunc("GET /api/stats", app.asApi(app.handleStats))
 
-	mux.HandleFunc("/media/", handleMedia)
+	mux.HandleFunc("/media/", app.handleMedia)
 
 	// For development:
 	//mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	mux.HandleFunc("/static/", handleStatic)
+	mux.HandleFunc("/static/", app.handleStatic)
 
-	mux.HandleFunc("/about", handleAbout)
+	mux.HandleFunc("/about", app.handleAbout)
 	//mux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
-	//	renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
+	//	app.renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, fmt.Errorf("foobar"))
 	//})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 
 	var wrapped http.Handler
-	wrapped = logMiddleware(mux)
-	wrapped = tinyOptimizeDb(mux)
+	wrapped = app.logMiddleware(mux)
+	wrapped = app.tinyOptimizeDb(mux)
 	return wrapped
 }
 
-func asApi(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+func (app *App) asApi(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler(w, withRenderMode(r, RenderJSON))
 	}
 }
 
-func logMiddleware(next http.Handler) http.Handler {
+func (app *App) logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
@@ -299,16 +315,16 @@ func logMiddleware(next http.Handler) http.Handler {
 }
 
 // tinyOptimizeDb runs a row-limited optimize. It's probably faster to optimize queries on 400-10000 rows than it is to wait 2 minutes for a worse-case response.
-func tinyOptimizeDb(next http.Handler) http.Handler {
+func (app *App) tinyOptimizeDb(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-			return withSQL(ctx, func() error {
+		p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+			return app.withSQL(ctx, func() error {
 				pragma1 := "PRAGMA analysis_limit=10000"
 				pragma2 := "PRAGMA optimize"
-				if _, err = vars.Db.ExecContext(ctx, pragma1); err != nil {
+				if _, err = app.Db.ExecContext(ctx, pragma1); err != nil {
 					log.Printf("pragma error %q: %v", pragma1, err)
-					if _, err = vars.Db.ExecContext(ctx, pragma2); err != nil {
+					if _, err = app.Db.ExecContext(ctx, pragma2); err != nil {
 						log.Printf("pragma error %q: %v", pragma2, err)
 					}
 				}
@@ -316,7 +332,7 @@ func tinyOptimizeDb(next http.Handler) http.Handler {
 			})
 		})
 		if err != nil {
-			renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, err)
+			app.renderError(r.Context(), w, &types.Perf{}, http.StatusInternalServerError, err)
 			return
 		}
 		_ = p
@@ -346,7 +362,7 @@ func getRenderMode(ctx context.Context) RenderMode {
 	return RenderHTML
 }
 
-func render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -368,9 +384,9 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, max-age=60")
-		w.Header().Set("X-App-Version", vars.BuildInfo.Version)
-		w.Header().Set("X-App-Commit", vars.BuildInfo.Commit)
-		w.Header().Set("X-App-Build-Date", vars.BuildInfo.BuildDate)
+		w.Header().Set("X-App-Version", app.BuildInfo.Version)
+		w.Header().Set("X-App-Commit", app.BuildInfo.Commit)
+		w.Header().Set("X-App-Build-Date", app.BuildInfo.BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		return enc.Encode(data)
@@ -385,11 +401,11 @@ func render(ctx context.Context, w http.ResponseWriter, name string, data any) e
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	return vars.Tpl.ExecuteTemplate(w, name, data)
+	return app.Tpl.ExecuteTemplate(w, name, data)
 }
 
 // Same as render, but fragments shouldn't clear the JS cookie
-func renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -411,9 +427,9 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, max-age=60")
-		w.Header().Set("X-App-Version", vars.BuildInfo.Version)
-		w.Header().Set("X-App-Commit", vars.BuildInfo.Commit)
-		w.Header().Set("X-App-Build-Date", vars.BuildInfo.BuildDate)
+		w.Header().Set("X-App-Version", app.BuildInfo.Version)
+		w.Header().Set("X-App-Commit", app.BuildInfo.Commit)
+		w.Header().Set("X-App-Build-Date", app.BuildInfo.BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		return enc.Encode(data)
@@ -421,10 +437,10 @@ func renderFragment(ctx context.Context, w http.ResponseWriter, name string, dat
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	return vars.Tpl.ExecuteTemplate(w, name, data)
+	return app.Tpl.ExecuteTemplate(w, name, data)
 }
 
-func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
+func (app *App) renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
 	select {
 	case <-ctx.Done():
 		return
@@ -457,9 +473,9 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 	renderMode := getRenderMode(ctx)
 	if renderMode == RenderJSON {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("X-App-Version", vars.BuildInfo.Version)
-		w.Header().Set("X-App-Commit", vars.BuildInfo.Commit)
-		w.Header().Set("X-App-Build-Date", vars.BuildInfo.BuildDate)
+		w.Header().Set("X-App-Version", app.BuildInfo.Version)
+		w.Header().Set("X-App-Commit", app.BuildInfo.Commit)
+		w.Header().Set("X-App-Build-Date", app.BuildInfo.BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(model)
@@ -471,15 +487,15 @@ func renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, s
 	if v, ok := ctx.Value(renderErrorTemplateKey{}).(string); ok {
 		tpl = v
 	}
-	_ = vars.Tpl.ExecuteTemplate(w, tpl, model)
+	_ = app.Tpl.ExecuteTemplate(w, tpl, model)
 }
 
-func renderErrorFragment(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
+func (app *App) renderErrorFragment(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
 	errorFragmentCtx := context.WithValue(ctx, renderErrorTemplateKey{}, "error_fragment.gohtml")
-	renderError(errorFragmentCtx, w, perf, status, err)
+	app.renderError(errorFragmentCtx, w, perf, status, err)
 }
 
-func httpRedirect(ctx context.Context, w http.ResponseWriter, r *http.Request, perf *types.Perf, url string, code int) {
+func (app *App) httpRedirect(ctx context.Context, w http.ResponseWriter, r *http.Request, perf *types.Perf, url string, code int) {
 	select {
 	case <-ctx.Done():
 		return

@@ -6,19 +6,18 @@ import (
 	"database/sql"
 	"fmt"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"strings"
 )
 
-func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
+func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
 	var err error
 	var albumsTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
 	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(searchQuery)))
 
 	// 1: Evict old entries
-	err = withSQL(ctx, func() error {
-		_, err := vars.CacheDb.ExecContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		_, err := app.CacheDb.ExecContext(ctx, `
 			DELETE
 			  FROM search_hits
 			 WHERE (UNIXEPOCH('subsec') * 1000) - inserted_ts > ?
@@ -30,8 +29,8 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 		return 0, err
 	}
 	// 2: Get cached entry
-	err = withSQL(ctx, func() error {
-		return vars.CacheDb.QueryRowContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		return app.CacheDb.QueryRowContext(ctx, `
 			SELECT hits
 			  FROM search_hits
 			 WHERE query_hash = ?
@@ -48,8 +47,8 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 	}
 
 	// 3: No entry was cached; get total hits
-	err = withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album_fts5 af5
 			 WHERE album_fts5 MATCH ?
@@ -68,8 +67,8 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 	}
 
 	// 4: Cache result
-	err = withSQL(ctx, func() error {
-		_, err := vars.CacheDb.ExecContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		_, err := app.CacheDb.ExecContext(ctx, `
 			INSERT INTO search_hits (query_hash, table_name, hits)
 			VALUES (?, 'album', ?)
 		`, queryHash, albumsTotal)
@@ -77,15 +76,15 @@ func getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool
 	})
 	return albumsTotal, err
 }
-func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.Album, error) {
+func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.Album, error) {
 	var albums []types.Album
-	if err := withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func() error {
 		var rows *sql.Rows
 		var err error
 
 		if order == SortRank || order == SortDefault {
 			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
-			rows, err = vars.Db.QueryContext(ctx, `
+			rows, err = app.Db.QueryContext(ctx, `
 				  WITH matches AS (
 				      SELECT af5.ROWID
 				           , BM25(album_fts5, 9.0, 6.0) AS score
@@ -159,7 +158,7 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
 			//language=sqlite
-			rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
+			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT af5.ROWID
 				        FROM album_fts5 af5
@@ -265,8 +264,8 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 	}
 	for i := range albums {
 		thumb := albums[i].Thumb
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.filename
 				     , mt.name AS mime_type
 				  FROM remote_file rf
@@ -291,15 +290,15 @@ func getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offs
 	return albums, nil
 }
 
-func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
+func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
 	var err error
 	var filesTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
 	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(searchQuery)))
 
 	// 1: Evict old entries
-	err = withSQL(ctx, func() error {
-		_, err := vars.CacheDb.ExecContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		_, err := app.CacheDb.ExecContext(ctx, `
 			DELETE
 			  FROM search_hits
 			 WHERE (UNIXEPOCH('subsec') * 1000) - inserted_ts > ?
@@ -311,8 +310,8 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 		return 0, err
 	}
 	// 2: Get cached entry
-	err = withSQL(ctx, func() error {
-		return vars.CacheDb.QueryRowContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		return app.CacheDb.QueryRowContext(ctx, `
 			SELECT hits
 			  FROM search_hits
 			 WHERE query_hash = ?
@@ -329,8 +328,8 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 	}
 
 	// 3: No entry was cached; get total hits
-	err = withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM remote_file_fts5 rff5
 			  JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
@@ -344,8 +343,8 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 	}
 
 	// 4: Cache result
-	err = withSQL(ctx, func() error {
-		_, err := vars.CacheDb.ExecContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		_, err := app.CacheDb.ExecContext(ctx, `
 			INSERT INTO search_hits (query_hash, table_name, hits)
 			VALUES (?, 'remote_file', ?)
 		`, queryHash, filesTotal)
@@ -354,15 +353,15 @@ func getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool)
 	return filesTotal, err
 }
 
-func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.File, error) {
+func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.File, error) {
 	var files []types.File
-	if err := withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func() error {
 		var rows *sql.Rows
 		var err error
 
 		if order == SortRank || order == SortDefault {
 			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
-			rows, err = vars.Db.QueryContext(ctx, `
+			rows, err = app.Db.QueryContext(ctx, `
 				  WITH matches AS (
 				      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
 				        FROM remote_file_fts5 rff5
@@ -408,7 +407,7 @@ func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offse
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
 			//language=sqlite
-			rows, err = vars.Db.QueryContext(ctx, replacer.Replace(`
+			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT rff5.ROWID
 				        FROM remote_file_fts5 rff5
@@ -485,12 +484,12 @@ func getSearchFilesPage(ctx context.Context, searchQuery string, size int, offse
 	return files, nil
 }
 
-func getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
+func (app *App) getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
 	var err error
 	var tagsTotal int
 	// Not bothering to cache tags; there should be few enough that search is cheap
-	err = withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err = app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM tag_fts5 tf5
 			  JOIN tag t ON t.tag_id = tf5.ROWID
@@ -501,15 +500,15 @@ func getSearchTagHits(ctx context.Context, searchQuery string) (int, error) {
 	return tagsTotal, err
 }
 
-// getSearchTagsPage searches for tags. If limit is -1, sqlite returns unlimited matches
-func getSearchTagsPage(ctx context.Context, searchQuery string, limit int) ([]types.Tag, error) {
+// app.getSearchTagsPage searches for tags. If limit is -1, sqlite returns unlimited matches
+func (app *App) getSearchTagsPage(ctx context.Context, searchQuery string, limit int) ([]types.Tag, error) {
 	//limitString := "ALL"
 	//if limit > 0 {
 	//	limitString = strconv.Itoa(limit)
 	//}
 	var tags []types.Tag
-	if err := withSQL(ctx, func() error {
-		rows, err := vars.Db.QueryContext(ctx, `
+	if err := app.withSQL(ctx, func() error {
+		rows, err := app.Db.QueryContext(ctx, `
 			  WITH matches AS (
 			      SELECT tf5.ROWID, BM25(tag_fts5) AS score
 			        FROM tag_fts5 tf5

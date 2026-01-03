@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"log"
 	"net/http"
 	"net/url"
@@ -68,7 +67,7 @@ type perfKey struct{}
 
 // perfTracker helps measure SQL and request timings
 // It attaches a Perf tracker to the provided parent context to preserve request cancellation/deadlines.
-func perfTracker(parent context.Context, next func(ctx context.Context, p *types.Perf) error) (types.Perf, error) {
+func (app *App) perfTracker(parent context.Context, next func(ctx context.Context, p *types.Perf) error) (types.Perf, error) {
 	start := time.Now()
 	p := types.Perf{Start: start}
 	ctx := context.WithValue(parent, perfKey{}, &p)
@@ -83,7 +82,7 @@ func perfTracker(parent context.Context, next func(ctx context.Context, p *types
 	return p, err
 }
 
-func withSQL(ctx context.Context, fn func() error) error {
+func (app *App) withSQL(ctx context.Context, fn func() error) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -98,11 +97,11 @@ func withSQL(ctx context.Context, fn func() error) error {
 		perf.SQLTime += elapsed
 	}
 	// Slow query logging: threshold via SLOW_SQL_MS env (default 100ms)
-	if vars.SlowSqlMs >= 0 && elapsed >= time.Duration(vars.SlowSqlMs)*time.Millisecond {
+	if app.SlowSqlMs >= 0 && elapsed >= time.Duration(app.SlowSqlMs)*time.Millisecond {
 		if _, file, line, ok := runtime.Caller(1); ok {
-			log.Printf("SLOW SQL at %s:%d: %v (>= %dms)", file, line, elapsed.Round(time.Millisecond), vars.SlowSqlMs)
+			log.Printf("SLOW SQL at %s:%d: %v (>= %dms)", file, line, elapsed.Round(time.Millisecond), app.SlowSqlMs)
 		} else {
-			log.Printf("SLOW SQL: %v (>= %dms)", elapsed.Round(time.Millisecond), vars.SlowSqlMs)
+			log.Printf("SLOW SQL: %v (>= %dms)", elapsed.Round(time.Millisecond), app.SlowSqlMs)
 		}
 	}
 	return err

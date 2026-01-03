@@ -248,7 +248,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{Axis: layout.Vertical, Spacing: layout.SpaceAround, Alignment: layout.End}.Layout(gtx,
 								layout.Rigid(material.Body2(mw.th, "Server Control GUI").Layout),
-								layout.Rigid(material.Caption(mw.th, fmt.Sprintf("%s", vars.BuildInfo.Version)).Layout),
+								layout.Rigid(material.Caption(mw.th, fmt.Sprintf("%s", server.GetServerConfig().BuildInfo.Version)).Layout),
 							)
 						}),
 					)

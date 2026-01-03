@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"golocalgal/types"
-	"golocalgal/vars"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -18,36 +17,36 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-func handle404(w http.ResponseWriter, r *http.Request) {
-	renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
+func (app *App) handle404(w http.ResponseWriter, r *http.Request) {
+	app.renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
 }
 
-func handleStatic(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleStatic(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
-	vars.StaticFSHandler.ServeHTTP(w, r)
+	app.StaticFSHandler.ServeHTTP(w, r)
 }
 
-func handleAbout(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleAbout(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		model := map[string]any{"Perf": *perf}
-		return render(ctx, w, "about.gohtml", &model)
+		return app.render(ctx, w, "about.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func handleStats(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var dbBytes int64
 		var schemaVersion string
 		var albumCount int
 		var fileCount int
 		var tagCount int
 
-		err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT (
 				           SELECT page_size
 				             FROM pragma_page_size()
@@ -88,30 +87,30 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			TagCount:      tagCount,
 			BasePage:      &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "stats.gohtml", &model)
+		return app.render(ctx, w, "stats.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func handleBrowse(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if !(r.URL.Path == "/" || r.URL.Path == "/api/galleries") {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusNotFound, nil)
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
 
-		total, err := getTotalAlbumCount(ctx)
+		total, err := app.getTotalAlbumCount(ctx)
 		if err != nil {
 			return err
 		}
 		var list []types.Album
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			var orderByPage string
 			var orderByAgg string
 			switch sort {
@@ -133,7 +132,7 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			}
 			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg)
 			//language=sqlite
-			rows, err := vars.Db.QueryContext(ctx, replacer.Replace(`
+			rows, err := app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH page AS (
 				      SELECT a.album_id
 				           , a.ripper_id
@@ -259,8 +258,8 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range list {
 			thumb := list[i].Thumb
-			if err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
+			if err := app.withSQL(ctx, func() error {
+				return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
 					  FROM remote_file rf
@@ -297,18 +296,18 @@ func handleBrowse(w http.ResponseWriter, r *http.Request) {
 			Sort:     sort,
 			BasePage: &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "browse.gohtml", &model)
+		return app.render(ctx, w, "browse.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func getTotalAlbumCount(ctx context.Context) (int, error) {
+func (app *App) getTotalAlbumCount(ctx context.Context) (int, error) {
 	var total int
-	err := withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err := app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a
 			 WHERE a.cnt_rf > 0
@@ -318,17 +317,17 @@ func getTotalAlbumCount(ctx context.Context) (int, error) {
 }
 
 // handleGallery handles /gallery/{ripper_host}/{gid}
-func handleGallery(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	gid := r.PathValue("gid")
 	if ripperHost == "" || gid == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}"))
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var a types.Album
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
 				     , r.name AS ripper_name
@@ -380,8 +379,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 
 		//var total int
 		//var albumBytes int64
-		//if err := withSQL(ctx, func() error {
-		//	return vars.Db.QueryRowContext(ctx, `
+		//if err := app.withSQL(ctx, func() error {
+		//	return app.Db.QueryRowContext(ctx, `
 		//		SELECT COUNT(*)
 		//		     , COALESCE(SUM(rf.bytes), 0)
 		//		  FROM map_album_remote_file marf
@@ -394,7 +393,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		//	return err
 		//}
 		var files []types.File
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			var orderBy string
 			switch sort {
 			// TODO: order by local_rating?
@@ -407,7 +406,7 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			default:
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
-			rows, err := vars.Db.QueryContext(ctx, strings.Replace(`
+			rows, err := app.Db.QueryContext(ctx, strings.Replace(`
 				SELECT rf.remote_file_id
 				     --, r.name AS ripper_name
 				     --, r.host AS ripper_host
@@ -468,8 +467,8 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 		// Fetch tags for album and distinct tags from its files
 		var albumTags []types.Tag
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, e := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id, t.name
 				  FROM map_album_tag mat
 				  JOIN tag t ON t.tag_id = mat.tag_id
@@ -520,10 +519,10 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 				Sort:          sort,
 				BasePage:      &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "gallery.gohtml", &model)
+			return app.render(ctx, w, "gallery.gohtml", &model)
 		}
 
-		fileTags, err := getGalleryFileTags(ctx, gid)
+		fileTags, err := app.getGalleryFileTags(ctx, gid)
 		if err != nil {
 			return err
 		}
@@ -541,26 +540,26 @@ func handleGallery(w http.ResponseWriter, r *http.Request) {
 			Sort:       sort,
 			BasePage:   &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "gallery.gohtml", &model)
+		return app.render(ctx, w, "gallery.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleGalleryFileTagsFragment handles /gallery-file-tags/{ripper_host}/{gid}
-func handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	gid := r.PathValue("gid")
 	if ripperHost == "" || gid == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery-file-tags/{ripper_host}/{gid}"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery-file-tags/{ripper_host}/{gid}"))
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		// Fetch tags for album and distinct tags from its files
 		var fileTags []types.Tag
-		fileTags, err := getGalleryFileTags(ctx, gid)
+		fileTags, err := app.getGalleryFileTags(ctx, gid)
 		if err != nil {
 			return err
 		}
@@ -568,19 +567,19 @@ func handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Request) {
 			FileTags: fileTags,
 			BasePage: &types.BasePage{Perf: perf},
 		}
-		return renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
+		return app.renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
 	})
 	if err != nil {
 		err = fmt.Errorf("unable to load gallery's file tags: %w", err)
-		renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
+func (app *App) getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
 	var fileTags []types.Tag
-	if err := withSQL(ctx, func() error {
-		rows, e := vars.Db.QueryContext(ctx, `
+	if err := app.withSQL(ctx, func() error {
+		rows, e := app.Db.QueryContext(ctx, `
 				SELECT t.name, COUNT(*) as count
 				  FROM tag t
 				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
@@ -613,24 +612,24 @@ func getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
 }
 
 // handleGallery handles /gallery/{ripper_host}/{gid}/{file_id}
-func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	gid := r.PathValue("gid")
 	fileIdString := r.PathValue("file_id")
 	if ripperHost == "" || gid == "" || fileIdString == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}/{file_id}"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}/{file_id}"))
 		return
 	}
 	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
 	if err != nil || fileId <= 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("file_id must be a positive integer"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("file_id must be a positive integer"))
 		return
 	}
 
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var a types.Album
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
 				     , r.name AS ripper_name
@@ -669,8 +668,8 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var f types.File
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.remote_file_id
 				     , r.name AS ripper_name
 				     , r.host AS ripper_host
@@ -716,7 +715,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		sort := getSortFiles(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			var prevOrderKey1 string
 			var prevOrderKey2 string
 			switch sort {
@@ -779,7 +778,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				prevOrderKey2,
 			)
 			//language=sqlite
-			rows, e := vars.Db.QueryContext(ctx, replacer.Replace(`
+			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
 				-- Step 2: Join the small set to remote_file and filter to available rows.
 				-- Step 3: Re-order ascending for display as chronological prev list.
@@ -849,7 +848,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var next []types.File
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			var nextOrderKey string
 			switch sort {
 			case SortFetched:
@@ -902,7 +901,7 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 
 			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey)
 			//language=sqlite
-			rows, e := vars.Db.QueryContext(ctx, replacer.Replace(`
+			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH target AS (
 				      SELECT t.remote_file_id
 				           , t.inserted_ts
@@ -965,8 +964,8 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 		// File tags
 		var fileTags []types.Tag
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, e := app.Db.QueryContext(ctx, `
 				-- Step 1: Drive from map_remote_file_tag to use PK (remote_file_id, tag_id) for fast lookup by file id.
 				-- Step 2: Join to tag to fetch tag names for display.
 				-- Step 3: Order alphabetically.
@@ -1025,10 +1024,10 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				Autoplay:     autoplay,
 				BasePage:     &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "file.gohtml", &model)
+			return app.render(ctx, w, "file.gohtml", &model)
 		}
 		// Albums containing this file
-		albums, err := getRelatedAlbums(ctx, fileId)
+		albums, err := app.getRelatedAlbums(ctx, fileId)
 		if err != nil {
 			return err
 		}
@@ -1043,34 +1042,34 @@ func handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			Autoplay:     autoplay,
 			BasePage:     &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "file.gohtml", &model)
+		return app.render(ctx, w, "file.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleFileStandalone handles /file/{ripper_host}/{file_id}/
-func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	fileIdString := r.PathValue("file_id")
 	if ripperHost == "" || fileIdString == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}"))
 		return
 	}
 	// TODO enable visiting a page by File urlid (need to handle related galleries fragment too)
 	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
 	if err != nil || fileId <= 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
 		return
 	}
 
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var f types.File
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			f.RipperHost = ripperHost
-			return vars.Db.QueryRowContext(ctx, `
+			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.remote_file_id
 				     , rf.urlid
 				     , rf.filename
@@ -1110,8 +1109,8 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 
 		var fileTags []types.Tag
 		// Standalone file view: no Prev/Next
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, e := app.Db.QueryContext(ctx, `
 					SELECT t.tag_id, t.name
 					  FROM map_remote_file_tag m
 					  JOIN tag t ON t.tag_id = m.tag_id
@@ -1136,7 +1135,7 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 		asyncAlbums := isClientJsOn(r) || getRenderMode(ctx) == RenderJSON
 		var albums []types.Album
 		if !asyncAlbums {
-			albums, err = getRelatedAlbums(ctx, f.FileId)
+			albums, err = app.getRelatedAlbums(ctx, f.FileId)
 			if err != nil {
 				return err
 			}
@@ -1149,52 +1148,52 @@ func handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 
 		// Regular file page
 		model := types.FilePage{File: f, FileTags: fileTags, AsyncAlbums: asyncAlbums, Albums: albums, ShowPrevNext: false, BasePage: &types.BasePage{Perf: perf}}
-		return render(ctx, w, "file.gohtml", &model)
+		return app.render(ctx, w, "file.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleFileStandalone handles /file/{ripper_host}/{file_id}/galleries/
-func handleFileGalleryFragment(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleFileGalleryFragment(w http.ResponseWriter, r *http.Request) {
 	// ripperHost is not necessary for now, but want to keep to make replacing file_id with urlid easy in the future
 	ripperHost := r.PathValue("ripper_host")
 	fileIdString := r.PathValue("file_id")
 	if ripperHost == "" || fileIdString == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}/galleries"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}/galleries"))
 		return
 	}
 	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
 	if err != nil || fileId <= 0 {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id, must be a positive integer"))
 		return
 	}
 
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		f := types.File{FileId: fileId}
 
 		var albums []types.Album
-		albums, err = getRelatedAlbums(ctx, fileId)
+		albums, err = app.getRelatedAlbums(ctx, fileId)
 		if err != nil {
 			return err
 		}
 
 		model := types.FilePage{File: f, Albums: albums, BasePage: &types.BasePage{Perf: perf}}
-		return renderFragment(ctx, w, "file_galleries.gohtml", &model)
+		return app.renderFragment(ctx, w, "file_galleries.gohtml", &model)
 	})
 	if err != nil {
 		err = fmt.Errorf("unable to load file's related galleries: %w", err)
-		renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderErrorFragment(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) {
+func (app *App) getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) {
 	var albums []types.Album
-	if err := withSQL(ctx, func() error {
-		rows, e := vars.Db.QueryContext(ctx, `
+	if err := app.withSQL(ctx, func() error {
+		rows, e := app.Db.QueryContext(ctx, `
 			SELECT a.album_id
 			     , a.ripper_id
 			     , r.name AS ripper_name
@@ -1264,8 +1263,8 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 	}
 	for i := range albums {
 		thumb := albums[i].Thumb
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.filename
 				     , mt.name AS mime_type
 				  FROM remote_file rf
@@ -1290,17 +1289,17 @@ func getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) 
 	return albums, nil
 }
 
-func handleTagDetail(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 	tag := r.PathValue("tag_name")
 	tag, err := url.QueryUnescape(tag)
 	if err != nil {
-		renderError(r.Context(), w, &types.Perf{}, 500, err)
+		app.renderError(r.Context(), w, &types.Perf{}, 500, err)
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var t types.Tag
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT tag_id, name
 				  FROM tag
 				 WHERE name = ?
@@ -1312,8 +1311,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		var total int
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
 				  FROM album a
 				  JOIN map_album_tag mat ON mat.album_id = a.album_id AND mat.tag_id = ?
@@ -1322,8 +1321,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var albums []types.Album
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, e := app.Db.QueryContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
 				     , r.name AS ripper_name
@@ -1395,8 +1394,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range albums {
 			thumb := albums[i].Thumb
-			if err := withSQL(ctx, func() error {
-				return vars.Db.QueryRowContext(ctx, `
+			if err := app.withSQL(ctx, func() error {
+				return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
 					  FROM remote_file rf
@@ -1412,8 +1411,8 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 
 		// Files for tag
 		var files []types.File
-		if err := withSQL(ctx, func() error {
-			rows, e := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, e := app.Db.QueryContext(ctx, `
 				SELECT rf.remote_file_id
 				     , r.name AS ripper_name
 				     , r.host AS ripper_host
@@ -1480,19 +1479,19 @@ func handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		model := types.TagDetailPage{Tag: t, Albums: albums, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(albums) < total, BasePage: &types.BasePage{Perf: perf}}
-		return render(ctx, w, "tag.gohtml", &model)
+		return app.render(ctx, w, "tag.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func handleTags(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleTags(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var imageTags []types.Tag
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, err := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id
 				     , t.name
 				     , (
@@ -1521,8 +1520,8 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var albumTags []types.Tag
-		if err := withSQL(ctx, func() error {
-			rows, err := vars.Db.QueryContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			rows, err := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id
 				     , t.name
 				     , COUNT(t.tag_id) AS cnt
@@ -1547,32 +1546,32 @@ func handleTags(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		model := types.TagsPage{ImageTags: imageTags, AlbumTags: albumTags, BasePage: &types.BasePage{Perf: perf}}
-		return render(ctx, w, "tags.gohtml", &model)
+		return app.render(ctx, w, "tags.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleSearch handles /search
-func handleSearch(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	searchQuery := q.Get("q")
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		size := 10
 		offset := 0
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "search_noquery.gohtml", &model)
+			return app.render(ctx, w, "search_noquery.gohtml", &model)
 		}
 
 		var albumIdMatches []types.Album
 		{ // Just a block for code folding
-			if err := withSQL(ctx, func() error {
-				rows, err := vars.Db.QueryContext(ctx, `
+			if err := app.withSQL(ctx, func() error {
+				rows, err := app.Db.QueryContext(ctx, `
 					SELECT a.album_id
 					     , a.ripper_id
 					     , r.name AS ripper_name
@@ -1650,8 +1649,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			}
 			for i := range albumIdMatches {
 				thumb := albumIdMatches[i].Thumb
-				if err := withSQL(ctx, func() error {
-					return vars.Db.QueryRowContext(ctx, `
+				if err := app.withSQL(ctx, func() error {
+					return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
 					  FROM remote_file rf
@@ -1677,8 +1676,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		var fileIdMatches []types.File
 		{
-			if err := withSQL(ctx, func() error {
-				rows, err := vars.Db.QueryContext(ctx, `
+			if err := app.withSQL(ctx, func() error {
+				rows, err := app.Db.QueryContext(ctx, `
 					SELECT rf.remote_file_id
 					     , r.name AS ripper_name
 					     , r.host AS ripper_host
@@ -1739,8 +1738,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		var userIdMatches []types.User
 		{
-			if err := withSQL(ctx, func() error {
-				rows, err := vars.Db.QueryContext(ctx, `
+			if err := app.withSQL(ctx, func() error {
+				rows, err := app.Db.QueryContext(ctx, `
 				SELECT DISTINCT both.uploader, r.host
 				  FROM (
 				      SELECT rf.uploader, rf.ripper_id
@@ -1776,36 +1775,36 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		// 1: Search albums
 		var albumsTotal int
-		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 
-		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
 		if err != nil {
 			return err
 		}
 
 		// 2: Search files
 		var filesTotal int
-		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 
-		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
 		if err != nil {
 			return err
 		}
 
 		// 3: Search tags
 		var tagsTotal int
-		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		tagsTotal, err = app.getSearchTagHits(ctx, searchQuery)
 		if err != nil {
 			return err
 		}
 
-		tags, err := getSearchTagsPage(ctx, searchQuery, 100)
+		tags, err := app.getSearchTagsPage(ctx, searchQuery, 100)
 		if err != nil {
 			return err
 		}
@@ -1824,7 +1823,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			Sort:           SortRank,
 			BasePage:       &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "search.gohtml", &model)
+		return app.render(ctx, w, "search.gohtml", &model)
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1833,49 +1832,49 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
+			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		}
 		return
 	}
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleSearchGalleries handles /search/galleries
-func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	searchQuery := q.Get("q")
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "search_noquery.gohtml", &model)
+			return app.render(ctx, w, "search_noquery.gohtml", &model)
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 
 		var albumsTotal int
-		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var tagsTotal int
-		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		tagsTotal, err = app.getSearchTagHits(ctx, searchQuery)
 		if err != nil {
 			return err
 		}
 
 		order := getSortSearchGalleries(w, r)
-		albums, err := getSearchAlbumsPage(ctx, searchQuery, size, offset, order)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -1893,7 +1892,7 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "search_galleries.gohtml", &model)
+		return app.render(ctx, w, "search_galleries.gohtml", &model)
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1902,49 +1901,49 @@ func handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
+			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		}
 		return
 	}
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleSearchFiles handles /search/files
-func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	searchQuery := q.Get("q")
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "search_noquery.gohtml", &model)
+			return app.render(ctx, w, "search_noquery.gohtml", &model)
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 
 		var albumsTotal int
-		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var tagsTotal int
-		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		tagsTotal, err = app.getSearchTagHits(ctx, searchQuery)
 		if err != nil {
 			return err
 		}
 
 		order := getSortSearchFiles(w, r)
-		files, err := getSearchFilesPage(ctx, searchQuery, size, offset, order)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -1962,7 +1961,7 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "search_files.gohtml", &model)
+		return app.render(ctx, w, "search_files.gohtml", &model)
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1971,46 +1970,46 @@ func handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
+			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		}
 		return
 	}
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleSearchTags handles /search/tags
-func handleSearchTags(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	searchQuery := q.Get("q")
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		if len(searchQuery) == 0 {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return render(ctx, w, "search_noquery.gohtml", &model)
+			return app.render(ctx, w, "search_noquery.gohtml", &model)
 		}
 
 		var albumsTotal int
-		albumsTotal, err := getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
 		if err != nil {
 			return err
 		}
 		var tagsTotal int
-		tagsTotal, err = getSearchTagHits(ctx, searchQuery)
+		tagsTotal, err = app.getSearchTagHits(ctx, searchQuery)
 		if err != nil {
 			return err
 		}
 
-		tags, err := getSearchTagsPage(ctx, searchQuery, -1)
+		tags, err := app.getSearchTagsPage(ctx, searchQuery, -1)
 		if err != nil {
 			return err
 		}
@@ -2023,7 +2022,7 @@ func handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			TagsTotal:   tagsTotal,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "search_tags.gohtml", &model)
+		return app.render(ctx, w, "search_tags.gohtml", &model)
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -2032,47 +2031,47 @@ func handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
+			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		}
 		return
 	}
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleUser handles /user/{ripper_host}/{user_name}
-func handleUser(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	userName := r.PathValue("user_name")
 	if ripperHost == "" || userName == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}"))
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		size := 10
 		offset := 0
 
 		var albumsTotal int
-		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
-		albums, err := getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
-		files, err := getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched)
 		if err != nil {
 			return err
 		}
@@ -2087,40 +2086,40 @@ func handleUser(w http.ResponseWriter, r *http.Request) {
 			Sort:        SortFetched,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "user.gohtml", &model)
+		return app.render(ctx, w, "user.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleUser handles /user/{ripper_host}/{user_name}/galleries
-func handleUserGalleries(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	userName := r.PathValue("user_name")
 	if ripperHost == "" || userName == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/galleries"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/galleries"))
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortGalleries(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
-		albums, err := getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -2138,40 +2137,40 @@ func handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "user_galleries.gohtml", &model)
+		return app.render(ctx, w, "user_galleries.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleUser handles /user/{ripper_host}/{user_name}/files
-func handleUserFiles(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 	ripperHost := r.PathValue("ripper_host")
 	userName := r.PathValue("user_name")
 	if ripperHost == "" || userName == "" {
-		renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/files"))
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /user/{ripper_host}/{user_name}/files"))
 		return
 	}
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortFiles(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
 		if err != nil {
 			return err
 		}
 
-		files, err := getUserFilesPage(ctx, ripperHost, userName, size, offset, order)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order)
 		if err != nil {
 			return err
 		}
@@ -2189,10 +2188,10 @@ func handleUserFiles(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return render(ctx, w, "user_files.gohtml", &model)
+		return app.render(ctx, w, "user_files.gohtml", &model)
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -2224,11 +2223,11 @@ func isClientAutoplayOn(r *http.Request) bool {
 }
 
 // handleRandomGallery selects a random album and redirects to its gallery page.
-func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
-		if err := withSQL(ctx, func() error {
-			return vars.Db.QueryRowContext(ctx, `
+		if err := app.withSQL(ctx, func() error {
+			return app.Db.QueryRowContext(ctx, `
 				SELECT r.host, a.gid
 				  FROM album a
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
@@ -2242,20 +2241,20 @@ func handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
 // handleRandomFile selects a random available file and redirects to its file page.
-func handleRandomFile(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost string
 		var fileId int64
 		var gid sql.NullString
-		if err := withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func() error {
 			// Correct randomness, but slow-ish (avg 200ms)
-			//return vars.Db.QueryRowContext(ctx, `
+			//return app.Db.QueryRowContext(ctx, `
 			//	  WITH row_count AS (
 			//	      SELECT COUNT(*) as cnt
 			//	        FROM remote_file rf
@@ -2270,7 +2269,7 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 			//`).Scan(&ripperHost, &fileId)
 
 			// Not the best random distribution if rows are deleted, but fast (avg 1ms)
-			return vars.Db.QueryRowContext(ctx, `
+			return app.Db.QueryRowContext(ctx, `
 				SELECT r.host
 				     , rf.remote_file_id
 				     , (
@@ -2305,7 +2304,7 @@ func handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -2318,8 +2317,8 @@ var matchSearchFiles = regexp.MustCompile(`^/search/files/?$`)
 var matchBrowse = regexp.MustCompile(`^/[^/]*$`)
 
 // handleRandomPage selects a random page within the current set of pages.
-func handleRandomPage(w http.ResponseWriter, r *http.Request) {
-	p, err := perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		referer := r.Referer()
 		if len(referer) == 0 {
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -2345,11 +2344,11 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			ripperHost := m[1]
 			gid := m[2]
 			fileId := m[3]
-			nextFileId, err := getRandomGalleryFilePage(ctx, ripperHost, gid, fileId)
+			nextFileId, err := app.getRandomGalleryFilePage(ctx, ripperHost, gid, fileId)
 			if err != nil {
 				return err
 			}
-			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s/%d", ripperHost, gid, nextFileId), http.StatusTemporaryRedirect)
+			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s/%d", ripperHost, gid, nextFileId), http.StatusTemporaryRedirect)
 			return nil
 		}
 		if m := matchGallery.FindStringSubmatch(path); m != nil {
@@ -2357,11 +2356,11 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			gid := m[2]
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := getRandomGalleryPage(ctx, ripperHost, gid, page, size)
+			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size)
 			if err != nil {
 				return err
 			}
-			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&sort=%s", ripperHost, gid, nextPage, size, sort), http.StatusTemporaryRedirect)
+			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&sort=%s", ripperHost, gid, nextPage, size, sort), http.StatusTemporaryRedirect)
 			return nil
 		}
 		if matchFile.MatchString(path) {
@@ -2376,11 +2375,11 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchGalleries(parsedUrl)
-			nextPage, err := getRandomSearchGalleryPage(ctx, searchQuery, page, size)
+			nextPage, err := app.getRandomSearchGalleryPage(ctx, searchQuery, page, size)
 			if err != nil {
 				return err
 			}
-			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/galleries?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/galleries?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
 			return nil
 		}
 		if matchSearchFiles.MatchString(path) {
@@ -2391,21 +2390,21 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchFiles(parsedUrl)
-			nextPage, err := getRandomSearchFilePage(ctx, searchQuery, page, size)
+			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size)
 			if err != nil {
 				return err
 			}
-			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/files?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/files?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
 			return nil
 		}
 		if matchBrowse.MatchString(path) {
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := getRandomBrowsePage(ctx, page, size)
+			nextPage, err := app.getRandomBrowsePage(ctx, page, size)
 			if err != nil {
 				return err
 			}
-			httpRedirect(ctx, w, r, perf, fmt.Sprintf("/?page=%d&size=%d&sort=%s", nextPage, size, sort), http.StatusTemporaryRedirect)
+			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/?page=%d&size=%d&sort=%s", nextPage, size, sort), http.StatusTemporaryRedirect)
 			return nil
 		}
 		// Not supported on this URL. Go back
@@ -2413,15 +2412,15 @@ func handleRandomPage(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string) (int64, error) {
+func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string) (int64, error) {
 	var nextFileId sql.NullInt64
-	err := withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err := app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 		  WITH row_count AS (
 		      SELECT COUNT(*) cnt
 		        FROM remote_file rf
@@ -2459,10 +2458,10 @@ func getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string
 	return 0, fmt.Errorf("gallery file not found")
 }
 
-func getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int) (int64, error) {
+func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int) (int64, error) {
 	var count int64
-	err := withSQL(ctx, func() error {
-		return vars.Db.QueryRowContext(ctx, `
+	err := app.withSQL(ctx, func() error {
+		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a
 			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
@@ -2489,8 +2488,8 @@ func getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, pa
 	return nextPage, nil
 }
 
-func getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
-	totalHits, err := getSearchAlbumHits(ctx, searchQuery, false)
+func (app *App) getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
+	totalHits, err := app.getSearchAlbumHits(ctx, searchQuery, false)
 	if err != nil {
 		return 0, err
 	}
@@ -2506,8 +2505,8 @@ func getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page in
 	return nextPage, nil
 }
 
-func getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
-	totalHits, err := getSearchFileHits(ctx, searchQuery, false)
+func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
+	totalHits, err := app.getSearchFileHits(ctx, searchQuery, false)
 	if err != nil {
 		return 0, err
 	}
@@ -2523,8 +2522,8 @@ func getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, 
 	return nextPage, nil
 }
 
-func getRandomBrowsePage(ctx context.Context, page int, size int) (int64, error) {
-	totalHits, err := getTotalAlbumCount(ctx)
+func (app *App) getRandomBrowsePage(ctx context.Context, page int, size int) (int64, error) {
+	totalHits, err := app.getTotalAlbumCount(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -2540,7 +2539,7 @@ func getRandomBrowsePage(ctx context.Context, page int, size int) (int64, error)
 	return nextPage, nil
 }
 
-func cleanJoin(elem ...string) string {
+func (app *App) cleanJoin(elem ...string) string {
 	// absolute paths can't be joined; discard all paths prior to the last absolute path
 	lastAbsoluteIndex := 0
 	for i := 0; i < len(elem); i++ {
@@ -2550,7 +2549,7 @@ func cleanJoin(elem ...string) string {
 	}
 	joined := filepath.Join(elem[lastAbsoluteIndex:]...)
 	// prevent path traversal by resolving and ensuring it stays under mediaRoot
-	absRoot, _ := filepath.Abs(vars.MediaRoot)
+	absRoot, _ := filepath.Abs(app.MediaRoot)
 	absJoined, _ := filepath.Abs(joined)
 	if !strings.HasPrefix(absJoined, absRoot) {
 		return absRoot
