@@ -11,7 +11,6 @@ const (
 	SortFetched  string = "fetched"
 	SortUploaded string = "uploaded"
 
-	// TODO materialize slow aggregate calculations
 	SortItems string = "items"
 	SortBytes string = "bytes"
 
