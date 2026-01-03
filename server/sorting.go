@@ -23,17 +23,17 @@ var FileSorts = []string{SortFetched, SortUploaded, SortBytes}
 var GallerySearchSorts = []string{SortRank, SortFetched, SortUploaded, SortBytes, SortItems}
 var FileSearchSorts = []string{SortRank, SortFetched, SortUploaded, SortBytes}
 
-func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
+func getSort(w http.ResponseWriter, r *http.Request, cookieName string, validSorts []string) string {
 	var defaultSortValue string
-	defaultSort, err := r.Cookie("defaultSortGalleries")
-	if err == nil && slices.Contains(GallerySorts, defaultSort.Value) {
+	defaultSort, err := r.Cookie(cookieName)
+	if err == nil && slices.Contains(validSorts, defaultSort.Value) {
 		defaultSortValue = defaultSort.Value
 	} else {
 		defaultSortValue = ""
 	}
 
 	sortQs := r.URL.Query().Get("sort")
-	if !slices.Contains(GallerySorts, sortQs) {
+	if !slices.Contains(validSorts, sortQs) {
 		sortQs = ""
 	}
 
@@ -41,7 +41,7 @@ func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
 	newDefaultSortValue := sortQs != defaultSortValue
 	if sortQsWasValid && newDefaultSortValue {
 		http.SetCookie(w, &http.Cookie{
-			Name:     "defaultSortGalleries",
+			Name:     cookieName,
 			Value:    sortQs,
 			Path:     "/",
 			SameSite: http.SameSiteStrictMode,
@@ -52,129 +52,44 @@ func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
 		return defaultSortValue
 	}
 	return sortQs
+}
+
+func getSortGalleries(w http.ResponseWriter, r *http.Request) string {
+	return getSort(w, r, "defaultSortGalleries", GallerySorts)
 }
 
 func getSortFiles(w http.ResponseWriter, r *http.Request) string {
-	var defaultSortValue string
-	defaultSort, err := r.Cookie("defaultSortFiles")
-	if err == nil && slices.Contains(FileSorts, defaultSort.Value) {
-		defaultSortValue = defaultSort.Value
-	} else {
-		defaultSortValue = ""
-	}
-
-	sortQs := r.URL.Query().Get("sort")
-	if !slices.Contains(FileSorts, sortQs) {
-		sortQs = ""
-	}
-
-	sortQsWasValid := sortQs != ""
-	newDefaultSortValue := sortQs != defaultSortValue
-	if sortQsWasValid && newDefaultSortValue {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "defaultSortFiles",
-			Value:    sortQs,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   int((6 * time.Hour).Seconds()),
-		})
-	}
-	if sortQs == "" {
-		return defaultSortValue
-	}
-	return sortQs
+	return getSort(w, r, "defaultSortFiles", FileSorts)
 }
 
 func getSortSearchGalleries(w http.ResponseWriter, r *http.Request) string {
-	var defaultSortValue string
-	defaultSort, err := r.Cookie("defaultSortSearchGalleries")
-	if err == nil && slices.Contains(GallerySearchSorts, defaultSort.Value) {
-		defaultSortValue = defaultSort.Value
-	} else {
-		defaultSortValue = ""
-	}
-
-	sortQs := r.URL.Query().Get("sort")
-	if !slices.Contains(GallerySearchSorts, sortQs) {
-		sortQs = ""
-	}
-
-	sortQsWasValid := sortQs != ""
-	newDefaultSortValue := sortQs != defaultSortValue
-	if sortQsWasValid && newDefaultSortValue {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "defaultSortSearchGalleries",
-			Value:    sortQs,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   int((6 * time.Hour).Seconds()),
-		})
-	}
-	if sortQs == "" {
-		return defaultSortValue
-	}
-	return sortQs
+	return getSort(w, r, "defaultSortSearchGalleries", GallerySearchSorts)
 }
 
 func getSortSearchFiles(w http.ResponseWriter, r *http.Request) string {
-	var defaultSortValue string
-	defaultSort, err := r.Cookie("defaultSortSearchFiles")
-	if err == nil && slices.Contains(FileSearchSorts, defaultSort.Value) {
-		defaultSortValue = defaultSort.Value
-	} else {
-		defaultSortValue = ""
-	}
-
-	sortQs := r.URL.Query().Get("sort")
-	if !slices.Contains(FileSearchSorts, sortQs) {
-		sortQs = ""
-	}
-
-	sortQsWasValid := sortQs != ""
-	newDefaultSortValue := sortQs != defaultSortValue
-	if sortQsWasValid && newDefaultSortValue {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "defaultSortSearchFiles",
-			Value:    sortQs,
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   int((6 * time.Hour).Seconds()),
-		})
-	}
-	if sortQs == "" {
-		return defaultSortValue
-	}
-	return sortQs
+	return getSort(w, r, "defaultSortSearchFiles", FileSearchSorts)
 }
 
-func getUrlSortGalleries(url *url.URL) string {
-	sortQs := url.Query().Get("sort")
-	if !slices.Contains(GallerySorts, sortQs) {
+func getUrlSort(u *url.URL, validSorts []string) string {
+	sortQs := u.Query().Get("sort")
+	if !slices.Contains(validSorts, sortQs) {
 		sortQs = ""
 	}
 	return sortQs
 }
 
-func getUrlSortFiles(url *url.URL) string {
-	sortQs := url.Query().Get("sort")
-	if !slices.Contains(FileSorts, sortQs) {
-		sortQs = ""
-	}
-	return sortQs
+func getUrlSortGalleries(u *url.URL) string {
+	return getUrlSort(u, GallerySorts)
 }
 
-func getUrlSortSearchGalleries(url *url.URL) string {
-	sortQs := url.Query().Get("sort")
-	if !slices.Contains(GallerySearchSorts, sortQs) {
-		sortQs = ""
-	}
-	return sortQs
+func getUrlSortFiles(u *url.URL) string {
+	return getUrlSort(u, FileSorts)
 }
 
-func getUrlSortSearchFiles(url *url.URL) string {
-	sortQs := url.Query().Get("sort")
-	if !slices.Contains(FileSearchSorts, sortQs) {
-		sortQs = ""
-	}
-	return sortQs
+func getUrlSortSearchGalleries(u *url.URL) string {
+	return getUrlSort(u, GallerySearchSorts)
+}
+
+func getUrlSortSearchFiles(u *url.URL) string {
+	return getUrlSort(u, FileSearchSorts)
 }
