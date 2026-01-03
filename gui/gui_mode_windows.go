@@ -1,4 +1,4 @@
-//go:build windows
+//go:build (gio || giu) && windows
 
 package gui
 

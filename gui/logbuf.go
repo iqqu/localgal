@@ -1,3 +1,5 @@
+//go:build gio || giu
+
 package gui
 
 import (
