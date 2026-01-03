@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -86,7 +87,7 @@ func main() {
 	serverConfig := server.GetServerConfig()
 
 	if optimize {
-		err := server.OptimizeDbFromDsn(serverConfig.Dsn)
+		err := server.OptimizeDbFromDsn(context.Background(), serverConfig.Dsn)
 		if err != nil {
 			log.Printf("Unable to optimize db: %v", err)
 			os.Exit(1)

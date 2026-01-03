@@ -45,7 +45,7 @@ func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		var fileCount int
 		var tagCount int
 
-		err := app.withSQL(ctx, func() error {
+		err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT (
 				           SELECT page_size
@@ -110,7 +110,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var list []types.Album
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			var orderByPage string
 			var orderByAgg string
 			switch sort {
@@ -258,7 +258,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range list {
 			thumb := list[i].Thumb
-			if err := app.withSQL(ctx, func() error {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
@@ -306,7 +306,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 func (app *App) getTotalAlbumCount(ctx context.Context) (int, error) {
 	var total int
-	err := app.withSQL(ctx, func() error {
+	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a
@@ -326,7 +326,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var a types.Album
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
@@ -379,7 +379,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 
 		//var total int
 		//var albumBytes int64
-		//if err := app.withSQL(ctx, func() error {
+		//if err := app.withSQL(ctx, func(ctx context.Context) error {
 		//	return app.Db.QueryRowContext(ctx, `
 		//		SELECT COUNT(*)
 		//		     , COALESCE(SUM(rf.bytes), 0)
@@ -393,7 +393,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		//	return err
 		//}
 		var files []types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			var orderBy string
 			switch sort {
 			// TODO: order by local_rating?
@@ -467,7 +467,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 		// Fetch tags for album and distinct tags from its files
 		var albumTags []types.Tag
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, e := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id, t.name
 				  FROM map_album_tag mat
@@ -578,7 +578,7 @@ func (app *App) handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Req
 
 func (app *App) getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
 	var fileTags []types.Tag
-	if err := app.withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		rows, e := app.Db.QueryContext(ctx, `
 				SELECT t.name, COUNT(*) as count
 				  FROM tag t
@@ -628,7 +628,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var a types.Album
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
@@ -668,7 +668,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var f types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.remote_file_id
 				     , r.name AS ripper_name
@@ -715,7 +715,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		sort := getSortFiles(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			var prevOrderKey1 string
 			var prevOrderKey2 string
 			switch sort {
@@ -848,7 +848,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var next []types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			var nextOrderKey string
 			switch sort {
 			case SortFetched:
@@ -964,7 +964,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 		// File tags
 		var fileTags []types.Tag
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, e := app.Db.QueryContext(ctx, `
 				-- Step 1: Drive from map_remote_file_tag to use PK (remote_file_id, tag_id) for fast lookup by file id.
 				-- Step 2: Join to tag to fetch tag names for display.
@@ -1067,7 +1067,7 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var f types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			f.RipperHost = ripperHost
 			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.remote_file_id
@@ -1109,7 +1109,7 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 
 		var fileTags []types.Tag
 		// Standalone file view: no Prev/Next
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, e := app.Db.QueryContext(ctx, `
 					SELECT t.tag_id, t.name
 					  FROM map_remote_file_tag m
@@ -1192,7 +1192,7 @@ func (app *App) handleFileGalleryFragment(w http.ResponseWriter, r *http.Request
 
 func (app *App) getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) {
 	var albums []types.Album
-	if err := app.withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		rows, e := app.Db.QueryContext(ctx, `
 			SELECT a.album_id
 			     , a.ripper_id
@@ -1263,7 +1263,7 @@ func (app *App) getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Alb
 	}
 	for i := range albums {
 		thumb := albums[i].Thumb
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.filename
 				     , mt.name AS mime_type
@@ -1298,7 +1298,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var t types.Tag
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT tag_id, name
 				  FROM tag
@@ -1311,7 +1311,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		var total int
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT COUNT(*)
 				  FROM album a
@@ -1321,7 +1321,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var albums []types.Album
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, e := app.Db.QueryContext(ctx, `
 				SELECT a.album_id
 				     , a.ripper_id
@@ -1394,7 +1394,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range albums {
 			thumb := albums[i].Thumb
-			if err := app.withSQL(ctx, func() error {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
@@ -1411,7 +1411,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 
 		// Files for tag
 		var files []types.File
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, e := app.Db.QueryContext(ctx, `
 				SELECT rf.remote_file_id
 				     , r.name AS ripper_name
@@ -1490,7 +1490,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 func (app *App) handleTags(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var imageTags []types.Tag
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, err := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id
 				     , t.name
@@ -1520,7 +1520,7 @@ func (app *App) handleTags(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var albumTags []types.Tag
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			rows, err := app.Db.QueryContext(ctx, `
 				SELECT t.tag_id
 				     , t.name
@@ -1570,7 +1570,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		var albumIdMatches []types.Album
 		{ // Just a block for code folding
-			if err := app.withSQL(ctx, func() error {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				rows, err := app.Db.QueryContext(ctx, `
 					SELECT a.album_id
 					     , a.ripper_id
@@ -1649,7 +1649,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			}
 			for i := range albumIdMatches {
 				thumb := albumIdMatches[i].Thumb
-				if err := app.withSQL(ctx, func() error {
+				if err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, `
 					SELECT rf.filename
 					     , mt.name AS mime_type
@@ -1676,7 +1676,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		var fileIdMatches []types.File
 		{
-			if err := app.withSQL(ctx, func() error {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				rows, err := app.Db.QueryContext(ctx, `
 					SELECT rf.remote_file_id
 					     , r.name AS ripper_name
@@ -1738,7 +1738,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		var userIdMatches []types.User
 		{
-			if err := app.withSQL(ctx, func() error {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				rows, err := app.Db.QueryContext(ctx, `
 				SELECT DISTINCT both.uploader, r.host
 				  FROM (
@@ -2226,7 +2226,7 @@ func isClientAutoplayOn(r *http.Request) bool {
 func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT r.host, a.gid
 				  FROM album a
@@ -2252,7 +2252,7 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 		var ripperHost string
 		var fileId int64
 		var gid sql.NullString
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			// Correct randomness, but slow-ish (avg 200ms)
 			//return app.Db.QueryRowContext(ctx, `
 			//	  WITH row_count AS (
@@ -2419,7 +2419,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 
 func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string) (int64, error) {
 	var nextFileId sql.NullInt64
-	err := app.withSQL(ctx, func() error {
+	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
 		  WITH row_count AS (
 		      SELECT COUNT(*) cnt
@@ -2460,7 +2460,7 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 
 func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int) (int64, error) {
 	var count int64
-	err := app.withSQL(ctx, func() error {
+	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a

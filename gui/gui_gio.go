@@ -178,7 +178,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 			log.Println(mw.status)
 			go func() {
 				cfg := server.GetServerConfig()
-				err := server.OptimizeDbFromDsn(cfg.Dsn)
+				err := server.OptimizeDbFromDsn(context.Background(), cfg.Dsn)
 				if err != nil {
 					mw.status = fmt.Sprintf("Failed to optimize: %v", err)
 					log.Println(mw.status)

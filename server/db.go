@@ -48,7 +48,7 @@ func GetDb(dsn string) (*sql.DB, error) {
 }
 
 // GetCacheDb gets an in-memory cache to temporarily store repeated expensive query results
-func GetCacheDb() (*sql.DB, error) {
+func GetCacheDb(ctx context.Context) (*sql.DB, error) {
 	var err error
 	cacheDb, err := sql.Open("sqlite3", "file:cachedb?mode=memory&cache=shared&_foreign_keys=ON")
 	if err != nil {
@@ -56,7 +56,7 @@ func GetCacheDb() (*sql.DB, error) {
 		return nil, err
 	}
 	cacheDb.SetMaxOpenConns(1)
-	_, err = cacheDb.Exec(`
+	_, err = cacheDb.ExecContext(ctx, `
 		CREATE TEMP TABLE search_results
 		(
 		    query_hash  TEXT    NOT NULL,
@@ -82,7 +82,7 @@ func GetCacheDb() (*sql.DB, error) {
 	return cacheDb, nil
 }
 
-func initDB(db *sql.DB, filename string) error {
+func initDB(ctx context.Context, db *sql.DB, filename string) error {
 	var pragmas []string
 
 	// Not sure why anyone would try :memory:, but handle it anyway
@@ -109,16 +109,16 @@ func initDB(db *sql.DB, filename string) error {
 	pragmas = append(pragmas, "PRAGMA transaction_mode=IMMEDIATE;")
 
 	for _, p := range pragmas {
-		if _, err := db.Exec(p); err != nil {
+		if _, err := db.ExecContext(ctx, p); err != nil {
 			log.Printf("pragma error %q: %v", p, err)
 		}
 	}
 	return nil
 }
 
-func checkMinimumDbSchemaVersion(db *sql.DB) error {
+func checkMinimumDbSchemaVersion(ctx context.Context, db *sql.DB) error {
 	var version sql.NullString
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT version
 		  FROM flyway_schema_history
 		 WHERE success = 1
@@ -210,7 +210,7 @@ func getFileFromDsn(dsn string) string {
 	return filename
 }
 
-func OptimizeDbFromDsn(dsn string) error {
+func OptimizeDbFromDsn(ctx context.Context, dsn string) error {
 	dsn = DsnWithReadWrite(dsn)
 	dsn = DsnWithDefaultTimeout(dsn)
 	dsn = DsnWithForeignKeys(dsn)
@@ -218,14 +218,14 @@ func OptimizeDbFromDsn(dsn string) error {
 	if err != nil {
 		return err
 	}
-	err = OptimizeDb(db)
+	err = OptimizeDb(ctx, db)
 	return err
 }
 
-func OptimizeDb(db *sql.DB) error {
+func OptimizeDb(ctx context.Context, db *sql.DB) error {
 	start := time.Now()
 	log.Printf("db optimize started")
-	_, err := db.Exec("PRAGMA optimize")
+	_, err := db.ExecContext(ctx, "PRAGMA optimize")
 	elapsed := time.Since(start)
 	log.Printf("db optimize took: %v\n", elapsed.Round(time.Millisecond))
 	if err != nil {

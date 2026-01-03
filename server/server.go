@@ -85,16 +85,16 @@ func StartServer(cfg Config) (*Controller, error) {
 	}
 
 	dbFilename := getFileFromDsn(cfg.Dsn)
-	if err = initDB(app.Db, dbFilename); err != nil {
+	if err = initDB(context.Background(), app.Db, dbFilename); err != nil {
 		log.Printf("init db: %v", err)
 		return nil, err
 	}
 
-	if err := checkMinimumDbSchemaVersion(app.Db); err != nil {
+	if err := checkMinimumDbSchemaVersion(context.Background(), app.Db); err != nil {
 		return nil, err
 	}
 
-	app.CacheDb, err = GetCacheDb()
+	app.CacheDb, err = GetCacheDb(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (app *App) tinyOptimizeDb(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-			return app.withSQL(ctx, func() error {
+			return app.withSQL(ctx, func(ctx context.Context) error {
 				pragma1 := "PRAGMA analysis_limit=10000"
 				pragma2 := "PRAGMA optimize"
 				if _, err = app.Db.ExecContext(ctx, pragma1); err != nil {

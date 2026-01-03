@@ -90,7 +90,7 @@ func (app *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 		// final fallback: check database for likely path
 		if len(ripperHost) > 0 && len(name) > 0 && len(mangledName) > 0 {
 			var oldestGid string
-			err := app.withSQL(ctx, func() error {
+			err := app.withSQL(ctx, func(ctx context.Context) error {
 				return app.Db.QueryRowContext(ctx, `
 					SELECT a.gid
 					  FROM remote_file rf

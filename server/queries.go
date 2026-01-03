@@ -10,7 +10,7 @@ import (
 
 func (app *App) getUserAlbumHits(ctx context.Context, host string, uploader string) (int, error) {
 	var albumsTotal int
-	err := app.withSQL(ctx, func() error {
+	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM album a
@@ -25,7 +25,7 @@ func (app *App) getUserAlbumHits(ctx context.Context, host string, uploader stri
 
 func (app *App) getUserAlbumsPage(ctx context.Context, ripperHost string, uploader string, size int, offset int, order string) ([]types.Album, error) {
 	var albums []types.Album
-	if err := app.withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		var rows *sql.Rows
 		var err error
 
@@ -125,7 +125,7 @@ func (app *App) getUserAlbumsPage(ctx context.Context, ripperHost string, upload
 	}
 	for i := range albums {
 		thumb := albums[i].Thumb
-		if err := app.withSQL(ctx, func() error {
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT rf.filename
 				     , mt.name AS mime_type
@@ -153,7 +153,7 @@ func (app *App) getUserAlbumsPage(ctx context.Context, ripperHost string, upload
 
 func (app *App) getUserFileHits(ctx context.Context, host string, uploader string) (int, error) {
 	var filesTotal int
-	err := app.withSQL(ctx, func() error {
+	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			  FROM remote_file rf
@@ -169,7 +169,7 @@ func (app *App) getUserFileHits(ctx context.Context, host string, uploader strin
 
 func (app *App) getUserFilesPage(ctx context.Context, host string, uploader string, size int, offset int, order string) ([]types.File, error) {
 	var files []types.File
-	if err := app.withSQL(ctx, func() error {
+	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		var rows *sql.Rows
 		var err error
 

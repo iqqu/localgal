@@ -82,7 +82,7 @@ func (app *App) perfTracker(parent context.Context, next func(ctx context.Contex
 	return p, err
 }
 
-func (app *App) withSQL(ctx context.Context, fn func() error) error {
+func (app *App) withSQL(ctx context.Context, fn func(ctx context.Context) error) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -90,7 +90,7 @@ func (app *App) withSQL(ctx context.Context, fn func() error) error {
 	}
 	perf, _ := ctx.Value(perfKey{}).(*types.Perf)
 	start := time.Now()
-	err := fn()
+	err := fn(ctx)
 	elapsed := time.Since(start)
 	if perf != nil {
 		perf.SQLCount++
