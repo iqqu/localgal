@@ -362,10 +362,10 @@ func getRenderMode(ctx context.Context) RenderMode {
 	return RenderHTML
 }
 
-func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, data any) {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return
 	default:
 	}
 
@@ -389,7 +389,8 @@ func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, 
 		w.Header().Set("X-App-Build-Date", app.BuildInfo.BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		return enc.Encode(data)
+		_ = enc.Encode(data)
+		return
 	}
 	jsCookie := &http.Cookie{
 		Name:   "js",
@@ -401,14 +402,14 @@ func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	return app.Tpl.ExecuteTemplate(w, name, data)
+	_ = app.Tpl.ExecuteTemplate(w, name, data)
 }
 
 // Same as render, but fragments shouldn't clear the JS cookie
-func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) error {
+func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name string, data any) {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return
 	default:
 	}
 
@@ -432,12 +433,13 @@ func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name 
 		w.Header().Set("X-App-Build-Date", app.BuildInfo.BuildDate)
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		return enc.Encode(data)
+		_ = enc.Encode(data)
+		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	return app.Tpl.ExecuteTemplate(w, name, data)
+	_ = app.Tpl.ExecuteTemplate(w, name, data)
 }
 
 func (app *App) renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {

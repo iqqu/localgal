@@ -29,7 +29,8 @@ func (app *App) handleStatic(w http.ResponseWriter, r *http.Request) {
 func (app *App) handleAbout(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		model := map[string]any{"Perf": *perf}
-		return app.render(ctx, w, "about.gohtml", &model)
+		app.render(ctx, w, "about.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -87,7 +88,8 @@ func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			TagCount:      tagCount,
 			BasePage:      &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "stats.gohtml", &model)
+		app.render(ctx, w, "stats.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -296,7 +298,8 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			Sort:     sort,
 			BasePage: &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "browse.gohtml", &model)
+		app.render(ctx, w, "browse.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -519,7 +522,8 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				Sort:          sort,
 				BasePage:      &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "gallery.gohtml", &model)
+			app.render(ctx, w, "gallery.gohtml", &model)
+			return nil
 		}
 
 		fileTags, err := app.getGalleryFileTags(ctx, ripperHost, gid)
@@ -540,7 +544,8 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			Sort:       sort,
 			BasePage:   &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "gallery.gohtml", &model)
+		app.render(ctx, w, "gallery.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -567,7 +572,8 @@ func (app *App) handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Req
 			FileTags: fileTags,
 			BasePage: &types.BasePage{Perf: perf},
 		}
-		return app.renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
+		app.renderFragment(ctx, w, "gallery_file_tags.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		err = fmt.Errorf("unable to load gallery's file tags: %w", err)
@@ -1026,7 +1032,8 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				Autoplay:     autoplay,
 				BasePage:     &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "file.gohtml", &model)
+			app.render(ctx, w, "file.gohtml", &model)
+			return nil
 		}
 		// Albums containing this file
 		albums, err := app.getRelatedAlbums(ctx, ripperHost, fileId)
@@ -1044,7 +1051,8 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			Autoplay:     autoplay,
 			BasePage:     &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "file.gohtml", &model)
+		app.render(ctx, w, "file.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -1150,7 +1158,8 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 
 		// Regular file page
 		model := types.FilePage{File: f, FileTags: fileTags, AsyncAlbums: asyncAlbums, Albums: albums, ShowPrevNext: false, BasePage: &types.BasePage{Perf: perf}}
-		return app.render(ctx, w, "file.gohtml", &model)
+		app.render(ctx, w, "file.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -1183,7 +1192,8 @@ func (app *App) handleFileGalleryFragment(w http.ResponseWriter, r *http.Request
 		}
 
 		model := types.FilePage{File: f, Albums: albums, BasePage: &types.BasePage{Perf: perf}}
-		return app.renderFragment(ctx, w, "file_galleries.gohtml", &model)
+		app.renderFragment(ctx, w, "file_galleries.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		err = fmt.Errorf("unable to load file's related galleries: %w", err)
@@ -1482,7 +1492,8 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		model := types.TagDetailPage{Tag: t, Albums: albums, Files: files, Page: page, PageSize: size, Total: total, HasPrev: page > 1, HasNext: offset+len(albums) < total, BasePage: &types.BasePage{Perf: perf}}
-		return app.render(ctx, w, "tag.gohtml", &model)
+		app.render(ctx, w, "tag.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -1549,7 +1560,8 @@ func (app *App) handleTags(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		model := types.TagsPage{ImageTags: imageTags, AlbumTags: albumTags, BasePage: &types.BasePage{Perf: perf}}
-		return app.render(ctx, w, "tags.gohtml", &model)
+		app.render(ctx, w, "tags.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -1568,7 +1580,8 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "search_noquery.gohtml", &model)
+			app.render(ctx, w, "search_noquery.gohtml", &model)
+			return nil
 		}
 
 		var albumIdMatches []types.Album
@@ -1826,7 +1839,8 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Sort:           SortRank,
 			BasePage:       &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "search.gohtml", &model)
+		app.render(ctx, w, "search.gohtml", &model)
+		return nil
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1835,9 +1849,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
-		}
+		app.render(r.Context(), w, "search_error.gohtml", &model)
 		return
 	}
 	if err != nil {
@@ -1855,7 +1867,8 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "search_noquery.gohtml", &model)
+			app.render(ctx, w, "search_noquery.gohtml", &model)
+			return nil
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
@@ -1895,7 +1908,8 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "search_galleries.gohtml", &model)
+		app.render(ctx, w, "search_galleries.gohtml", &model)
+		return nil
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1904,9 +1918,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
-		}
+		app.render(r.Context(), w, "search_error.gohtml", &model)
 		return
 	}
 	if err != nil {
@@ -1924,7 +1936,8 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "search_noquery.gohtml", &model)
+			app.render(ctx, w, "search_noquery.gohtml", &model)
+			return nil
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
@@ -1964,7 +1977,8 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "search_files.gohtml", &model)
+		app.render(ctx, w, "search_files.gohtml", &model)
+		return nil
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -1973,9 +1987,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
-		}
+		app.render(r.Context(), w, "search_error.gohtml", &model)
 		return
 	}
 	if err != nil {
@@ -1993,7 +2005,8 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			model := types.SearchPage{
 				BasePage: &types.BasePage{Perf: perf},
 			}
-			return app.render(ctx, w, "search_noquery.gohtml", &model)
+			app.render(ctx, w, "search_noquery.gohtml", &model)
+			return nil
 		}
 
 		var albumsTotal int
@@ -2025,7 +2038,8 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			TagsTotal:   tagsTotal,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "search_tags.gohtml", &model)
+		app.render(ctx, w, "search_tags.gohtml", &model)
+		return nil
 	})
 	var se sqlite3.Error
 	if errors.As(err, &se) {
@@ -2034,9 +2048,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			Message:  err.Error(),
 			BasePage: &types.BasePage{Perf: &p},
 		}
-		if err := app.render(r.Context(), w, "search_error.gohtml", &model); err != nil {
-			app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
-		}
+		app.render(r.Context(), w, "search_error.gohtml", &model)
 		return
 	}
 	if err != nil {
@@ -2089,7 +2101,8 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 			Sort:        SortFetched,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "user.gohtml", &model)
+		app.render(ctx, w, "user.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -2140,7 +2153,8 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "user_galleries.gohtml", &model)
+		app.render(ctx, w, "user_galleries.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
@@ -2191,7 +2205,8 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 			Sort:        order,
 			BasePage:    &types.BasePage{Perf: perf},
 		}
-		return app.render(ctx, w, "user_files.gohtml", &model)
+		app.render(ctx, w, "user_files.gohtml", &model)
+		return nil
 	})
 	if err != nil {
 		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
