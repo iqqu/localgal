@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"strings"
 )
 

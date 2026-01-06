@@ -1,6 +1,6 @@
 # LocalGal
 
-<img src="./static/localgal.min.svg" alt="LocalGal Icon" style="height:60px"/>
+<img src="./web/static/localgal.min.svg" alt="LocalGal Icon" style="height:60px"/>
 
 Local Gallery web server, written in Go. Companion to RipMe3 app. Preview version
 

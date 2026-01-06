@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"html/template"
 	"log"
 	"net"

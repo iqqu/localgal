@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"golocalgal/vars"
+	"golocalgal/internal/vars"
 )
 
 func ShouldStartGui() bool {

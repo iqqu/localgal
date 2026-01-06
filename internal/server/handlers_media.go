@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"net/http"
 	"strings"
 )

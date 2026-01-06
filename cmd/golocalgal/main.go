@@ -2,21 +2,19 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"fmt"
-	"golocalgal/gui"
-	"golocalgal/server"
-	"golocalgal/types"
-	"golocalgal/vars"
+	"golocalgal/internal/gui"
+	"golocalgal/internal/server"
+	"golocalgal/internal/types"
+	"golocalgal/internal/vars"
+	"golocalgal/web"
 	"log"
 	"net/http"
 	"os"
 )
 
 // - Putting the version vars in a non-main package requires ldflags to fully qualify the package
-// - Embedding doesn't support ../, and I don't want another top-level go file,
-//   so we leave the declarations here and propagate with server.SetDefaultDeps().
 
 // Version metadata populated via -ldflags at build time
 var (
@@ -25,20 +23,14 @@ var (
 	BuildDate = ""
 )
 
-//go:embed templates/*
-var TemplatesFS embed.FS
-
-//go:embed static/*
-var StaticFS embed.FS
-
 func main() {
 	buildInfo := types.BuildInfo{
 		Version:   Version,
 		Commit:    Commit,
 		BuildDate: BuildDate,
 	}
-	staticFSHandler := http.FileServerFS(StaticFS)
-	server.SetDefaultDeps(buildInfo, TemplatesFS, staticFSHandler)
+	staticFSHandler := http.FileServerFS(web.StaticFS)
+	server.SetDefaultDeps(buildInfo, web.TemplatesFS, staticFSHandler)
 
 	var help bool
 	flag.BoolVar(&help, "h", false, "show help")

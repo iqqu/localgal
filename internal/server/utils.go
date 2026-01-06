@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"log"
 	"net/http"
 	"net/url"

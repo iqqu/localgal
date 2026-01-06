@@ -4,10 +4,10 @@ Compiling:
 * `make build` - Build development binary with metadata LDFLAGS
 * `make build-dist` - Build distribution binary with metadata LDFLAGS
 * `make build-placeholders` - Build development binary with metadata LDFLAGS and placeholder tag
-* `go build -tags fts5` - The `fts5` go build tag is always required to build
-* `go build -tags fts5,gio` - Build with Server Management GUI (default is CLI only)
-* `go build -tags fts5,giu` - Build with alternate Server Management GUI (may be removed later)
-* `go build -tags fts5,gio,placeholders` - Build with Server Management GUI and placeholder images
+* `go build -tags fts5 ./cmd/golocalgal` - The `fts5` go build tag is always required to build
+* `go build -tags fts5,gio ./cmd/golocalgal` - Build with Server Management GUI (default is CLI only)
+* `go build -tags fts5,giu ./cmd/golocalgal` - Build with alternate Server Management GUI (may be removed later)
+* `go build -tags fts5,gio,placeholders ./cmd/golocalgal` - Build with Server Management GUI and placeholder images
 
 Running with mock data:
 * Create a fresh ripme_dev.sqlite file from the latest ripme3 schema; run in ripme3 repository: `./gradlew flywayMigrate`

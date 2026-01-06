@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"strings"
 )
 

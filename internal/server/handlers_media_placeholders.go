@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	_ "embed"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"hash/fnv"
 	"image"
 	"image/color"
@@ -26,7 +27,17 @@ import (
 	"strings"
 )
 
+//go:embed embed/template_videos.tar.gz
+var videosTarGz []byte
+
 var PlaceholderVideoCache = make(map[int][]byte)
+
+func init() {
+	err := loadPlaceholderVideos(videosTarGz)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func (app *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 	rCtx := r.Context()
@@ -44,7 +55,7 @@ func (app *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func LoadPlaceholderVideos(videosTarGz []byte) error {
+func loadPlaceholderVideos(videosTarGz []byte) error {
 	gzReader, err := gzip.NewReader(bytes.NewReader(videosTarGz))
 	if err != nil {
 		return fmt.Errorf("decompressing gzip: %w", err)

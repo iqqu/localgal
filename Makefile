@@ -1,6 +1,6 @@
 APP := LocalGal
 BIN := localgal
-PKG := ./
+PKG := ./cmd/golocalgal/
 BINDIR := ./bin/
 DISTDIR := ./dist/
 

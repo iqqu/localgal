@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"golocalgal/types"
+	"golocalgal/internal/types"
 	"math/rand/v2"
 	"net/http"
 	"net/url"

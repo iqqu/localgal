@@ -3,8 +3,8 @@ package server
 import (
 	"bufio"
 	"embed"
-	"golocalgal/types"
-	"golocalgal/vars"
+	"golocalgal/internal/types"
+	"golocalgal/internal/vars"
 	"log"
 	"net/http"
 	"os"

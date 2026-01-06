@@ -5,8 +5,8 @@ package gui
 import (
 	"context"
 	"fmt"
-	"golocalgal/server"
-	"golocalgal/vars"
+	"golocalgal/internal/server"
+	"golocalgal/internal/vars"
 	"log"
 	"os"
 	"strings"
