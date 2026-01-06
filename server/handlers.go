@@ -86,6 +86,7 @@ func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			GalleryCount:  albumCount,
 			FileCount:     fileCount,
 			TagCount:      tagCount,
+			ReadOnly:      shouldRunReadOnly(),
 			BasePage:      &types.BasePage{Perf: perf},
 		}
 		app.render(ctx, w, "stats.gohtml", &model)

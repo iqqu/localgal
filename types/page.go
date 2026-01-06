@@ -124,6 +124,7 @@ type StatsPage struct {
 	GalleryCount  int    `json:"galleryCount"`
 	FileCount     int    `json:"fileCount"`
 	TagCount      int    `json:"tagCount"`
+	ReadOnly      bool   `json:"readOnly"`
 	*BasePage
 }
 

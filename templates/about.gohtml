@@ -1,56 +1,65 @@
 {{define "about.gohtml"}}
 {{template "base_start" (dict "title" "About")}}
-<h1>About LocalGal</h1>
-<img src="/static/localgal.svg" alt="LocalGal Icon" style="width:80px; height:auto;"/>
-<p>Local Gallery web server. Companion to RipMe3 app.</p>
-<p><em>"Browse your gals with pleasure!"</em></p>
+<div style="float: left">
+  <h1>About LocalGal</h1>
+  <img src="/static/localgal.svg" alt="LocalGal Icon" style="width:80px; height:auto;"/>
+  <p>Local Gallery web server. Companion to RipMe3 app.</p>
+  <p><em>"Browse your gals with pleasure!"</em></p>
+</div>
 
-<h2>Shortcuts</h2>
-<table class="shortcuts">
-  <tr><td><kbd class="alpha">d</kbd></td><td>Random Page</td></tr>
-  <tr><td><kbd class="alpha">f</kbd></td><td>Random File</td></tr>
-  <tr><td><kbd class="alpha">g</kbd></td><td>Random Gallery</td></tr>
-  <tr><td><kbd class="alpha">i</kbd></td><td>Toggle Image Zoom</td></tr>
-  <tr><td><kbd>&larr;</kbd> or <kbd class="alpha">h</kbd></td><td>Previous Item or Page</td></tr>
-  <tr><td><kbd class="alpha">j</kbd></td><td>Jump to Top</td></tr>
-  <tr><td><kbd class="alpha">k</kbd></td><td>Jump to Content</td></tr>
-  <tr><td><kbd>&rarr;</kbd> or <kbd class="alpha">l</kbd></td><td>Next Item or Page</td></tr>
-  <tr><td><kbd>Shift</kbd>+<kbd class="alpha">j</kbd></td><td>Toggle Autojump</td></tr>
-  <tr><td><kbd>Shift</kbd>+<kbd class="alpha">p</kbd></td><td>Toggle Autoplay</td></tr>
-  <tr><td><kbd>Shift</kbd>+<kbd class="alpha">g</kbd></td><td>Back to Gallery</td></tr>
-  <tr><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>Focus Search Box</td></tr>
-</table>
+<div style="float: right">
+  <h2>Statistics</h2>
+  <p><a href="/stats">Statistics page</a></p>
+</div>
 
-<h2>Tips</h2>
-<ul style="line-height:1.5">
-  <li>Click along the left or right edge of an image to go to the previous or next image in a gallery</li>
-  <li>Hover along the left or right edge of the screen at the vertical start of the image to show the sticky previous or next links</li>
-  <li>
-    <p>Search tips:</p>
-    <ul>
-      <li>Don't include punctuation in the search query.</li>
-      <li>If you want to include punctuation, surround it with double quotes.</li>
+<div style="display: grid; grid-template-columns: 1fr 1fr; clear: both;">
+  <div>
+    <h2>Shortcuts</h2>
+    <table class="shortcuts">
+      <tr><td><kbd class="alpha">d</kbd></td><td>Random Page</td></tr>
+      <tr><td><kbd class="alpha">f</kbd></td><td>Random File</td></tr>
+      <tr><td><kbd class="alpha">g</kbd></td><td>Random Gallery</td></tr>
+      <tr><td><kbd class="alpha">i</kbd></td><td>Toggle Image Zoom</td></tr>
+      <tr><td><kbd>&larr;</kbd> or <kbd class="alpha">h</kbd></td><td>Previous Item or Page</td></tr>
+      <tr><td><kbd class="alpha">j</kbd></td><td>Jump to Top</td></tr>
+      <tr><td><kbd class="alpha">k</kbd></td><td>Jump to Content</td></tr>
+      <tr><td><kbd>&rarr;</kbd> or <kbd class="alpha">l</kbd></td><td>Next Item or Page</td></tr>
+      <tr><td><kbd>Shift</kbd>+<kbd class="alpha">j</kbd></td><td>Toggle Autojump</td></tr>
+      <tr><td><kbd>Shift</kbd>+<kbd class="alpha">p</kbd></td><td>Toggle Autoplay</td></tr>
+      <tr><td><kbd>Shift</kbd>+<kbd class="alpha">g</kbd></td><td>Back to Gallery</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>Focus Search Box</td></tr>
+    </table>
+  </div>
+  <div>
+    <h2>Tips</h2>
+    <ul style="line-height:1.5">
+      <li>Click along the left or right edge of an image to go to the previous or next image in a gallery</li>
+      <li>Hover along the left or right edge of the screen at the vertical start of the image to show the sticky previous or next links</li>
       <li>
-        <p>Searching uses FTS5 query syntax.</p>
+        <p>Search tips:</p>
         <ul>
-          <li>AND, OR, NOT</li>
-          <li>"Double quoting" exact phrases</li>
-          <li>Search on word prefixes with * (star* could match star, start, and staring)</li>
-        </ul>
-        <p>Examples:</p>
-        <ul>
-          <li><code>train station</code></li>
-          <li><code>buses AND trains</code></li>
-          <li><code>(buses OR trains) AND (red OR yellow)</code></li>
-          <li><code>"airport bus"</code></li>
+          <li>Don't include punctuation in the search query.</li>
+          <li>If you want to include punctuation, surround it with double quotes.</li>
+          <li>
+            <p>Searching uses FTS5 query syntax.</p>
+            <ul>
+              <li>AND, OR, NOT</li>
+              <li>"Double quoting" exact phrases</li>
+              <li>Search on word prefixes with * (star* could match star, start, and staring)</li>
+            </ul>
+            <p>Examples:</p>
+            <ul>
+              <li><code>train station</code></li>
+              <li><code>buses AND trains</code></li>
+              <li><code>(buses OR trains) AND (red OR yellow)</code></li>
+              <li><code>"airport bus"</code></li>
+            </ul>
+          </li>
         </ul>
       </li>
     </ul>
-  </li>
-</ul>
-
-<h2>Statistics</h2>
-<p><a href="/stats">Statistics page</a></p>
+  </div>
+</div>
 
 <h2>Links</h2>
 <p>To prevent accidental web requests, please manually copy-paste the links.</p>
