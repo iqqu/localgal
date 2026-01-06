@@ -155,7 +155,9 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 /* simpler to use !important than to add specificity for each case */
 .full-bleed input:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
 
-.fb-label {display: flex;justify-content: center;margin-top: var(--card-padding);user-select: none;}
+#main-content + .card .full-bleed:first-child { margin-bottom: var(--card-padding); }
+
+.fb-label {display: flex;justify-content: center;user-select: none;}
 .fb-label label.fb-label-expand {display: block;cursor: pointer;}
 .fb-label label.fb-label-contract {display: none;cursor: pointer;}
 .full-bleed:has(input:checked) ~ .fb-label label.fb-label-expand {display: none;}
