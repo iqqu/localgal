@@ -2444,32 +2444,42 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 	var nextFileId sql.NullInt64
 	err := app.withSQL(ctx, func(ctx context.Context) error {
 		return app.Db.QueryRowContext(ctx, `
-		  WITH row_count AS (
-		      SELECT COUNT(*) cnt
-		        FROM remote_file rf
-		        JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
-		        JOIN album a ON a.album_id = marf.album_id
-		        JOIN ripper r ON r.ripper_id = rf.ripper_id
-		       WHERE r.host = ?
-		         AND a.gid = ?
-		         AND rf.remote_file_id != ?
-		         AND rf.fetched = 1
-		         AND rf.ignored = 0
-		                    )
-		SELECT rf.remote_file_id
-		  FROM remote_file rf
-		  JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
-		  JOIN album a ON a.album_id = marf.album_id
-		  JOIN ripper r ON r.ripper_id = rf.ripper_id
-		 WHERE r.host = ?
-		   AND a.gid = ?
-		   AND rf.remote_file_id != ?
-		   AND rf.fetched = 1
-		   AND rf.ignored = 0
-		 LIMIT 1 OFFSET (ABS(RANDOM()) % (
-		     SELECT cnt
-		       FROM row_count
-		                                 ))
+			  WITH row_count AS (
+			      SELECT COUNT(*) cnt
+			        FROM remote_file rf
+			        JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+			        JOIN album a ON a.album_id = marf.album_id
+			        JOIN ripper r ON r.ripper_id = rf.ripper_id
+			       WHERE r.host = ?
+			         AND a.gid = ?
+			         AND rf.remote_file_id != ?
+			         AND rf.fetched = 1
+			         AND rf.ignored = 0
+			                    )
+			SELECT rf.remote_file_id
+			  FROM remote_file rf
+			  JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+			  JOIN album a ON a.album_id = marf.album_id
+			  JOIN ripper r ON r.ripper_id = rf.ripper_id
+			 WHERE r.host = ?
+			   AND a.gid = ?
+			   AND (rf.remote_file_id != ?
+			     OR (
+			            SELECT cnt
+			              FROM row_count
+			        ) = 0)
+			   AND rf.fetched = 1
+			   AND rf.ignored = 0
+			 LIMIT 1 OFFSET CASE
+			                    WHEN (
+			                             SELECT cnt
+			                               FROM row_count
+			                         ) = 0 THEN 0
+			                    ELSE (ABS(RANDOM()) % (
+			                        SELECT cnt
+			                          FROM row_count
+			                                          ))
+			     END
 		`, ripperHost, gid, fileId, ripperHost, gid, fileId).Scan(&nextFileId)
 	})
 	if err != nil {
