@@ -522,7 +522,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			return app.render(ctx, w, "gallery.gohtml", &model)
 		}
 
-		fileTags, err := app.getGalleryFileTags(ctx, gid)
+		fileTags, err := app.getGalleryFileTags(ctx, ripperHost, gid)
 		if err != nil {
 			return err
 		}
@@ -559,7 +559,7 @@ func (app *App) handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Req
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		// Fetch tags for album and distinct tags from its files
 		var fileTags []types.Tag
-		fileTags, err := app.getGalleryFileTags(ctx, gid)
+		fileTags, err := app.getGalleryFileTags(ctx, ripperHost, gid)
 		if err != nil {
 			return err
 		}
@@ -576,7 +576,7 @@ func (app *App) handleGalleryFileTagsFragment(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (app *App) getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag, error) {
+func (app *App) getGalleryFileTags(ctx context.Context, ripperHost string, gid string) ([]types.Tag, error) {
 	var fileTags []types.Tag
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		rows, e := app.Db.QueryContext(ctx, `
@@ -586,13 +586,15 @@ func (app *App) getGalleryFileTags(ctx context.Context, gid string) ([]types.Tag
 				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
 				  JOIN album a ON a.album_id = marf.album_id
 				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				  JOIN ripper r ON r.ripper_id = a.ripper_id
 				 WHERE a.gid = ?
+				   AND r.host = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
 				 GROUP BY t.tag_id
 				 ORDER BY count DESC
 				 LIMIT 100 -- some albums might have a million tags...
-			`, gid)
+			`, gid, ripperHost)
 		if e != nil {
 			return e
 		}
@@ -1027,7 +1029,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return app.render(ctx, w, "file.gohtml", &model)
 		}
 		// Albums containing this file
-		albums, err := app.getRelatedAlbums(ctx, fileId)
+		albums, err := app.getRelatedAlbums(ctx, ripperHost, fileId)
 		if err != nil {
 			return err
 		}
@@ -1135,7 +1137,7 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 		asyncAlbums := isClientJsOn(r) || getRenderMode(ctx) == RenderJSON
 		var albums []types.Album
 		if !asyncAlbums {
-			albums, err = app.getRelatedAlbums(ctx, f.FileId)
+			albums, err = app.getRelatedAlbums(ctx, ripperHost, f.FileId)
 			if err != nil {
 				return err
 			}
@@ -1175,7 +1177,7 @@ func (app *App) handleFileGalleryFragment(w http.ResponseWriter, r *http.Request
 		f := types.File{FileId: fileId}
 
 		var albums []types.Album
-		albums, err = app.getRelatedAlbums(ctx, fileId)
+		albums, err = app.getRelatedAlbums(ctx, ripperHost, fileId)
 		if err != nil {
 			return err
 		}
@@ -1190,7 +1192,7 @@ func (app *App) handleFileGalleryFragment(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (app *App) getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Album, error) {
+func (app *App) getRelatedAlbums(ctx context.Context, ripperHost string, fileId int64) ([]types.Album, error) {
 	var albums []types.Album
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		rows, e := app.Db.QueryContext(ctx, `
@@ -1224,8 +1226,9 @@ func (app *App) getRelatedAlbums(ctx context.Context, fileId int64) ([]types.Alb
 			  JOIN ripper r ON r.ripper_id = a.ripper_id
 			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
 			 WHERE marf.remote_file_id = ?
+			   AND r.host = ?
 			 ORDER BY a.album_id
-		`, fileId)
+		`, fileId, ripperHost)
 		if e != nil {
 			return e
 		}
