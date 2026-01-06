@@ -2298,8 +2298,13 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 				     , (
 				    SELECT a.gid
 				      FROM album a
-				      JOIN map_album_remote_file m ON a.album_id = m.album_id
-				     WHERE m.remote_file_id = rf.remote_file_id
+				      JOIN map_album_remote_file marf ON a.album_id = marf.album_id
+				     WHERE marf.remote_file_id = rf.remote_file_id
+				       AND a.album_id >= (ABS(RANDOM()) % (
+				         SELECT MAX(album_id)
+				          FROM map_album_remote_file marf
+				         WHERE marf.remote_file_id = rf.remote_file_id
+				                                          ))
 				     LIMIT 1
 				       ) AS gid
 				  FROM remote_file rf
