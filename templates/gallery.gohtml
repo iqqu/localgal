@@ -2,7 +2,10 @@
 {{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
 {{template "base_start" (dict "title" $title)}}
   <div style="display: grid; grid-template-columns: auto auto">
-    <h1>{{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}
+    <h1>
+      <span style="vertical-align: middle">
+        {{if .Album.Title.Valid}}{{.Album.Title.String}}{{else}}{{.Album.Gid}}{{end}}
+      </span>
       {{- if .Album.Hidden }} <span class="hidden">Hidden</span>{{ end }}
       {{- if .Album.Removed }} <span class="removed">Removed</span>{{ end -}}
     </h1>
@@ -27,6 +30,21 @@
       {{- if .Album.Removed }} <span class="removed">Removed</span>{{ end }}
       {{- if eq .Album.FetchCount 0 }} <span class="unfetched">Unfetched</span>{{ end -}}
     </div>
+    <table>
+      <tr>
+        <td>Local Rating</td>
+        <td>
+          <form class="form-local-rating" action="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}" method="post">
+            <button name="rating" value="unset" class="btn-rating{{if not .Album.LocalRating.Valid}} active{{end}}" title="unset">&#x2753;</button>
+            <button name="rating" value="1" class="btn-rating{{if eq .Album.LocalRating.Int64 1}} active{{end}}" title="Worst">&#x1F4A9;</button>
+            <button name="rating" value="2" class="btn-rating{{if eq .Album.LocalRating.Int64 2}} active{{end}}" title="Bad">&#x1F44E;</button>
+            <button name="rating" value="3" class="btn-rating{{if eq .Album.LocalRating.Int64 3}} active{{end}}" title="Neutral">&#x2B55;</button>
+            <button name="rating" value="4" class="btn-rating{{if eq .Album.LocalRating.Int64 4}} active{{end}}" title="Good">&#x1F44D;</button>
+            <button name="rating" value="5" class="btn-rating{{if eq .Album.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
+          </form>
+        </td>
+      </tr>
+    </table>
 
     {{ if and .Album.Description.Valid (gt (len .Album.Description.String) 0) }}
       <p>{{.Album.Description.String}}</p>

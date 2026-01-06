@@ -2659,3 +2659,59 @@ func (app *App) handleFilePost(w http.ResponseWriter, r *http.Request) {
 
 	app.httpRedirect(r.Context(), w, r, &p, r.Referer(), http.StatusSeeOther)
 }
+
+// handleGalleryPost handles POST /gallery/{ripper_host}/{gid}
+func (app *App) handleGalleryPost(w http.ResponseWriter, r *http.Request) {
+	if app.DbRw == nil {
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusForbidden, fmt.Errorf("database is read-only, cannot save rating"))
+		return
+	}
+	ripperHost := r.PathValue("ripper_host")
+	gid := r.PathValue("gid")
+	if ripperHost == "" || gid == "" {
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /gallery/{ripper_host}/{gid}"))
+		return
+	}
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		ratingString := r.FormValue("rating")
+		if ratingString == "unset" {
+			return app.withSQL(ctx, func(ctx context.Context) error {
+				_, err := app.DbRw.ExecContext(ctx, `
+					UPDATE album
+					   SET local_rating = NULL
+					  FROM ripper r
+					 WHERE gid = ?
+					   AND r.ripper_id = album.ripper_id
+					   AND r.host = ?
+				`, gid, ripperHost)
+				return err
+			})
+		}
+		if len(ratingString) > 0 {
+			rating, err := strconv.Atoi(ratingString)
+			if err != nil || rating < 1 || rating > 5 {
+				return fmt.Errorf(`invalid rating, must be 1-5 or "unset"`)
+				// TODO change perfTracker callback to be (statusCode, error)
+				//return app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid rating, must be 1-5 or unset"))
+			}
+			return app.withSQL(ctx, func(ctx context.Context) error {
+				_, err := app.DbRw.ExecContext(ctx, `
+					UPDATE album
+					   SET local_rating = ?
+					  FROM ripper r
+					 WHERE gid = ?
+					   AND r.ripper_id = album.ripper_id
+					   AND r.host = ?
+				`, rating, gid, ripperHost)
+				return err
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+
+	app.httpRedirect(r.Context(), w, r, &p, r.Referer(), http.StatusSeeOther)
+}
