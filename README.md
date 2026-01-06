@@ -43,6 +43,8 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * Shift+p: Toggle autoplay
 * Shift+g: Back to gallery
 * Ctrl+/: Focus search box
+* 1 to 5: set local rating from 1 (worst) to 5 (best)
+* 0: unset local rating
 
 ## Pages
 * `/`: Browse galleries

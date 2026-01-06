@@ -126,6 +126,26 @@
                     nextPageEl.click();
                 }
                 break;
+
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '0':
+                const formEls = document.querySelectorAll('form.form-local-rating');
+                let value = event.key;
+                if (value === '0') {
+                    value = 'unset';
+                }
+                // prevent accidental bugs in future plan to rate files from the gallery page
+                if (formEls && formEls.length === 1) {
+                    const formEl = formEls[0];
+                    const btnEl = formEl.querySelector(`button[value="${value}"]`);
+                    if (btnEl) {
+                        btnEl.click();
+                    }
+                }
         }
     });
 
