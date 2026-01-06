@@ -38,11 +38,17 @@ const (
 	EnvDflog     Env = "DFLOG"
 	EnvDflogRoot Env = "DFLOG_ROOT"
 	EnvGui       Env = "GUI"
+	EnvRo        Env = "RO"
 )
 
 // Global variables
 
 var GuiFlag struct {
+	IsSet bool
+	Value bool
+}
+
+var RoFlag struct {
 	IsSet bool
 	Value bool
 }

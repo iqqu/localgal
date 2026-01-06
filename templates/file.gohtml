@@ -94,20 +94,35 @@
       </a>
     </div>
 
-    <h1>
-      {{- if .File.Title.Valid }}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{ end -}}
+    <h1 style="margin-top: 0; margin-bottom: 0;float: left;">
+      <span style="vertical-align: middle">
+        {{- if .File.Title.Valid }}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{ end -}}
+      </span>
       {{- if .File.Hidden }} <span class="hidden">Hidden</span>{{ end -}}
       {{- if .File.Removed }} <span class="removed">Removed</span>{{ end -}}
     </h1>
-
-    <p class="muted" style="margin-top:0.5rem;">
-      {{if not (eq .CurrentAlbum.AlbumId 0) }}
+    {{if not (eq .CurrentAlbum.AlbumId 0) }}
+      <p class="muted" style="float: right; margin-top:0.5rem;">
         In gallery: <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.RipperHost}}/{{.CurrentAlbum.Gid}}</a>{{if .CurrentAlbum.Title.Valid}} <a href="{{.CurrentAlbum.HrefPage}}">{{.CurrentAlbum.Title.String}}</a>{{end}}
-      {{end}}
-    </p>
-    {{if .File.Filename.Valid}}
-      <p>Filename: <code>{{.File.Filename.String}}</code></p>
+      </p>
     {{end}}
+    <table style="clear: both">
+    <tr>
+      <td>Local Rating</td>
+      <td>
+        <form class="form-local-rating" action="/file/{{.File.RipperHost}}/{{.File.FileId}}" method="post">
+          <button name="rating" value="unset" class="btn-rating{{if not .File.LocalRating.Valid}} active{{end}}" title="Unset">&#x2753;</button>
+          <button name="rating" value="1" class="btn-rating{{if eq .File.LocalRating.Int64 1}} active{{end}}" title="Worst">&#x1F4A9;</button>
+          <button name="rating" value="2" class="btn-rating{{if eq .File.LocalRating.Int64 2}} active{{end}}" title="Bad">&#x1F44E;</button>
+          <button name="rating" value="3" class="btn-rating{{if eq .File.LocalRating.Int64 3}} active{{end}}" title="Neutral">&#x2B55;</button>
+          <button name="rating" value="4" class="btn-rating{{if eq .File.LocalRating.Int64 4}} active{{end}}" title="Good">&#x1F44D;</button>
+          <button name="rating" value="5" class="btn-rating{{if eq .File.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
+        </form>
+      </td>
+    </tr>
+    </table>
+    <div style="clear: both"></div>
+
     {{if .File.Description.Valid}}
       <p>{{.File.Description.String}}</p>
     {{end}}
@@ -151,6 +166,12 @@
         <tr>
           <td>File URL ID</td>
           <td>{{.File.Urlid.String}}</td>
+        </tr>
+      {{end}}
+      {{if .File.Filename.Valid}}
+        <tr>
+          <td>Filename</td>
+          <td><code>{{.File.Filename.String}}</code></td>
         </tr>
       {{end}}
       {{if .File.Bytes.Valid}}

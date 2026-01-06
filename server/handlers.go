@@ -691,6 +691,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				     , rf.uploader
 				     , rf.hidden
 				     , rf.removed
+				     , rf.local_rating
 				     , rf.inserted_ts
 				  FROM remote_file rf
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
@@ -714,6 +715,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				&f.Uploader,
 				&f.Hidden,
 				&f.Removed,
+				&f.LocalRating,
 				&f.InsertedTs,
 			)
 		}); err != nil {
@@ -1091,6 +1093,7 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 				     , rf.uploader
 				     , rf.hidden
 				     , rf.removed
+				     , rf.local_rating
 				     , rf.inserted_ts
 				  FROM remote_file rf
 				  JOIN ripper r ON r.ripper_id = rf.ripper_id
@@ -1111,6 +1114,7 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 				&f.Uploader,
 				&f.Hidden,
 				&f.Removed,
+				&f.LocalRating,
 				&f.InsertedTs,
 			)
 		}); err != nil {
@@ -2593,4 +2597,65 @@ var sanitizedFilenameRe = regexp.MustCompile("[\\\\:*?\"<>|]")
 func sanitizedFilename(filename string) string {
 	filename = sanitizedFilenameRe.ReplaceAllString(filename, "_")
 	return filename
+}
+
+// handleFilePost handles POST /file/{ripper_host}/{file_id}
+func (app *App) handleFilePost(w http.ResponseWriter, r *http.Request) {
+	if app.DbRw == nil {
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusForbidden, fmt.Errorf("database is read-only, cannot save rating"))
+		return
+	}
+	ripperHost := r.PathValue("ripper_host")
+	fileIdString := r.PathValue("file_id")
+	if ripperHost == "" || fileIdString == "" {
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("expected values for all path parts: /file/{ripper_host}/{file_id}"))
+		return
+	}
+	fileId, err := strconv.ParseInt(fileIdString, 10, 64)
+	if err != nil || fileId <= 0 {
+		app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid file id"))
+		return
+	}
+	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		ratingString := r.FormValue("rating")
+		if ratingString == "unset" {
+			return app.withSQL(ctx, func(ctx context.Context) error {
+				_, err := app.DbRw.ExecContext(ctx, `
+					UPDATE remote_file
+					   SET local_rating = NULL
+					  FROM ripper r
+					 WHERE remote_file_id = ?
+					   AND r.ripper_id = remote_file.ripper_id
+					   AND r.host = ?
+				`, fileId, ripperHost)
+				return err
+			})
+		}
+		if len(ratingString) > 0 {
+			rating, err := strconv.Atoi(ratingString)
+			if err != nil || rating < 1 || rating > 5 {
+				return fmt.Errorf(`invalid rating, must be 1-5 or "unset"`)
+				// TODO change perfTracker callback to be (statusCode, error)
+				//return app.renderError(r.Context(), w, &types.Perf{}, http.StatusBadRequest, fmt.Errorf("invalid rating, must be 1-5 or unset"))
+			}
+			return app.withSQL(ctx, func(ctx context.Context) error {
+				_, err := app.DbRw.ExecContext(ctx, `
+					UPDATE remote_file
+					   SET local_rating = ?
+					  FROM ripper r
+					 WHERE remote_file_id = ?
+					   AND r.ripper_id = remote_file.ripper_id
+					   AND r.host = ?
+				`, rating, fileId, ripperHost)
+				return err
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		app.renderError(r.Context(), w, &p, http.StatusInternalServerError, err)
+		return
+	}
+
+	app.httpRedirect(r.Context(), w, r, &p, r.Referer(), http.StatusSeeOther)
 }

@@ -21,6 +21,7 @@ type Config struct {
 	MediaRoot       string
 	DfLog           string
 	DfLogRoot       string
+	ReadOnly        bool
 	SlowSqlMs       int
 	BuildInfo       types.BuildInfo
 	TemplatesFS     embed.FS
@@ -128,12 +129,15 @@ func GetServerConfig() Config {
 	defaultDfLogRoot := getDefaultDfLogRoot(dfLog)
 	dfLogRoot := vars.EnvDflogRoot.GetValueDefault(defaultDfLogRoot)
 
+	ro := shouldRunReadOnly()
+
 	serverConfig := Config{
 		Bind:            vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
 		Dsn:             vars.EnvSqliteDsn.GetValueDefault("file:" + sqlitePath),
 		MediaRoot:       vars.EnvMediaRoot.GetValueDefault(ripsDir),
 		DfLog:           dfLog,
 		DfLogRoot:       dfLogRoot,
+		ReadOnly:        ro,
 		SlowSqlMs:       slowSqlMs,
 		BuildInfo:       buildInfo,
 		TemplatesFS:     templatesFS,
@@ -151,4 +155,20 @@ func getDefaultDfLogRoot(path string) string {
 		log.Fatal("Unable to get cwd: %w", err)
 	}
 	return filepath.Clean(filepath.Dir(filepath.Join(wd, path)))
+}
+
+func shouldRunReadOnly() bool {
+	// Get from CLI flags first
+	if vars.RoFlag.IsSet {
+		return vars.RoFlag.Value
+	}
+	// Get from environment second
+	v := vars.EnvRo.GetValue()
+	switch v {
+	case "1", "true", "yes", "ro":
+		return true
+	case "0", "false", "no", "rw":
+		return false
+	}
+	return false // default
 }

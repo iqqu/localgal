@@ -20,8 +20,8 @@ import (
 
 const MinimumSchemaVersion = 11 // "011"
 
-func GetDb(dsn string) (*sql.DB, error) {
-	log.Printf("Using SQLite DSN: %s", dsn)
+func GetDb(dsn string, label string) (*sql.DB, error) {
+	log.Printf("Using SQLite DSN for %s: %s", label, dsn)
 
 	// Verify that file exists to avoid creating empty db with mistyped filename
 	filename := getFileFromDsn(dsn)
@@ -39,11 +39,7 @@ func GetDb(dsn string) (*sql.DB, error) {
 		log.Printf("open db: %v", err)
 		return nil, err
 	}
-	//db.SetMaxOpenConns(1) // sqlite preferred in many cases
-	// Allow simultaneous connections, because getting related galleries is slow,
-	// which blocks the thumbnail rail from loading prev/next thumbs.
-	// Shouldn't be a problem if using PRAGMA transaction_mode=IMMEDIATE;
-	db.SetMaxOpenConns(10)
+	db.SetMaxOpenConns(1) // safest default
 	return db, nil
 }
 
@@ -214,7 +210,7 @@ func OptimizeDbFromDsn(ctx context.Context, dsn string) error {
 	dsn = DsnWithReadWrite(dsn)
 	dsn = DsnWithDefaultTimeout(dsn)
 	dsn = DsnWithForeignKeys(dsn)
-	db, err := GetDb(dsn)
+	db, err := GetDb(dsn, "read-write")
 	if err != nil {
 		return err
 	}

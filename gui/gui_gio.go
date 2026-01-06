@@ -38,6 +38,7 @@ type MainWindow struct {
 	cwd          string
 	bindEd       widget.Editor
 	dsnEd        widget.Editor
+	roEd         widget.Editor
 	slowSqlEd    widget.Editor
 	mediaRootEd  widget.Editor
 	dflogEd      widget.Editor
@@ -69,6 +70,7 @@ func newMainWindow() *MainWindow {
 
 	mw.bindEd.SingleLine = true
 	mw.dsnEd.SingleLine = true
+	mw.roEd.SingleLine = true
 	mw.slowSqlEd.SingleLine = true
 	mw.mediaRootEd.SingleLine = true
 	mw.dflogEd.SingleLine = true
@@ -83,6 +85,12 @@ func newMainWindow() *MainWindow {
 
 	mw.bindEd.SetText(serverConfig.Bind)
 	mw.dsnEd.SetText(serverConfig.Dsn)
+	if vars.RoFlag.IsSet {
+		mw.roEd.SetText(strconv.FormatBool(vars.RoFlag.Value))
+		mw.roEd.ReadOnly = true
+	} else {
+		mw.roEd.SetText(strconv.FormatBool(serverConfig.ReadOnly))
+	}
 	mw.slowSqlEd.SetText(strconv.Itoa(serverConfig.SlowSqlMs))
 	mw.mediaRootEd.SetText(serverConfig.MediaRoot)
 	mw.dflogEd.SetText(serverConfig.DfLog)
@@ -123,6 +131,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 		if mw.startBtn.Clicked(gtx) && !mw.running && !mw.optimizing {
 			vars.EnvBind.SetValue(mw.bindEd.Text())
 			vars.EnvSqliteDsn.SetValue(mw.dsnEd.Text())
+			vars.EnvRo.SetValue(mw.roEd.Text())
 			vars.EnvSlowSqlMs.SetValue(mw.slowSqlEd.Text())
 			vars.EnvMediaRoot.SetValue(mw.mediaRootEd.Text())
 			vars.EnvDflog.SetValue(mw.dflogEd.Text())
@@ -193,6 +202,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 		readOnly := mw.running || mw.optimizing
 		mw.bindEd.ReadOnly = readOnly
 		mw.dsnEd.ReadOnly = readOnly
+		mw.roEd.ReadOnly = readOnly || vars.RoFlag.IsSet
 		mw.slowSqlEd.ReadOnly = readOnly
 		mw.mediaRootEd.ReadOnly = readOnly
 		mw.dflogEd.ReadOnly = readOnly
@@ -265,6 +275,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 					var keys = []string{
 						vars.EnvBind.Key(),
 						vars.EnvSqliteDsn.Key(),
+						vars.EnvRo.Key(),
 						vars.EnvSlowSqlMs.Key(),
 						vars.EnvMediaRoot.Key(),
 						vars.EnvDflog.Key(),
@@ -272,9 +283,19 @@ func handleEvent(e event.Event, mw *MainWindow) {
 					}
 					labelWidth := getLabelMaxWidth(gtx, mw, keys)
 
+					roHelp := "Read-only mode, true or false"
+					if vars.RoFlag.IsSet {
+						if vars.RoFlag.Value {
+							roHelp += ` (currently forced by "-ro" flag)`
+						} else {
+							roHelp += ` (currently forced by "-rw" flag)`
+						}
+					}
+
 					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvBind.Key(), &mw.bindEd, "Server listen/bind address, e.g. :5037 or 127.0.0.1:5037")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSqliteDsn.Key(), &mw.dsnEd, "SQLite data source name")),
+						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvRo.Key(), &mw.roEd, roHelp)),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSlowSqlMs.Key(), &mw.slowSqlEd, "Duration threshold to log slow sql queries, milliseconds, or -1 to disable")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvMediaRoot.Key(), &mw.mediaRootEd, "Root directory for media files")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvDflog.Key(), &mw.dflogEd, "Downloaded file log")),
@@ -402,7 +423,7 @@ func InputCaption(th *material.Theme, label string) material.LabelStyle {
 
 func labeledEditor(theme *material.Theme, lblWidth int, label string, ed *widget.Editor, help string) func(gtx layout.Context) layout.Dimensions {
 	return func(gtx layout.Context) layout.Dimensions {
-		in := layout.Inset{Top: unit.Dp(6)}
+		in := layout.Inset{Top: unit.Dp(2)}
 		return in.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{Axis: layout.Vertical, Spacing: layout.SpaceEnd}.Layout(gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {

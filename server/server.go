@@ -21,7 +21,8 @@ import (
 
 // App holds the dependencies for the server handlers
 type App struct {
-	Db              *sql.DB
+	Db              *sql.DB // Db is for read-only operations to the main database. Db may have many connections.
+	DbRw            *sql.DB // DbRw is for read-write operations to the main database. DbRw has a single connection.
 	CacheDb         *sql.DB
 	Tpl             *template.Template
 	StaticFSHandler http.Handler
@@ -79,9 +80,20 @@ func StartServer(cfg Config) (*Controller, error) {
 	cfg.Dsn = DsnWithDefaultTimeout(cfg.Dsn)
 	cfg.Dsn = DsnWithForeignKeys(cfg.Dsn)
 
-	app.Db, err = GetDb(cfg.Dsn)
+	app.Db, err = GetDb(cfg.Dsn, "read-only")
 	if err != nil {
 		return nil, err
+	}
+	app.Db.SetMaxOpenConns(0) // 0 is unlimited; fine for read-only
+
+	if !cfg.ReadOnly {
+		dsnRw := DsnWithReadWrite(cfg.Dsn)
+		app.DbRw, err = GetDb(dsnRw, "read-write")
+		if err == nil {
+			app.DbRw.SetMaxOpenConns(1) // sqlite doesn't handle simultaneous writes well
+		} else {
+			log.Printf("open rw db: %v (ratings/tags won't be savable)", err)
+		}
 	}
 
 	dbFilename := getFileFromDsn(cfg.Dsn)
@@ -247,6 +259,7 @@ func (app *App) newMux() http.Handler {
 	mux.HandleFunc("/gallery-file-tags/{ripper_host}/{gid}", app.handleGalleryFileTagsFragment)
 	mux.HandleFunc("/file/{ripper_host}/{file_id}", app.handleFileStandalone)
 	mux.HandleFunc("/file/{ripper_host}/{file_id}/galleries", app.handleFileGalleryFragment)
+	mux.HandleFunc("POST /file/{ripper_host}/{file_id}", app.handleFilePost)
 	mux.HandleFunc("/tags", app.handleTags)
 	mux.HandleFunc("/tag/{tag_name}", app.handleTagDetail)
 	mux.HandleFunc("/search", app.handleSearch)
@@ -268,6 +281,7 @@ func (app *App) newMux() http.Handler {
 	mux.HandleFunc("GET /api/gallery-file-tags/{ripper_host}/{gid}", app.asApi(app.handleGalleryFileTagsFragment))
 	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}", app.asApi(app.handleFileStandalone))
 	mux.HandleFunc("GET /api/file/{ripper_host}/{file_id}/galleries", app.asApi(app.handleFileGalleryFragment))
+	mux.HandleFunc("POST /api/file/{ripper_host}/{file_id}", app.asApi(app.handleFilePost))
 	mux.HandleFunc("GET /api/tags", app.asApi(app.handleTags))
 	mux.HandleFunc("GET /api/tag/{tag_name}", app.asApi(app.handleTagDetail))
 	mux.HandleFunc("GET /api/search", app.asApi(app.handleSearch))

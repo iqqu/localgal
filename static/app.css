@@ -214,6 +214,10 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 .cell-nav:hover .cell-nav-btn {visibility: visible;}
 .cell-nav-btn {width: 40px;visibility: hidden;position: sticky;top: 50%;}
 
+.btn-rating {filter: grayscale(1);opacity: 0.5;background: none;border: none;padding: 0;font: inherit;cursor: pointer;text-decoration: none;color: inherit;}
+.btn-rating:hover {filter: grayscale(0);opacity: 1;}
+.btn-rating.active {filter: grayscale(0);opacity: 1;}
+
 .shortcuts td {padding: .2rem;}
 .shortcuts td:first-child {text-align: right;}
 .shortcuts kbd {border-radius: 3px;border: 1px solid #bbb;box-shadow: 0 2px 2px rgba(0,0,0,0.2);padding: .1rem .2rem;margin:-.1rem 0;min-width: 1.3rem;display: inline-block;text-align: center;font-family: sans-serif;}

@@ -326,6 +326,39 @@
         });
     }
 
+    function setupAsyncLocalRating() {
+        document.querySelectorAll('form.form-local-rating').forEach(formEl => {
+            formEl.addEventListener('submit', async event => {
+                event.preventDefault();
+                const rating = event.submitter.value;
+                fetch(formEl.action, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({rating: rating}),
+                    redirect: 'manual',
+                })
+                    .then(res => {
+                        if (res.ok || res.type === 'opaqueredirect') {
+                            // assume any redirect is OK
+                            formEl.querySelectorAll('button.btn-rating').forEach(btnEl => {
+                                if (btnEl.value === rating) {
+                                    btnEl.classList.add('active');
+                                } else {
+                                    btnEl.classList.remove('active');
+                                }
+                            });
+                        } else {
+                            // TODO handle error
+                            console.error('error while rating', res);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('error while rating', err);
+                    });
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const jumpEl = document.querySelector('a#jump-to-content-link');
         jumpEl.addEventListener('click', handleJump);
@@ -343,5 +376,7 @@
 
         autoPlay();
         setupAutoPlayChangeListener();
+
+        setupAsyncLocalRating();
     });
 })();
