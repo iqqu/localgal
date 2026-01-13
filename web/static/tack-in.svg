@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+    width="12"
+    height="24"
+    aria-labelledby="title-id"
+    role="img"
+    xmlns="http://www.w3.org/2000/svg">
+    <title id="title-id">Thumb tack (pinned)</title>
+    <path
+        fill="#f00"
+        d="M 11,22 V 21 L 8,20 v -6 l 2,-1 V 12 H 2 v 1 l 2,1 v 6 l -3,1 v 1 z"/>
+    <path
+        fill="#fff"
+        d="M 0,24 V 22.5 H 12 V 24 Z"/>
+    <path
+        fill="#000"
+        d="m 0,22 h 12 v 1 H 0 Z"/>
+</svg>

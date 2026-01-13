@@ -1,6 +1,6 @@
 {{define "file.gohtml"}}
 {{$title := printf "%s - %s" (or (and .File.Title.Valid .File.Title.String) (or (and .File.Urlid.Valid .File.Urlid.String) (printf "%d" .File.FileId))) .File.RipperHost}}
-{{template "base_start" (dict "title" $title)}}
+{{template "base_start" (dict "BasePage" .BasePage "title" $title)}}
   {{if or .Prev .Next}}
     <div class="pv-rail" style="display:flex; gap: 1rem; align-items:stretch; margin: 0.75rem 0;">
       <div style="flex:1; overflow:hidden;">

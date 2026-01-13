@@ -312,6 +312,7 @@ func (app *App) newMux() http.Handler {
 	var wrapped http.Handler
 	wrapped = app.logMiddleware(mux)
 	wrapped = app.tinyOptimizeDb(mux)
+	wrapped = app.reqCtx(mux)
 	return wrapped
 }
 
@@ -327,6 +328,13 @@ func (app *App) logMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		dur := time.Since(start)
 		log.Printf("%s %s %v", r.Method, r.URL.Path, dur.Round(time.Millisecond))
+	})
+}
+
+func (app *App) reqCtx(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), requestKey{}, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -358,6 +366,7 @@ func (app *App) tinyOptimizeDb(next http.Handler) http.Handler {
 
 type renderErrorTemplateKey struct{}
 
+type requestKey struct{}
 type renderModeKey struct{}
 type RenderMode int
 
@@ -386,7 +395,11 @@ func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, 
 	}
 
 	if basePager, ok := data.(types.BasePager); ok {
-		p := basePager.GetBasePage().Perf
+		basePage := basePager.GetBasePage()
+		if req, ok := ctx.Value(requestKey{}).(*http.Request); ok {
+			basePage.PinHeader = isClientPinHeaderOn(req)
+		}
+		p := basePage.Perf
 		pageTime := time.Since(p.Start)
 		pageTimeStr := strconv.FormatInt(pageTime.Milliseconds(), 10)
 		sqlTimeStr := strconv.FormatInt(p.SQLTime.Milliseconds(), 10)
@@ -492,6 +505,9 @@ func (app *App) renderError(ctx context.Context, w http.ResponseWriter, perf *ty
 		model.Message = err.Error()
 	} else {
 		model.Message = statusText
+	}
+	if req, ok := ctx.Value(requestKey{}).(*http.Request); ok {
+		model.BasePage.PinHeader = isClientPinHeaderOn(req)
 	}
 	w.WriteHeader(status)
 	renderMode := getRenderMode(ctx)

@@ -1,6 +1,6 @@
 {{ define "user.gohtml" }}
 {{$title := printf "User: %s - %s" .User .Host}}
-{{ template "base_start" (dict "title" $title) }}
+{{ template "base_start" (dict "BasePage" .BasePage "title" $title) }}
   <h1>User: {{.User}} - {{.Host}}</h1>
   <div class="tabs">
     <a class="tab tab-selected" href="/user/{{.Host}}/{{.User}}">Summary</a>

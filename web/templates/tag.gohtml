@@ -1,6 +1,6 @@
 {{define "tag.gohtml"}}
 {{$title := printf "Tag: %s" .Tag.Name }}
-{{template "base_start" (dict "title" $title)}}
+{{template "base_start" (dict "BasePage" .BasePage "title" $title)}}
   <h1>{{.Tag.Name}}</h1>
 
   {{if .Albums}}

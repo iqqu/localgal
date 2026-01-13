@@ -1,6 +1,6 @@
 {{define "stats.gohtml"}}
 {{$title := "Statistics" }}
-{{template "base_start" (dict "title" $title)}}
+{{template "base_start" (dict "BasePage" .BasePage "title" $title)}}
   <h1>Statistics</h1>
   <div class="card">
     <table>

@@ -1,6 +1,6 @@
 {{ define "search_error.gohtml" }}
 {{$title := printf "Search Error: %s" .Query}}
-{{ template "base_start" (dict "title" $title "query" .Query) }}
+{{ template "base_start" (dict "BasePage" .BasePage "title" $title "query" .Query) }}
   <h1>Search Error</h1>
   <div class="card">
     {{ if .Message }}

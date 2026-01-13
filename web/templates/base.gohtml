@@ -15,6 +15,14 @@
   <header>
     <nav>
       <div style="display: flex; align-items:center; gap: .1rem;">
+        <label style="white-space: nowrap; display: flex; align-items:center; gap: .1rem;">
+          <input type="checkbox" id="pin-header-checkbox" hidden{{if .BasePage.PinHeader}} checked{{end}}>
+          <span class="icon js-required">
+            <img class="icon-pinned" src="/static/tack-in.svg" alt="Unpinned">
+            <img class="icon-unpinned" src="/static/tack-out.svg" alt="Pinned">
+          </span>
+        </label>
+        <span class="muted"> | </span>
         <a href="/">
           <span class="nav-icon">&#x1F3E0;</span>
           LocalGal
@@ -22,7 +30,7 @@
         <span class="muted"> | </span>
         <a href="/tags">
           <span class="nav-icon">&#x1F3F7;&#xFE0F;</span>
-          <span class="nav-label">Tags</span>
+          <span class="nav-label nav-label-collapse-widest">Tags</span>
         </a>
       </div>
       <div style="display: flex; align-items:center; gap: .1rem; flex: 1; max-width: 25ch; min-width: 8ch;">

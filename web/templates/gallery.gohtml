@@ -1,6 +1,6 @@
 {{define "gallery.gohtml"}}
 {{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
-{{template "base_start" (dict "title" $title)}}
+{{template "base_start" (dict "BasePage" .BasePage "title" $title)}}
   <div style="display: grid; grid-template-columns: auto auto">
     <h1>
       <span style="vertical-align: middle">

@@ -1,5 +1,5 @@
 {{define "tags.gohtml"}}
-{{template "base_start" (dict "title" "Tags")}}
+{{template "base_start" (dict "BasePage" .BasePage "title" "Tags")}}
   <h1>Tags</h1>
   {{if or .ImageTags .AlbumTags}}
     {{/* File tags */}}

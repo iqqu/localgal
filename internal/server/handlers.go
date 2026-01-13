@@ -2232,6 +2232,19 @@ func isClientJsOn(r *http.Request) bool {
 	return true
 }
 
+func isClientPinHeaderOn(r *http.Request) bool {
+	cookie, err := r.Cookie("pinHeader")
+	if errors.Is(err, http.ErrNoCookie) {
+		// cookie is not present in the request
+		return false
+	} else if err != nil {
+		// Unable to read cookies
+		return false
+	}
+	// cookie was present
+	return cookie.Value == "1"
+}
+
 func isClientAutoplayOn(r *http.Request) bool {
 	cookie, err := r.Cookie("autoplay")
 	if errors.Is(err, http.ErrNoCookie) {

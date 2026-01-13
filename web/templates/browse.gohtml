@@ -1,5 +1,5 @@
 {{ define "browse.gohtml" }}
-{{ template "base_start" (dict "title" "Galleries") }}
+{{ template "base_start" (dict "BasePage" .BasePage "title" "Galleries") }}
   <h1>Galleries</h1>
   {{- if .Albums }}
     {{template "frag_pager_galleries.gohtml" .}}

@@ -2,6 +2,7 @@
     --base-padding: 0.75rem;
     --grid-gap: 0.3rem;
     --header-height: 35px;
+    --header-bg: #222;
     --main-margin: var(--base-padding);
     --full-bleed-margin: 1rem;
     --thumb-padding: 0.25rem;
@@ -21,7 +22,14 @@ html {scrollbar-gutter: stable; min-width: 600px;}
 /*Chrome scroll-behavior smooth is bugged; sometimes scrollIntoView goes too far or stops too early*/
 /*.scroll-smooth {scroll-behavior: smooth;}*/
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fafafa; color: #222; }
-header { height: var(--header-height); background: #222; color: #fff; color-scheme: dark; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: center; }
+header { max-height: var(--header-height); background: var(--header-bg); color: #fff; color-scheme: dark; padding: 0.5rem .2rem; display: flex; align-items: center; justify-content: center; z-index: 10; }
+header .icon { padding: 0 .2rem; }
+header .icon img { max-width: fit-content; }
+/*html:has(#pin-header-checkbox:checked) { scroll-padding-top: var(--header-height); }*/ /* note: bugged on Firefox and Chrome! Clicking a checkbox in the header while scrolled down jumps the page to the top */
+html:has(#pin-header-checkbox:checked) [id] { scroll-margin-top: var(--header-height); } /* note: less desirable if the above Firefox+Chrome bug ever gets fixed */
+header:has(#pin-header-checkbox:checked) { position: sticky; top: 0; }
+#pin-header-checkbox:not(:checked) ~ .icon .icon-pinned { display: none; }
+#pin-header-checkbox:checked ~ .icon .icon-unpinned { display: none; }
 header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:flex; gap: .5rem; justify-content:space-between; align-items:center; }
 header nav .nav-icon { margin: 0 .2rem; }
 @media (max-width: 1060px) { header nav .nav-label-collapse-widest { display: none; } }
@@ -178,6 +186,10 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 /* main content */
 #main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
     max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)));
+}
+
+html:has(#pin-header-checkbox:checked) #main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
+    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)) - var(--header-height));
 }
 
 .stack-cell {position: relative;display: inline-grid;}

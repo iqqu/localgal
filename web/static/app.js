@@ -259,13 +259,7 @@
             localStorage.setItem('autoJumpChecked', JSON.stringify(this.checked));
             const mainContentEl = document.querySelector('#main-content');
             if (this.checked && mainContentEl && /^(#|#main-content|)$/.test(window.location.hash)) {
-                // Jump to content if checked and hash doesn't exist in URL
-                // Adds to history:
-                // window.location.hash = '';
-                // window.location.hash = '#main-content';
-                history.replaceState(null, null, '#main-content');
-                scrollIntoView(mainContentEl);
-                focusVidEl();
+                handleJump();
             }
         });
     }
@@ -346,6 +340,36 @@
         });
     }
 
+
+    function setupPinHeaderChangeListener() {
+        const checkbox = document.getElementById('pin-header-checkbox');
+        // Save state when checkbox changes
+        checkbox.addEventListener('change', function () {
+            if (checkbox.checked) {
+                document.cookie = 'pinHeader=1; Path=/; SameSite=Strict';
+            } else {
+                document.cookie = 'pinHeader=0; Path=/; SameSite=Strict';
+            }
+            localStorage.setItem('pinHeaderChecked', JSON.stringify(this.checked));
+            if (!checkbox.checked && window.location.hash === '#main-content') {
+                // If we unpinned the header while on the main content, re-center the main content
+                let jumpEl = document.querySelector('a#jump-to-content-link');
+                let mainContentEl = document.querySelector('a#main-content');
+                if (jumpEl && mainContentEl) {
+                    jumpEl.click();
+                }
+            }
+        });
+    }
+
+    function loadPinHeader() {
+        const checkbox = document.getElementById('pin-header-checkbox');
+        const savedState = localStorage.getItem('pinHeaderChecked');
+        if (savedState) {
+            checkbox.checked = JSON.parse(savedState);
+        }
+    }
+
     function setupAsyncLocalRating() {
         document.querySelectorAll('form.form-local-rating').forEach(formEl => {
             formEl.addEventListener('submit', async event => {
@@ -388,6 +412,9 @@
         backEls.forEach(el => {
             el.addEventListener('click', () => history.back());
         });
+
+        loadPinHeader();
+        setupPinHeaderChangeListener();
 
         setupCellNavBtnTrackPointer();
 

@@ -1,5 +1,5 @@
 {{define "error.gohtml"}}
-{{template "base_start" (dict "title" (or .StatusText "Error"))}}
+{{template "base_start" (dict "BasePage" .BasePage "title" (or .StatusText "Error"))}}
   <article style="display: flex; flex-direction: column; justify-content: center; align-items: center;gap: .5rem;">
     <h1>{{if .StatusText}}{{.StatusText}}{{else}}Error{{end}}</h1>
     <div class="card" style="width: calc(min(100%,80ch));text-align: center;">
