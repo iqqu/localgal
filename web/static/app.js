@@ -133,18 +133,14 @@
             case '4':
             case '5':
             case '0':
-                const formEls = document.querySelectorAll('form.form-local-rating');
+                const formEl = document.querySelector('form.form-local-rating'); // only get the first
                 let value = event.key;
                 if (value === '0') {
                     value = 'unset';
                 }
-                // prevent accidental bugs in future plan to rate files from the gallery page
-                if (formEls && formEls.length === 1) {
-                    const formEl = formEls[0];
-                    const btnEl = formEl.querySelector(`button[value="${value}"]`);
-                    if (btnEl) {
-                        btnEl.click();
-                    }
+                const btnEl = formEl.querySelector(`button[value="${value}"]`);
+                if (btnEl) {
+                    btnEl.click();
                 }
         }
     });
@@ -384,13 +380,15 @@
                     .then(res => {
                         if (res.ok || res.type === 'opaqueredirect') {
                             // assume any redirect is OK
-                            formEl.querySelectorAll('button.btn-rating').forEach(btnEl => {
-                                if (btnEl.value === rating) {
-                                    btnEl.classList.add('active');
-                                } else {
-                                    btnEl.classList.remove('active');
-                                }
-                            });
+                            document.querySelectorAll('form.form-local-rating, .nav-rating-popup-opener').forEach(targetFormEl => {
+                                targetFormEl.querySelectorAll('button.btn-rating').forEach(btnEl => {
+                                    if (btnEl.value === rating) {
+                                        btnEl.classList.add('active');
+                                    } else {
+                                        btnEl.classList.remove('active');
+                                    }
+                                });
+                            })
                         } else {
                             // TODO handle error
                             console.error('error while rating', res);

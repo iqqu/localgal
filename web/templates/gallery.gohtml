@@ -1,6 +1,27 @@
+{{define "nav_extra_gallery"}}
+  <div class="nav-rating-popup">
+    <div class="nav-rating-popup-opener">
+      <button type="button" value="unset" class="btn-rating{{if not .Album.LocalRating.Valid}} active{{end}}" title="unset">&#x2753;</button>
+      <button type="button" value="1" class="btn-rating{{if eq .Album.LocalRating.Int64 1}} active{{end}}" title="Worst">&#x1F4A9;</button>
+      <button type="button" value="2" class="btn-rating{{if eq .Album.LocalRating.Int64 2}} active{{end}}" title="Bad">&#x1F44E;</button>
+      <button type="button" value="3" class="btn-rating{{if eq .Album.LocalRating.Int64 3}} active{{end}}" title="Neutral">&#x2B55;</button>
+      <button type="button" value="4" class="btn-rating{{if eq .Album.LocalRating.Int64 4}} active{{end}}" title="Good">&#x1F44D;</button>
+      <button type="button" value="5" class="btn-rating{{if eq .Album.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
+    </div>
+    <form class="form-local-rating nav-expand" action="/gallery/{{.Album.RipperHost}}/{{.Album.Gid}}" method="post">
+      <button name="rating" value="5" class="btn-rating{{if eq .Album.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
+      <button name="rating" value="4" class="btn-rating{{if eq .Album.LocalRating.Int64 4}} active{{end}}" title="Good">&#x1F44D;</button>
+      <button name="rating" value="3" class="btn-rating{{if eq .Album.LocalRating.Int64 3}} active{{end}}" title="Neutral">&#x2B55;</button>
+      <button name="rating" value="2" class="btn-rating{{if eq .Album.LocalRating.Int64 2}} active{{end}}" title="Bad">&#x1F44E;</button>
+      <button name="rating" value="1" class="btn-rating{{if eq .Album.LocalRating.Int64 1}} active{{end}}" title="Worst">&#x1F4A9;</button>
+      <button name="rating" value="unset" class="btn-rating{{if not .Album.LocalRating.Valid}} active{{end}}" title="unset">&#x2753;</button>
+    </form>
+  </div>
+{{end}}
+
 {{define "gallery.gohtml"}}
 {{$title := printf "%s - %s" (or (and .Album.Title.Valid .Album.Title.String) .Album.Gid) .Album.RipperHost}}
-{{template "base_start" (dict "BasePage" .BasePage "title" $title)}}
+{{template "base_start" (dict "BasePage" .BasePage "title" $title "nav_extra_gallery" true "Album" .Album)}}
   <div style="display: grid; grid-template-columns: auto auto">
     <h1>
       <span style="vertical-align: middle">

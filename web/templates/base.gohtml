@@ -37,10 +37,19 @@
         <form method="get" action="/search" style="flex: 1; display: flex;">
           <label style="flex: 1; display: flex;">
             <input id="search" type="search" name="q" placeholder="Search" autocomplete="off" style="flex: 1; width: 7ch;"{{if .query}} value="{{.query}}"{{end}} />
-            <button class="nav-icon" type="submit" style="border: none; background: none;">&#x1F50D;</button>
+            <button type="submit" style="border: none; background: none;">&#x1F50D;</button>
           </label>
         </form>
       </div>
+      {{if .nav_extra_gallery}}
+        <div style="display: flex; align-items:center; gap: .1rem;">
+          {{template "nav_extra_gallery" .}}
+        </div>
+      {{else if .nav_extra_file}}
+        <div style="display: flex; align-items:center; gap: .1rem;">
+          {{template "nav_extra_file" .}}
+        </div>
+      {{end}}
       <div style="display: flex; align-items:center; gap: .1rem;">
         <a id="jump-to-content-link" href="#main-content">
           <span class="nav-icon">&#x1F53D;</span><span class="nav-label nav-label-collapse-narrow">Jump<span class="nav-label-collapse-widest"> to Content</span></span>
