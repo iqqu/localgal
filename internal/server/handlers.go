@@ -1002,8 +1002,89 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
+		// Calculate file rank and page in gallery
+		var rank int
+		if err := app.withSQL(ctx, func(ctx context.Context) error {
+			var prevFilterKey string
+			switch sort { // Same as prevOrderKey1 above with no ORDER BY
+			case SortFetched:
+				prevFilterKey = `
+				         AND (
+				           rf.inserted_ts > t.inserted_ts
+				               OR (rf.inserted_ts = t.inserted_ts
+				               AND rf.remote_file_id > t.remote_file_id)
+				           )
+				`
+			case SortUploaded:
+				prevFilterKey = `
+				         AND (
+				           (t.uploaded_ts IS NOT NULL
+				               AND (rf.uploaded_ts > t.uploaded_ts
+				                   OR (rf.uploaded_ts = t.uploaded_ts
+				                       AND rf.remote_file_id > t.remote_file_id)))
+				               OR
+				           (t.uploaded_ts IS NULL
+				               AND (rf.uploaded_ts IS NOT NULL
+				                   OR rf.remote_file_id > t.remote_file_id))
+				           )
+				`
+			case SortBytes:
+				prevFilterKey = `
+				         AND (
+				           (t.bytes IS NOT NULL
+				               AND (rf.bytes > t.bytes
+				                   OR (rf.bytes = t.bytes
+				                       AND rf.remote_file_id > t.remote_file_id)))
+				               OR
+				           (t.bytes IS NULL
+				               AND (rf.bytes IS NOT NULL
+				                   OR rf.remote_file_id > t.remote_file_id))
+				           )
+				`
+			default:
+				prevFilterKey = `
+				         AND (
+				           rf.inserted_ts > t.inserted_ts
+				               OR (rf.inserted_ts = t.inserted_ts
+				               AND rf.remote_file_id > t.remote_file_id)
+				           )
+				`
+			}
+			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey)
+			//language=sqlite
+			replaced := replacer.Replace(`
+				  WITH target AS (
+				      SELECT rf.remote_file_id
+				           , rf.inserted_ts
+				           , rf.uploaded_ts
+				           , rf.bytes
+				        FROM remote_file rf
+				       WHERE remote_file_id = ?
+				                 )
+				SELECT COUNT(*)
+				  FROM map_album_remote_file marf
+				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				  JOIN target t
+				 WHERE marf.album_id = ?
+				   AND rf.fetched = 1
+				   AND rf.ignored = 0
+				  /*PREV_FILTER_KEY*/
+			`)
+			return app.Db.QueryRowContext(ctx, replaced, f.FileId, a.AlbumId).Scan(&rank)
+		}); err != nil {
+			return err
+		}
+		_, pageSize := getPageParams(w, r, r.URL)
+		var pageNumber int
+		if pageSize == 0 {
+			pageNumber = 0
+		} else {
+			pageNumber = (rank / pageSize) + 1
+		}
+
 		// Populate href
-		a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
+		a.HrefPage = fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&sort=%s", a.RipperHost, a.Gid, pageNumber, pageSize, sort)
+		//a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
 		f.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, f.FileId)
 		if f.Filename.Valid {
 			f.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, f.Filename.String)
