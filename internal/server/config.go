@@ -132,7 +132,7 @@ func GetServerConfig() Config {
 	ro := shouldRunReadOnly()
 
 	serverConfig := Config{
-		Bind:            vars.EnvBind.GetValueDefault("127.0.0.1:5037"),
+		Bind:            vars.EnvBind.GetValueDefault("127.0.0.1:5033"),
 		Dsn:             vars.EnvSqliteDsn.GetValueDefault("file:" + sqlitePath),
 		MediaRoot:       vars.EnvMediaRoot.GetValueDefault(ripsDir),
 		DfLog:           dfLog,

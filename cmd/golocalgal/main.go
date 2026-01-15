@@ -68,7 +68,7 @@ func main() {
 		fmt.Println("Options:")
 		flag.PrintDefaults()
 		fmt.Println("Environment Variables:")
-		fmt.Println("  BIND:\tlisten address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)")
+		fmt.Println("  BIND:\tlisten address, default `127.0.0.1:5033` (to listen on all addresses, specify `:5033`)")
 		fmt.Println("  SQLITE_DSN:\tsqlite data source name (connection string), default `file:ripme.sqlite`")
 		fmt.Println("  SLOW_SQL_MS:\tduration threshold to log slow sql queries, milliseconds, default `100`")
 		fmt.Println("  MEDIA_ROOT:\trip base directory, default: `./rips`")

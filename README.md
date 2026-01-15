@@ -26,7 +26,7 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 3. Run the localgal executable that you downloaded.
    * Double-click the executable to show the Server Control GUI and click the Start button, or
    * Run the executable in a terminal to start the server without the GUI
-4. Open `http://127.0.0.1:5037` in your web browser
+4. Open `http://127.0.0.1:5033` in your web browser
 
 For notes on compiling from source, see [docs/developing.md](./docs/developing.md)
 
@@ -92,7 +92,7 @@ In case somebody wants to develop a different UI.
 Note: there is no `/api/random/page` for now, because that endpoint doesn't work nicely for JSON APIs.
 
 ## Environment variables
-* `BIND`: listen address, default `127.0.0.1:5037` (to listen on all addresses, specify `:5037`)
+* `BIND`: listen address, default `127.0.0.1:5033` (to listen on all addresses, specify `:5033`)
 * `SQLITE_DSN`: sqlite data source name (connection string), default `file:ripme.sqlite`
 * `SLOW_SQL_MS`: duration threshold to log slow sql queries, milliseconds, default `100`
 * `MEDIA_ROOT`: rip base directory, default: `./rips`

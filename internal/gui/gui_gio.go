@@ -293,7 +293,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 					}
 
 					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvBind.Key(), &mw.bindEd, "Server listen/bind address, e.g. :5037 or 127.0.0.1:5037")),
+						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvBind.Key(), &mw.bindEd, "Server listen/bind address, e.g. :5033 or 127.0.0.1:5033")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSqliteDsn.Key(), &mw.dsnEd, "SQLite data source name")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvRo.Key(), &mw.roEd, roHelp)),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSlowSqlMs.Key(), &mw.slowSqlEd, "Duration threshold to log slow sql queries, milliseconds, or -1 to disable")),

@@ -88,7 +88,7 @@ func loop() {
 		giu.Separator(),
 		giu.Label(vars.EnvBind.Key()),
 		giu.InputText(&mw.bind),
-		giu.Label("Server listen/bind address, e.g. :5037 or 127.0.0.1:5037").Wrapped(true),
+		giu.Label("Server listen/bind address, e.g. :5033 or 127.0.0.1:5033").Wrapped(true),
 
 		giu.Label(vars.EnvSqliteDsn.Key()),
 		giu.InputText(&mw.dsn),
