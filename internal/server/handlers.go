@@ -50,10 +50,10 @@ func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			return app.Db.QueryRowContext(ctx, `
 				SELECT (
 				           SELECT page_size
-				             FROM pragma_page_size()
+				             FROM PRAGMA_PAGE_SIZE()
 				       ) * (
 				           SELECT page_count
-				             FROM pragma_page_count()
+				             FROM PRAGMA_PAGE_COUNT()
 				           ) AS main_db_bytes
 				     , COALESCE((
 				                    SELECT version
@@ -587,7 +587,7 @@ func (app *App) getGalleryFileTags(ctx context.Context, ripperHost string, gid s
 	var fileTags []types.Tag
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		rows, e := app.Db.QueryContext(ctx, `
-				SELECT t.name, COUNT(*) as count
+				SELECT t.name, COUNT(*) AS count
 				  FROM tag t
 				  JOIN map_remote_file_tag mrft ON mrft.tag_id = t.tag_id
 				  JOIN map_album_remote_file marf ON marf.remote_file_id = mrft.remote_file_id
@@ -697,7 +697,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				  FROM remote_file rf
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				  JOIN map_album_remote_file m ON m.remote_file_id = rf.remote_file_id
-				  JOIN ripper r on rf.ripper_id = r.ripper_id
+				  JOIN ripper r ON rf.ripper_id = r.ripper_id
 				 WHERE m.album_id = ?
 				   AND rf.remote_file_id = ?
 				   AND rf.fetched = 1
@@ -1437,7 +1437,7 @@ func (app *App) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 				     , a.removed
 				     , a.last_fetch_ts
 				     , a.inserted_ts
-				     , COALESCE(cnt.c, 0) as file_count
+				     , COALESCE(cnt.c, 0) AS file_count
 				     , rf.remote_file_id AS thumb
 				  FROM album a
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
@@ -2373,7 +2373,7 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 			// Correct randomness, but slow-ish (avg 200ms)
 			//return app.Db.QueryRowContext(ctx, `
 			//	  WITH row_count AS (
-			//	      SELECT COUNT(*) as cnt
+			//	      SELECT COUNT(*) AS cnt
 			//	        FROM remote_file rf
 			//	       WHERE rf.fetched = 1
 			//	                    )
