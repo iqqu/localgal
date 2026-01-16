@@ -732,51 +732,25 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			switch sort {
 			case SortFetched:
 				prevOrderKey1 = `
-				         AND (
-				           rf.inserted_ts > t.inserted_ts
-				               OR (rf.inserted_ts = t.inserted_ts
-				               AND rf.remote_file_id > t.remote_file_id)
-				           )
+				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				       ORDER BY rf.inserted_ts ASC, rf.remote_file_id ASC
 				`
 				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			case SortUploaded:
 				prevOrderKey1 = `
-				         AND (
-				           (t.uploaded_ts IS NOT NULL
-				               AND (rf.uploaded_ts > t.uploaded_ts
-				                   OR (rf.uploaded_ts = t.uploaded_ts
-				                       AND rf.remote_file_id > t.remote_file_id)))
-				               OR
-				           (t.uploaded_ts IS NULL
-				               AND (rf.uploaded_ts IS NOT NULL
-				                   OR rf.remote_file_id > t.remote_file_id))
-				           )
+				         AND (COALESCE(rf.uploaded_ts,0), rf.remote_file_id) > (COALESCE(t.uploaded_ts,0), t.remote_file_id)
 				       ORDER BY (rf.uploaded_ts IS NULL) DESC, rf.uploaded_ts ASC, rf.remote_file_id ASC
 				`
 				prevOrderKey2 = "ORDER BY (rf.uploaded_ts IS NULL) ASC, rf.uploaded_ts DESC, rf.remote_file_id DESC"
 			case SortBytes:
 				prevOrderKey1 = `
-				         AND (
-				           (t.bytes IS NOT NULL
-				               AND (rf.bytes > t.bytes
-				                   OR (rf.bytes = t.bytes
-				                       AND rf.remote_file_id > t.remote_file_id)))
-				               OR
-				           (t.bytes IS NULL
-				               AND (rf.bytes IS NOT NULL
-				                   OR rf.remote_file_id > t.remote_file_id))
-				           )
+				         AND (COALESCE(rf.bytes,0), rf.remote_file_id) > (COALESCE(t.bytes,0), t.remote_file_id)
 				       ORDER BY (rf.bytes IS NULL) DESC, rf.bytes ASC, rf.remote_file_id ASC
 				`
 				prevOrderKey2 = "ORDER BY (rf.bytes IS NULL) ASC, rf.bytes DESC, rf.remote_file_id DESC"
 			default:
 				prevOrderKey1 = `
-				         AND (
-				           rf.inserted_ts > t.inserted_ts
-				               OR (rf.inserted_ts = t.inserted_ts
-				               AND rf.remote_file_id > t.remote_file_id)
-				           )
+				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				       ORDER BY rf.inserted_ts ASC, rf.remote_file_id ASC
 				`
 				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
@@ -864,48 +838,22 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			switch sort {
 			case SortFetched:
 				nextOrderKey = `
-				   AND (
-				     rf.inserted_ts < t.inserted_ts
-				         OR (rf.inserted_ts = t.inserted_ts
-				         AND rf.remote_file_id < t.remote_file_id)
-				     )
+				   AND (rf.inserted_ts, rf.remote_file_id) < (t.inserted_ts, t.remote_file_id)
 				 ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC
 				`
 			case SortUploaded:
 				nextOrderKey = `
-				   AND (
-				     (t.uploaded_ts IS NOT NULL
-				         AND (rf.uploaded_ts IS NULL
-				             OR rf.uploaded_ts < t.uploaded_ts
-				             OR (rf.uploaded_ts = t.uploaded_ts
-				                 AND rf.remote_file_id < t.remote_file_id)))
-				         OR
-				     (t.uploaded_ts IS NULL AND rf.uploaded_ts IS NULL
-				         AND rf.remote_file_id < t.remote_file_id)
-				     )
+				   AND (COALESCE(rf.uploaded_ts,0), rf.remote_file_id) < (COALESCE(t.uploaded_ts,0), t.remote_file_id)
 				 ORDER BY (rf.uploaded_ts IS NULL) ASC, rf.uploaded_ts DESC, rf.remote_file_id DESC
 				`
 			case SortBytes:
 				nextOrderKey = `
-				   AND (
-				     (t.bytes IS NOT NULL
-				         AND (rf.bytes IS NULL
-				             OR rf.bytes < t.bytes
-				             OR (rf.bytes = t.bytes
-				                 AND rf.remote_file_id < t.remote_file_id)))
-				         OR
-				     (t.bytes IS NULL AND rf.bytes IS NULL
-				         AND rf.remote_file_id < t.remote_file_id)
-				     )
+				   AND (COALESCE(rf.bytes,0), rf.remote_file_id) < (COALESCE(t.bytes,0), t.remote_file_id)
 				 ORDER BY (rf.bytes IS NULL) ASC, rf.bytes DESC, rf.remote_file_id DESC
 				`
 			default:
 				nextOrderKey = `
-				   AND (
-				     rf.inserted_ts < t.inserted_ts
-				         OR (rf.inserted_ts = t.inserted_ts
-				         AND rf.remote_file_id < t.remote_file_id)
-				     )
+				   AND (rf.inserted_ts, rf.remote_file_id) < (t.inserted_ts, t.remote_file_id)
 				 ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC
 				`
 			}
@@ -1009,45 +957,19 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			switch sort { // Same as prevOrderKey1 above with no ORDER BY
 			case SortFetched:
 				prevFilterKey = `
-				         AND (
-				           rf.inserted_ts > t.inserted_ts
-				               OR (rf.inserted_ts = t.inserted_ts
-				               AND rf.remote_file_id > t.remote_file_id)
-				           )
+				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				`
 			case SortUploaded:
 				prevFilterKey = `
-				         AND (
-				           (t.uploaded_ts IS NOT NULL
-				               AND (rf.uploaded_ts > t.uploaded_ts
-				                   OR (rf.uploaded_ts = t.uploaded_ts
-				                       AND rf.remote_file_id > t.remote_file_id)))
-				               OR
-				           (t.uploaded_ts IS NULL
-				               AND (rf.uploaded_ts IS NOT NULL
-				                   OR rf.remote_file_id > t.remote_file_id))
-				           )
+				         AND (COALESCE(rf.uploaded_ts,0), rf.remote_file_id) > (COALESCE(t.uploaded_ts,0), t.remote_file_id)
 				`
 			case SortBytes:
 				prevFilterKey = `
-				         AND (
-				           (t.bytes IS NOT NULL
-				               AND (rf.bytes > t.bytes
-				                   OR (rf.bytes = t.bytes
-				                       AND rf.remote_file_id > t.remote_file_id)))
-				               OR
-				           (t.bytes IS NULL
-				               AND (rf.bytes IS NOT NULL
-				                   OR rf.remote_file_id > t.remote_file_id))
-				           )
+				         AND (COALESCE(rf.bytes,0), rf.remote_file_id) > (COALESCE(t.bytes,0), t.remote_file_id)
 				`
 			default:
 				prevFilterKey = `
-				         AND (
-				           rf.inserted_ts > t.inserted_ts
-				               OR (rf.inserted_ts = t.inserted_ts
-				               AND rf.remote_file_id > t.remote_file_id)
-				           )
+				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				`
 			}
 			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey)
