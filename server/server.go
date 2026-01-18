@@ -402,7 +402,10 @@ func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	_ = app.Tpl.ExecuteTemplate(w, name, data)
+	err := app.Tpl.ExecuteTemplate(w, name, data)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
 }
 
 // Same as render, but fragments shouldn't clear the JS cookie
@@ -439,7 +442,10 @@ func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
 	w.Header().Set("Cache-Control", "private, max-age=60")
-	_ = app.Tpl.ExecuteTemplate(w, name, data)
+	err := app.Tpl.ExecuteTemplate(w, name, data)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
 }
 
 func (app *App) renderError(ctx context.Context, w http.ResponseWriter, perf *types.Perf, status int, err error) {
