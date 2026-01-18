@@ -28,7 +28,7 @@ func (app *App) handleStatic(w http.ResponseWriter, r *http.Request) {
 
 func (app *App) handleAbout(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
-		model := map[string]any{"Perf": *perf}
+		model := struct{ *types.BasePage }{BasePage: &types.BasePage{Perf: perf}}
 		app.render(ctx, w, "about.gohtml", &model)
 		return nil
 	})
