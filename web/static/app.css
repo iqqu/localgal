@@ -270,9 +270,9 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
 .btn-rating.active {filter: grayscale(0);opacity: 1;}
 
 .nav-rating-popup {
-    position: relative;
     background: var(--header-bg);
 }
+.nav-rating-popup-opener { anchor-name: --nav-rating-menu-button;  z-index: -1; }
 .nav-rating-popup-opener .btn-rating { display: none; }
 .nav-rating-popup-opener .btn-rating.active { display: block; }
 .nav-rating-popup:hover .nav-expand,
@@ -280,6 +280,18 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
 {
     opacity: 1;
     visibility: visible;
+}
+
+.mouse-popup-bridge {
+    /*background: red;*/
+    --height: 10px;
+    width: 50px;
+    height: var(--height);
+    z-index: 9;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(-1 * var(--height) + 1px);
 }
 
 .nav-expand.form-local-rating {
@@ -290,11 +302,13 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
     grid: auto / 1fr 1fr 1fr;
     gap: .3rem;
     padding: .4rem;
-    left: 50%;
+    left: anchor(--nav-rating-menu-button center);
     transform: translateX(-50%);
     background: var(--header-bg);
+    top: var(--header-height);
+    z-index: 10;
 }
-
+header:has(#pin-header-checkbox:checked) .nav-expand.form-local-rating { position: fixed; }
 button[popovertarget="settings-menu-items"] {
     anchor-name: --settings-menu-button;
     background: none;

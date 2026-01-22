@@ -9,6 +9,7 @@
       <button type="button" value="5" class="btn-rating{{if eq .File.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
     </div>
     <form class="form-local-rating nav-expand" action="/file/{{.File.RipperHost}}/{{.File.FileId}}" method="post">
+      <div class="mouse-popup-bridge"></div>
       <button name="rating" value="5" class="btn-rating{{if eq .File.LocalRating.Int64 5}} active{{end}}" title="Best">&#x2764;&#xFE0F;</button>
       <button name="rating" value="4" class="btn-rating{{if eq .File.LocalRating.Int64 4}} active{{end}}" title="Good">&#x1F44D;</button>
       <button name="rating" value="3" class="btn-rating{{if eq .File.LocalRating.Int64 3}} active{{end}}" title="Neutral">&#x2B55;</button>
