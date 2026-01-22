@@ -55,16 +55,17 @@
           <span class="nav-icon">&#x1F53D;</span><span class="nav-label nav-label-collapse-narrow">Jump<span class="nav-label-collapse-widest"> to Content</span></span>
         </a>
         <div class="js-required" style="white-space: nowrap">
-          <span class="muted"> | </span>
-          <label style="white-space: nowrap">
-            <input type="checkbox" id="auto-jump-checkbox">
-            <span class="nav-label nav-label-collapse-wide">Autojump</span><span class="nav-icon">&#x23EC;</span>
-          </label>
-          <span class="muted"> | </span>
-          <label style="white-space: nowrap">
-            <input type="checkbox" id="auto-play-checkbox">
-            <span class="nav-label nav-label-collapse-wide">Autoplay</span><span class="nav-icon">&#x23E9;</span>
-          </label>
+          <button type="button" popovertarget="settings-menu-items" title="Settings">&#x2699;&#xFE0F;</button>
+          <div id="settings-menu-items" popover>
+            <label style="white-space: nowrap">
+              <input type="checkbox" id="auto-jump-checkbox">
+              <span class="nav-icon">&#x23EC;</span><span class="nav-label nav-label-collapse-wide">Autojump</span>
+            </label>
+            <label style="white-space: nowrap">
+              <input type="checkbox" id="auto-play-checkbox">
+              <span class="nav-icon">&#x23E9;</span><span class="nav-label nav-label-collapse-wide">Autoplay</span>
+            </label>
+          </div>
           <div class="autoplay-error-notification" style="display: none">
             <span style="font-size: 1.2rem;">&#x26A0;&#xFE0F;</span> Autoplay was blocked by the browser.
           </div>
