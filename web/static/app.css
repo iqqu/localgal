@@ -269,6 +269,10 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
 .btn-rating:hover,
 .btn-rating.active {filter: grayscale(0);opacity: 1;}
 
+.nav-extra {
+    flex: 0 1 75px; /* width of widest nav-extra option */
+}
+
 .nav-rating-popup {
     background: var(--header-bg);
 }

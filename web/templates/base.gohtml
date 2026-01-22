@@ -42,13 +42,15 @@
         </form>
       </div>
       {{if .nav_extra_gallery}}
-        <div style="display: flex; align-items:center; gap: .1rem;">
+        <div class="nav-extra" style="display: flex; align-items:center; gap: .1rem;">
           {{template "nav_extra_gallery" .}}
         </div>
       {{else if .nav_extra_file}}
-        <div style="display: flex; align-items:center; gap: .1rem;">
+        <div class="nav-extra" style="display: flex; align-items:center; gap: .1rem;">
           {{template "nav_extra_file" .}}
         </div>
+      {{else}}
+        <div class="nav-extra" style="display: flex;"></div>
       {{end}}
       <div style="display: flex; align-items:center; gap: .1rem;">
         <a id="jump-to-content-link" href="#main-content">
