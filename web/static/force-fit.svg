@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+   width="24"
+   height="24"
+   xmlns="http://www.w3.org/2000/svg">
+    <rect
+        fill="#fff"
+        width="24"
+        height="24"
+        x="0"
+        y="0" />
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="M 2,2 H 22 V 22 H 2 Z"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="M 6,10 V 6 h 4"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="m 14,6 h 4 v 4"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="m 18,14 v 4 h -4"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="M 10,18 H 6 v -4"/>
+</svg>

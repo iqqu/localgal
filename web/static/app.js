@@ -46,6 +46,13 @@
                     return;
                 }
             }
+            if (event.key === 'I') {
+                let forceFitEl = document.querySelector('input#fb-force-fit');
+                if (forceFitEl) {
+                    forceFitEl.click();
+                    return;
+                }
+            }
             return;
         }
 
@@ -366,6 +373,33 @@
         }
     }
 
+    function setupForceFitChangeListener() {
+        const checkbox = document.getElementById('fb-force-fit');
+        if (!checkbox) {
+            return;
+        }
+        // Save state when checkbox changes
+        checkbox.addEventListener('change', function () {
+            if (checkbox.checked) {
+                document.cookie = 'forceFit=1; Path=/; SameSite=Strict';
+            } else {
+                document.cookie = 'forceFit=0; Path=/; SameSite=Strict';
+            }
+            localStorage.setItem('forceFitChecked', JSON.stringify(this.checked));
+        });
+    }
+
+    function loadForceFit() {
+        const checkbox = document.getElementById('fb-force-fit');
+        if (!checkbox) {
+            return;
+        }
+        const savedState = localStorage.getItem('forceFitChecked');
+        if (savedState) {
+            checkbox.checked = JSON.parse(savedState);
+        }
+    }
+
     function setupAsyncLocalRating() {
         document.querySelectorAll('form.form-local-rating').forEach(formEl => {
             formEl.addEventListener('submit', async event => {
@@ -413,6 +447,9 @@
 
         loadPinHeader();
         setupPinHeaderChangeListener();
+
+        loadForceFit();
+        setupForceFitChangeListener();
 
         setupCellNavBtnTrackPointer();
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+   width="24"
+   height="24"
+   xmlns="http://www.w3.org/2000/svg">
+    <rect
+        fill="#fff"
+        width="24"
+        height="24"
+        x="0"
+        y="0" />
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;stroke-linecap:butt;"
+        d="M 2,2 H 22 V 22 H 2 Z"/>
+    <path
+        style="fill:none;stroke:#fff;stroke-width:4;stroke-linecap:square;"
+        d="M 6,22 V 2"/>
+    <path
+        style="fill:none;stroke:#fff;stroke-width:4;stroke-linecap:square;"
+        d="M 18,22 V 2"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="M 6,23 V 1"/>
+    <path
+        style="fill:none;stroke:#000;stroke-width:2;"
+        d="M 18,23 V 1"/>
+</svg>

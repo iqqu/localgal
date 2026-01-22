@@ -1026,6 +1026,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 
 		autoplay := isClientAutoplayOn(r)
 		asyncAlbums := isClientJsOn(r)
+		forceFit := isClientForceFitOn(r)
 		if asyncAlbums {
 			model := types.FilePage{
 				File:         f,
@@ -1036,6 +1037,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				CurrentAlbum: a,
 				ShowPrevNext: true,
 				Autoplay:     autoplay,
+				ForceFit:     forceFit,
 				BasePage:     &types.BasePage{Perf: perf},
 			}
 			app.render(ctx, w, "file.gohtml", &model)
@@ -1055,6 +1057,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			CurrentAlbum: a,
 			ShowPrevNext: true,
 			Autoplay:     autoplay,
+			ForceFit:     forceFit,
 			BasePage:     &types.BasePage{Perf: perf},
 		}
 		app.render(ctx, w, "file.gohtml", &model)
@@ -1164,8 +1167,18 @@ func (app *App) handleFileStandalone(w http.ResponseWriter, r *http.Request) {
 			f.HrefMedia = fmt.Sprintf("/media/%s/%s", ripperHost, f.Filename.String)
 		}
 
+		forceFit := isClientForceFitOn(r)
+
 		// Regular file page
-		model := types.FilePage{File: f, FileTags: fileTags, AsyncAlbums: asyncAlbums, Albums: albums, ShowPrevNext: false, BasePage: &types.BasePage{Perf: perf}}
+		model := types.FilePage{
+			File:         f,
+			FileTags:     fileTags,
+			AsyncAlbums:  asyncAlbums,
+			Albums:       albums,
+			ShowPrevNext: false,
+			ForceFit:     forceFit,
+			BasePage:     &types.BasePage{Perf: perf},
+		}
 		app.render(ctx, w, "file.gohtml", &model)
 		return nil
 	})
@@ -2237,6 +2250,19 @@ func isClientJsOn(r *http.Request) bool {
 
 func isClientPinHeaderOn(r *http.Request) bool {
 	cookie, err := r.Cookie("pinHeader")
+	if errors.Is(err, http.ErrNoCookie) {
+		// cookie is not present in the request
+		return false
+	} else if err != nil {
+		// Unable to read cookies
+		return false
+	}
+	// cookie was present
+	return cookie.Value == "1"
+}
+
+func isClientForceFitOn(r *http.Request) bool {
+	cookie, err := r.Cookie("forceFit")
 	if errors.Is(err, http.ErrNoCookie) {
 		// cookie is not present in the request
 		return false

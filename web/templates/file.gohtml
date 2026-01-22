@@ -17,6 +17,12 @@
       <button name="rating" value="unset" class="btn-rating{{if not .File.LocalRating.Valid}} active{{end}}" title="unset">&#x2753;</button>
     </form>
   </div>
+  <div style="display: flex; gap: .2rem;">
+    {{/*<label for="fb-force-fit" class="btn fb-label-force-fit-yes" title="Force media to fill screen">[<&nbsp;&nbsp;>]</label>*/}}
+    {{/*<label for="fb-force-fit" class="btn fb-label-force-fit-no" title="Limit media width to screen">[|&nbsp;&nbsp;|]</label>*/}}
+    <label for="fb-force-fit" class="btn fb-label-force-fit-yes" title="Force media to fill screen"><img src="/static/force-fit.svg" alt="Force media to fill screen"></label>
+    <label for="fb-force-fit" class="btn fb-label-force-fit-no" title="Limit media width to screen"><img src="/static/limit-width.svg" alt="Limit media width to screen"></label>
+  </div>
 {{end}}
 
 {{define "file.gohtml"}}
@@ -54,7 +60,7 @@
     {{ if .File.MimeType.Valid }}
       <div class="full-bleed">
         <input type="checkbox" id="fb-expand" hidden />
-        <input type="checkbox" id="fb-grow" hidden />
+        <input type="checkbox" id="fb-force-fit" hidden {{if .ForceFit}}checked{{end}} />
         <div class="fb-wrap">
           <span class="stack-cell">
             {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
@@ -104,8 +110,8 @@
       <div class="fb-label">
         <label for="fb-expand" class="fb-label-expand">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to expand]</label>
         <label for="fb-expand" class="fb-label-contract">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to contract]</label>
-        <label for="fb-grow" class="fb-label-grow">[click to fit to screen]</label>
-        <label for="fb-grow" class="fb-label-nogrow">[click for original size]</label>
+        <label for="fb-force-fit" class="fb-label-force-fit-yes">[force media to fill screen]</label>
+        <label for="fb-force-fit" class="fb-label-force-fit-no">[limit media width to screen]</label>
       </div>
     {{ else }}
       <div class="muted">No media filename available.</div>
