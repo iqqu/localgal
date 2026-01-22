@@ -13,6 +13,7 @@
     --pv-rail-height: 100px;
     --pv-rail-margin: 0.75rem;
     --content-min-height: 250px;
+    --content-max-height: 100%;
 }
 
 *, *::before, *::after {box-sizing: border-box;}
@@ -161,35 +162,60 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 /*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
 .full-bleed .fb-wrap {width: calc(100vw - var(--full-bleed-margin) * 2);position: relative;left: 50%;right: 50%;margin-left: calc(var(--full-bleed-margin) - 50vw);margin-right: calc(var(--full-bleed-margin) - 50vw);}
 /* simpler to use !important than to add specificity for each case */
-.full-bleed input:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
+
+html:has(#fb-grow:not(:checked)) .full-bleed input#fb-expand:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
 
 #main-content + .card .full-bleed:first-child { margin-bottom: var(--card-padding); }
+.main-content-resource { object-fit: contain; object-position: center; }
 
 .fb-label {display: flex;justify-content: center;user-select: none;}
 .fb-label label.fb-label-expand {display: block;cursor: pointer;}
 .fb-label label.fb-label-contract {display: none;cursor: pointer;}
-.full-bleed:has(input:checked) ~ .fb-label label.fb-label-expand {display: none;}
-.full-bleed:has(input:checked) ~ .fb-label label.fb-label-contract {display: block;}
+.full-bleed:has(input#fb-expand:checked) ~ .fb-label label.fb-label-expand {display: none;}
+.full-bleed:has(input#fb-expand:checked) ~ .fb-label label.fb-label-contract {display: block;}
+.fb-label label.fb-label-grow {display: block;cursor: pointer;}
+.fb-label label.fb-label-nogrow {display: none;cursor: pointer;}
+.full-bleed:has(input#fb-grow:checked) ~ .fb-label label.fb-label-grow {display: none;}
+.full-bleed:has(input#fb-grow:checked) ~ .fb-label label.fb-label-nogrow {display: block;}
 
 .fb-wrap img {
     cursor: pointer;
     display: block;
 }
+.fb-content {
+    max-height: var(--content-max-height);
+}
 /* rail shown */
 .pv-rail ~ * .full-bleed input ~ .fb-wrap .fb-content {
-    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
+    --content-max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - max(var(--pv-rail-margin), var(--main-margin)) - var(--pv-rail-height) - var(--pv-rail-margin) - var(--card-border-width) - var(--card-padding) * 2));
+}
+html:has(#fb-grow:checked) .pv-rail ~ * .main-content-resource {
+    width: 100vw;
+    height: auto;
 }
 /* rail not shown */
 .full-bleed input ~ .fb-wrap .fb-content {
-    max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - var(--main-margin) - var(--card-border-width) - var(--card-padding) * 2));
+    --content-max-height: calc(max(var(--content-min-height), 100vh - var(--header-height) - var(--main-margin) - var(--card-border-width) - var(--card-padding) * 2));
+}
+html:has(#fb-grow:checked) .main-content-resource {
+    width: 100vw;
+    height: auto;
 }
 /* main content */
 #main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
-    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)));
+    --content-max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)));
+}
+html:has(#fb-grow:checked) #main-content:target + * .main-content-resource {
+    width: 100vw;
+    height: auto;
 }
 
 html:has(#pin-header-checkbox:checked) #main-content:target + * .full-bleed input ~ .fb-wrap .fb-content {
-    max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)) - var(--header-height));
+    --content-max-height: calc(max(var(--content-min-height), 100vh - (var(--card-padding) * 2) - var(--card-border-width)) - var(--header-height));
+}
+html:has(#fb-grow:checked):has(#pin-header-checkbox:checked) #main-content:target + * .main-content-resource {
+    width: 100vw;
+    height: auto;
 }
 
 .stack-cell {position: relative;display: inline-grid;}

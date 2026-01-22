@@ -54,6 +54,7 @@
     {{ if .File.MimeType.Valid }}
       <div class="full-bleed">
         <input type="checkbox" id="fb-expand" hidden />
+        <input type="checkbox" id="fb-grow" hidden />
         <div class="fb-wrap">
           <span class="stack-cell">
             {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
@@ -77,11 +78,9 @@
             <span class="cell-media">
               <label for="fb-expand">
                 {{ if hasPrefix .File.MimeType.String "video/" }}
-                  <span class="video-container">
-                    <video class="fb-content main-content-resource" loop controls{{if .Autoplay}} autoplay{{end}} src="{{.File.HrefMedia}}"></video>
-                  </span>
+                  <video class="fb-content main-content-resource" loop controls{{if .Autoplay}} autoplay{{end}} src="{{.File.HrefMedia}}"></video>
                 {{ else }}
-                  <img class="fb-content main-content-resource" src="{{.File.HrefMedia}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" style="background:#f3f4f6;" />
+                  <img class="fb-content main-content-resource" src="{{.File.HrefMedia}}" alt="{{if .File.Title.Valid}}{{.File.Title.String}}{{else if .File.Urlid.Valid}}{{.File.Urlid.String}}{{else}}{{.File.FileId}}{{end}}" />
                 {{ end }}
               </label>
             </span>
@@ -105,6 +104,8 @@
       <div class="fb-label">
         <label for="fb-expand" class="fb-label-expand">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to expand]</label>
         <label for="fb-expand" class="fb-label-contract">[click {{ if not (hasPrefix .File.MimeType.String "video/") }}image {{end}}to contract]</label>
+        <label for="fb-grow" class="fb-label-grow">[click to fit to screen]</label>
+        <label for="fb-grow" class="fb-label-nogrow">[click for original size]</label>
       </div>
     {{ else }}
       <div class="muted">No media filename available.</div>
