@@ -162,13 +162,14 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 .fb-wrap label {display: inline-flex; justify-content: center;}
 /*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
 .full-bleed .fb-wrap {
-    width: calc(100vw - var(--full-bleed-margin) * 2);
+    width: calc(max(100vw, var(--html-min-width)) - var(--full-bleed-margin) * 2);
     position: relative;
     left: 50%;
     right: 50%;
     /*margin-left: calc(var(--full-bleed-margin) - 50vw);*/
     /*margin-right: calc(var(--full-bleed-margin) - 50vw);*/
-    margin: 0 calc(var(--full-bleed-margin) - 50vw - max((var(--html-min-width) - 100vw)/2, 0px));
+    /*margin: 0 calc(var(--full-bleed-margin) - 50vw - max((var(--html-min-width) - 100vw)/2, 0px));*/
+    margin: 0 calc(var(--full-bleed-margin) - max(100vw, var(--html-min-width)) / 2);
 }
 /* simpler to use !important than to add specificity for each case */
 
@@ -260,7 +261,8 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
     height: 100%;
     display: flex;
     flex-direction: column;
-    margin: 0 calc((100% - min(100% + var(--width), 100vw - 2rem)) / 2);
+    /*margin: 0 calc((100% - min(100% + var(--width), 100vw - 2rem)) / 2);*/
+    margin: 0 calc((100% - min(100% + var(--width), max(100vw, var(--html-min-width)) - 2rem)) / 2);
 
     /* alt: */
     /*margin: 0 calc((100% - min(100% + var(--width) * 2, 100vw - 2rem)) / 2);*/
