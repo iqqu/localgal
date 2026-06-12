@@ -160,7 +160,14 @@ a[href="#detail"]:visited { color: rgb(0, 0, 238); }
 .fb-wrap {display: block;text-align: center;}
 .fb-wrap label {display: inline-flex; justify-content: center;}
 /*1rem margin to workaround horizontal scrollbar without cropping with overflow-x hidden*/
-.full-bleed .fb-wrap {width: calc(100vw - var(--full-bleed-margin) * 2);position: relative;left: 50%;right: 50%;margin-left: calc(var(--full-bleed-margin) - 50vw);margin-right: calc(var(--full-bleed-margin) - 50vw);}
+.full-bleed .fb-wrap {
+    width: calc(100vw - var(--full-bleed-margin) * 2);
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: calc(var(--full-bleed-margin) - 50vw);
+    margin-right: calc(var(--full-bleed-margin) - 50vw);
+}
 /* simpler to use !important than to add specificity for each case */
 
 html:has(#fb-force-fit:not(:checked)) .full-bleed input#fb-expand:checked ~ .fb-wrap .fb-content {max-height: 100% !important;}
