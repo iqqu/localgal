@@ -53,6 +53,22 @@
                     return;
                 }
             }
+
+            // Shift+space: scroll up by half a screen instead of a full screen
+            if (event.key === ' ') {
+                // Use the browser's native play/pause when focused on video
+                if (target === 'video') {
+                    return;
+                }
+                if (window.scrollY - window.innerHeight / 2 <= 5) {
+                    // If scrolling up would go within 5 pixels of the top, just scroll all the way up
+                    window.scroll({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollBy({ top: -window.innerHeight / 2, behavior: 'smooth' });
+                }
+                event.preventDefault();
+                return;
+            }
             return;
         }
 
@@ -149,6 +165,33 @@
                 if (btnEl) {
                     btnEl.click();
                 }
+                break;
+
+            // Keyboard navigation QoL: scroll up/down by half a screen instead of a full screen
+            case 'PageDown':
+                window.scrollBy({ top: window.innerHeight / 2, behavior: 'smooth' });
+                event.preventDefault();
+                break;
+
+            case 'PageUp':
+                if (window.scrollY - window.innerHeight / 2 <= 5) {
+                    // If scrolling up would go within 5 pixels of the top, just scroll all the way up
+                    window.scroll({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollBy({ top: -window.innerHeight / 2, behavior: 'smooth' });
+                }
+                event.preventDefault();
+                break;
+
+            case ' ':
+                // Use the browser's native play/pause when focused on video
+                if (target === 'video') {
+                    return;
+                }
+                // Shift+space is already handled above. At this point, there are no modifier keys
+                window.scrollBy({ top: window.innerHeight / 2, behavior: 'smooth' });
+                event.preventDefault();
+                break;
         }
     });
 
