@@ -46,6 +46,9 @@ For notes on compiling from source, see [docs/developing.md](./docs/developing.m
 * 1 to 5: set local rating from 1 (worst) to 5 (best)
 * 0: unset local rating
 
+Note: Space and Shift+Space scroll up/down by a half page instead of a full page when JS is enabled.
+Firefox's privacy.resistFingerprinting setting prevents JS from detecting Shift+Space, so Ctrl+Space and Alt+Space are additionally bound to scroll up a half page as a workaround.
+
 ## Pages
 * `/`: Browse galleries
 * `/gallery/{ripper}/{gid}`: View gallery

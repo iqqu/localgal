@@ -13,14 +13,42 @@
 
     // Hotkeys
     document.addEventListener('keydown', function (event) {
-        // Ignore modifier keys and IME
-        if (event.metaKey || event.altKey || event.isComposing) {
+        // Ignore IME
+        if (event.isComposing) {
+            return;
+        }
+        // Ignore meta key (cmd or win)
+        if (event.metaKey) {
             return;
         }
 
         // Check if the key is being pressed in an input or textarea
         const target = event.target.tagName.toLowerCase();
         if (['input', 'textarea'].includes(target) && event.target.type !== 'checkbox') {
+            return;
+        }
+
+        // Shift+space: scroll up by half a screen instead of a full screen
+        // Note: Firefox's privacy.resistFingerprinting removes event.shiftKey from the space event,
+        // because shift is not necessary to produce a space character on a US English keyboard.
+        // ctrl+space and alt+space are bound to provide a workaround.
+        if (event.key === ' ' && (event.shiftKey || event.ctrlKey || event.altKey)) {
+            // Use the browser's native play/pause when focused on video
+            if (target === 'video') {
+                return;
+            }
+            if (window.scrollY - window.innerHeight / 2 <= 5) {
+                // If scrolling up would go within 5 pixels of the top, just scroll all the way up
+                window.scroll({ top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollBy({ top: -window.innerHeight / 2, behavior: 'smooth' });
+            }
+            event.preventDefault();
+            return;
+        }
+
+        if (event.altKey) {
+            // Ignore alt key below this
             return;
         }
 
@@ -53,22 +81,6 @@
                     return;
                 }
             }
-
-            // Shift+space: scroll up by half a screen instead of a full screen
-            if (event.key === ' ') {
-                // Use the browser's native play/pause when focused on video
-                if (target === 'video') {
-                    return;
-                }
-                if (window.scrollY - window.innerHeight / 2 <= 5) {
-                    // If scrolling up would go within 5 pixels of the top, just scroll all the way up
-                    window.scroll({ top: 0, behavior: 'smooth' });
-                } else {
-                    window.scrollBy({ top: -window.innerHeight / 2, behavior: 'smooth' });
-                }
-                event.preventDefault();
-                return;
-            }
             return;
         }
 
@@ -82,6 +94,8 @@
             }
             return;
         }
+
+        // No modifier keys at this point
 
         switch (event.key) {
             case 'd':
