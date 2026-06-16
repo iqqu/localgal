@@ -520,7 +520,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		var total int
+		var totalFiltered int
 		if rf.Active() {
 			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
@@ -535,30 +535,32 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 					   AND rf.fetched = 1
 					   AND rf.ignored = 0
 					   /*RATING_FILTER*/
-				`), args...).Scan(&total)
+				`), args...).Scan(&totalFiltered)
 			}); err != nil {
 				return err
 			}
 		} else {
-			total = a.FileCount
+			totalFiltered = a.FileCount
 		}
+		totalUnfiltered := a.FileCount
 		albumBytes := a.Bytes
 
 		asyncFileTags := isClientJsOn(r)
 		if asyncFileTags {
 			model := types.GalleryPage{
-				Album:         a,
-				Files:         files,
-				Page:          page,
-				PageSize:      size,
-				Total:         total,
-				HasPrev:       page > 1,
-				HasNext:       offset+len(files) < total,
-				AlbumTags:     albumTags,
-				AsyncFileTags: true,
-				AlbumBytes:    albumBytes,
-				Sort:          sort,
-				BasePage:      &types.BasePage{Perf: perf, RatingFilter: rf},
+				Album:           a,
+				Files:           files,
+				Page:            page,
+				PageSize:        size,
+				Total:           totalFiltered,
+				TotalUnfiltered: totalUnfiltered,
+				HasPrev:         page > 1,
+				HasNext:         offset+len(files) < totalFiltered,
+				AlbumTags:       albumTags,
+				AsyncFileTags:   true,
+				AlbumBytes:      albumBytes,
+				Sort:            sort,
+				BasePage:        &types.BasePage{Perf: perf, RatingFilter: rf},
 			}
 			app.render(ctx, w, "gallery.gohtml", &model)
 			return nil
@@ -573,9 +575,9 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			Files:      files,
 			Page:       page,
 			PageSize:   size,
-			Total:      total,
+			Total:      totalFiltered,
 			HasPrev:    page > 1,
-			HasNext:    offset+len(files) < total,
+			HasNext:    offset+len(files) < totalFiltered,
 			AlbumTags:  albumTags,
 			FileTags:   fileTags,
 			AlbumBytes: albumBytes,

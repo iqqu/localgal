@@ -124,6 +124,10 @@
         <td>Total size on disk</td>
         <td><code>{{bytesToHumanReadable .AlbumBytes}}</code></td>
       </tr>
+      <tr>
+        <td>Total item count</td>
+        <td>{{.TotalUnfiltered}} item{{if ne .TotalUnfiltered 1}}s{{end}}</td>
+      </tr>
     </table>
   </div>
 
