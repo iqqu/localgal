@@ -2362,22 +2362,28 @@ func isClientAutoplayOn(r *http.Request) bool {
 
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
+	grf := getGalleryRatingFilter(w, r)
 	rf := getFileRatingFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
-		if rf.Active() {
-			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+
+		grfClause, grfArgs := ratingFilterSQL("a.local_rating", grf)
+		rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+		replacer := strings.NewReplacer("/*GALLERY_RATING_FILTER*/", grfClause, "/*RATING_FILTER*/", rfClause)
+
+		if grf.Active() || rf.Active() {
 			// Fast path: try twice with independent random seeds
 			var found bool
 			for range 2 {
-				args := append([]any{}, rfArgs...)
+				args := append([]any{}, grfArgs...)
+				args = append(args, rfArgs...)
 				err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
 						SELECT r.host, a.gid
 						  FROM album a
 						  JOIN ripper r ON r.ripper_id = a.ripper_id
 						 WHERE a.album_id >= (ABS(RANDOM()) % (SELECT MAX(album_id) FROM album))
+						   /*GALLERY_RATING_FILTER*/
 						   AND EXISTS (
 						       SELECT 1 FROM remote_file rf
 						         JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
@@ -2401,6 +2407,7 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 			if !found {
 				// Slow fallback: CTE COUNT + OFFSET (guaranteed uniform)
 				args := append([]any{}, rfArgs...)
+				args = append(args, grfArgs...)
 				if err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
 						WITH filtered AS (
@@ -2415,6 +2422,7 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 						            AND rf.ignored = 0
 						            /*RATING_FILTER*/
 						     )
+						     /*GALLERY_RATING_FILTER*/
 						),
 						row_count AS (
 						    SELECT COUNT(*) AS cnt FROM filtered
