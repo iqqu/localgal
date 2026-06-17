@@ -1,5 +1,5 @@
 {{define "frag_rating_filter.gohtml"}}
-<button type="button" popovertarget="gal-filter-menu" title="Gallery filter">&#x1F3E0;
+<button type="button" popovertarget="gal-filter-menu" title="Gallery filter">&#x1F4C1;{{/*folder*/}}
   {{- if .BasePage.GalleryRatingFilter.Active }}<small>
     {{- if eq .BasePage.GalleryRatingFilter.Unrated "only" }}?{{else}}
       {{- if .BasePage.GalleryRatingFilter.Min }}{{.BasePage.GalleryRatingFilter.Min}}{{else}}*{{ end -}}
@@ -41,7 +41,7 @@
     <input type="submit" value="Apply">
   </form>
 </div>
-<button type="button" popovertarget="file-filter-menu" title="File filter">&#x2B50;
+<button type="button" popovertarget="file-filter-menu" title="File filter">&#x1F39E;&#xFE0F;{{/*film strip*/}}
   {{- if .BasePage.FileRatingFilter.Active }}<small>
     {{- if eq .BasePage.FileRatingFilter.Unrated "only" }}?{{else}}
       {{- if .BasePage.FileRatingFilter.Min }}{{.BasePage.FileRatingFilter.Min}}{{else}}*{{ end -}}

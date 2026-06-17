@@ -41,8 +41,11 @@
           </label>
         </form>
       </div>
-      <div style="display: flex; align-items:center; gap: .1rem; white-space: nowrap;">
-        {{template "frag_rating_filter.gohtml" .}}
+      <div style="display: flex; align-items:stretch; gap: 0; white-space: nowrap;">
+        <span class="nav-group-icon"><img class="icon-pinned" src="/static/funnel.svg" alt="Filter"></span>
+        <div class="nav-group" style="display: flex; align-items:center; gap: .1rem; white-space: nowrap;">
+          {{template "frag_rating_filter.gohtml" .}}
+        </div>
       </div>
       {{if .nav_extra_gallery}}
         <div class="nav-extra" style="display: flex; align-items:center; gap: .1rem;">
@@ -76,21 +79,24 @@
           </div>
         </div>
       </div>
-      <div style="display: flex; align-items:center; gap: .1rem;">
-        <a id="random-page-link" href="/random/page" title="Go to a random page within the current page set" style="white-space: nowrap">
-          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F4C4;{{/*folder*/}}</span>
-          <span class="nav-label nav-label-collapse-wide">Page</span>
-        </a>
-        <span class="muted"> | </span>
-        <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery" style="white-space: nowrap">
-          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F4C1;{{/*folder*/}}</span>
-          <span class="nav-label">Gallery</span>
-        </a>
-        <span class="muted"> | </span>
-        <a id="random-file-link" href="/random/file" title="Go to a random file" style="white-space: nowrap">
-          <span class="nav-icon">&#x1F3B2;{{/*game die*/}}&#x1F39E;&#xFE0F;{{/*film strip*/}}{{/*&#x1F5BC;&#xFE0F;framed picture*/}}</span>
-          <span class="nav-label">File</span>
-        </a>
+      <div style="display: flex; align-items:stretch; gap: 0;">
+        <span class="nav-group-icon">&#x1F3B2;{{/*game die*/}}</span>
+        <div class="nav-group" style="display: flex; align-items:center; gap: .1rem;">
+          <a id="random-page-link" href="/random/page" title="Go to a random page within the current page set" style="white-space: nowrap">
+            <span class="nav-icon">&#x1F4C4;{{/*folder*/}}</span>
+            <span class="nav-label nav-label-collapse-wide">Page</span>
+          </a>
+          <span class="muted"> | </span>
+          <a id="random-gallery-link" href="/random/gallery" title="Go to a random gallery" style="white-space: nowrap">
+            <span class="nav-icon">&#x1F4C1;{{/*folder*/}}</span>
+            <span class="nav-label">Gallery</span>
+          </a>
+          <span class="muted"> | </span>
+          <a id="random-file-link" href="/random/file" title="Go to a random file" style="white-space: nowrap">
+            <span class="nav-icon">&#x1F39E;&#xFE0F;{{/*film strip*/}}{{/*&#x1F5BC;&#xFE0F;framed picture*/}}</span>
+            <span class="nav-label">File</span>
+          </a>
+        </div>
       </div>
       <div style="display: flex; align-items:center; gap: .1rem;">
         <a href="/about" title="About">?</a>

@@ -32,8 +32,25 @@ html:has(#pin-header-checkbox:checked) [id] { scroll-margin-top: var(--header-he
 header:has(#pin-header-checkbox:checked) { position: sticky; top: 0; }
 #pin-header-checkbox:not(:checked) ~ .icon .icon-pinned { display: none; }
 #pin-header-checkbox:checked ~ .icon .icon-unpinned { display: none; }
-header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:flex; gap: .5rem; justify-content:space-between; align-items:center; }
+header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:flex; gap: .5rem; justify-content:space-between; align-items:center; font-size: .9rem; }
 header nav .nav-icon { margin: 0 .2rem; }
+
+header nav .nav-group {
+    border: 1px solid #444;
+    border-left: none;
+    border-bottom: 1px solid transparent;
+    border-radius: 0 3px 3px 3px;
+    padding: 0 3px 0 0;
+}
+header nav .nav-group-icon {
+    border: 1px solid #444;
+    border-radius: 3px 0 0 3px;
+    padding: 0 3px;
+    display: flex;
+    align-items: center;
+    cursor: default;
+}
+
 @media (max-width: 1120px) { header nav .nav-label-collapse-widest { display: none; } }
 @media (max-width: 990px) { header nav .nav-label-collapse-wide { display: none; } }
 @media (max-width: 800px) { header nav .nav-label-collapse-narrow { display: none; } }
