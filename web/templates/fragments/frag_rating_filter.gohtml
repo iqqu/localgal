@@ -1,0 +1,28 @@
+{{define "frag_rating_filter.gohtml"}}
+<button type="button" popovertarget="rating-filter-menu" title="Rating filter">&#x2B50;{{if .BasePage.RatingFilter.Active}}<small>{{.BasePage.RatingFilter.Min}}-{{.BasePage.RatingFilter.Max}}</small>{{end}}</button>
+<div id="rating-filter-menu" popover>
+  <form method="get" action="" style="display:flex; flex-direction:column; gap:.4rem; padding:.2rem;">
+    <label>Min:
+      <select name="rating_min">
+        <option value="">Any</option>
+        <option value="1"{{if eq .BasePage.RatingFilter.Min 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.RatingFilter.Min 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.RatingFilter.Min 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.RatingFilter.Min 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.RatingFilter.Min 5}} selected{{end}}>5</option>
+      </select>
+    </label>
+    <label>Max:
+      <select name="rating_max">
+        <option value="">Any</option>
+        <option value="1"{{if eq .BasePage.RatingFilter.Max 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.RatingFilter.Max 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.RatingFilter.Max 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.RatingFilter.Max 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.RatingFilter.Max 5}} selected{{end}}>5</option>
+      </select>
+    </label>
+    <input type="submit" value="Apply">
+  </form>
+</div>
+{{end}}

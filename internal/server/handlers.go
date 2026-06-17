@@ -107,8 +107,9 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
+		rf := getRatingFilter(w, r)
 
-		total, err := app.getTotalAlbumCount(ctx)
+		total, err := app.getTotalAlbumCount(ctx, rf)
 		if err != nil {
 			return err
 		}
@@ -133,7 +134,10 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByPage = "ORDER BY (a.last_fetch_ts IS NULL), a.last_fetch_ts DESC, a.inserted_ts DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY (p.last_fetch_ts IS NULL), p.last_fetch_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			}
-			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg)
+			rfClause, rfArgs := ratingFilterSQL("a.local_rating", rf)
+			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg, "/*RATING_FILTER*/", rfClause)
+			args := append([]any{}, rfArgs...)
+			args = append(args, size, offset)
 			//language=sqlite
 			rows, err := app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH page AS (
@@ -162,6 +166,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				              AND rf.fetched = 1
 				              AND rf.ignored = 0
 				                   )
+				       /*RATING_FILTER*/
 				-- ORDER BY a.album_id
 				/*ORDER_BY_PAGE*/
 				       LIMIT ? OFFSET ?
@@ -216,7 +221,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				  JOIN ripper r ON r.ripper_id = p.ripper_id
 				  -- ORDER BY p.album_id
 				  /*ORDER_BY_AGG*/
-			`), size, offset)
+			`), args...)
 			if err != nil {
 				return err
 			}
@@ -297,7 +302,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			HasPrev:  page > 1,
 			HasNext:  totalPageCount > int64(page),
 			Sort:     sort,
-			BasePage: &types.BasePage{Perf: perf},
+			BasePage: &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "browse.gohtml", &model)
 		return nil
@@ -308,14 +313,18 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *App) getTotalAlbumCount(ctx context.Context) (int, error) {
+func (app *App) getTotalAlbumCount(ctx context.Context, rf types.RatingFilter) (int, error) {
 	var total int
+	rfClause, rfArgs := ratingFilterSQL("a.local_rating", rf)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 	err := app.withSQL(ctx, func(ctx context.Context) error {
-		return app.Db.QueryRowContext(ctx, `
+		args := append([]any{}, rfArgs...)
+		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM album a
 			 WHERE a.cnt_rf > 0
-		`).Scan(&total)
+			   /*RATING_FILTER*/
+		`), args...).Scan(&total)
 	})
 	return total, err
 }
@@ -380,6 +389,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortFiles(w, r)
+		rf := getRatingFilter(w, r)
 
 		//var total int
 		//var albumBytes int64
@@ -410,7 +420,12 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			default:
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
-			rows, err := app.Db.QueryContext(ctx, strings.Replace(`
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
+			args := []any{a.AlbumId}
+			args = append(args, rfArgs...)
+			args = append(args, size, offset)
+			rows, err := app.Db.QueryContext(ctx, replacer.Replace(`
 				SELECT rf.remote_file_id
 				     --, r.name AS ripper_name
 				     --, r.host AS ripper_host
@@ -433,10 +448,11 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				 WHERE marf.album_id = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
+				   /*RATING_FILTER*/
 				 -- ORDER BY marf.remote_file_id
 				 /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`, "/*ORDER_BY*/", orderBy, 1), a.AlbumId, size, offset)
+			`), args...)
 			if err != nil {
 				return err
 			}
@@ -504,7 +520,28 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		total := a.FileCount
+		var total int
+		if rf.Active() {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
+				rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+				replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+				args := []any{a.AlbumId}
+				args = append(args, rfArgs...)
+				return app.Db.QueryRowContext(ctx, replacer.Replace(`
+					SELECT COUNT(*)
+					  FROM remote_file rf
+					  JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+					 WHERE marf.album_id = ?
+					   AND rf.fetched = 1
+					   AND rf.ignored = 0
+					   /*RATING_FILTER*/
+				`), args...).Scan(&total)
+			}); err != nil {
+				return err
+			}
+		} else {
+			total = a.FileCount
+		}
 		albumBytes := a.Bytes
 
 		asyncFileTags := isClientJsOn(r)
@@ -521,7 +558,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				AsyncFileTags: true,
 				AlbumBytes:    albumBytes,
 				Sort:          sort,
-				BasePage:      &types.BasePage{Perf: perf},
+				BasePage:      &types.BasePage{Perf: perf, RatingFilter: rf},
 			}
 			app.render(ctx, w, "gallery.gohtml", &model)
 			return nil
@@ -543,7 +580,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			FileTags:   fileTags,
 			AlbumBytes: albumBytes,
 			Sort:       sort,
-			BasePage:   &types.BasePage{Perf: perf},
+			BasePage:   &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "gallery.gohtml", &model)
 		return nil
@@ -724,6 +761,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		sort := getSortFiles(w, r)
+		rf := getRatingFilter(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
 		if err := app.withSQL(ctx, func(ctx context.Context) error {
@@ -756,12 +794,17 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
 
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
 			replacer := strings.NewReplacer(
 				"/*PREV_ORDER_KEY_INNER*/",
 				prevOrderKey1,
 				"/*PREV_ORDER_KEY_OUTER*/",
 				prevOrderKey2,
+				"/*RATING_FILTER*/",
+				rfClause,
 			)
+			args := []any{f.FileId, a.AlbumId}
+			args = append(args, rfArgs...)
 			//language=sqlite
 			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
@@ -796,13 +839,14 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				       WHERE marf.album_id = ?
 				         AND rf.fetched = 1
 				         AND rf.ignored = 0
+				         /*RATING_FILTER*/
 				         /*PREV_ORDER_KEY_INNER*/
 				       LIMIT 3
 				                   )
 				SELECT *
 				  FROM reversed rf
 				  /*PREV_ORDER_KEY_OUTER*/
-			`), f.FileId, a.AlbumId)
+			`), args...)
 			if e != nil {
 				return e
 			}
@@ -858,7 +902,10 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				`
 			}
 
-			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey, "/*RATING_FILTER*/", rfClause)
+			args := []any{f.FileId, a.AlbumId}
+			args = append(args, rfArgs...)
 			//language=sqlite
 			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH target AS (
@@ -889,9 +936,10 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				 WHERE marf.album_id = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
+				   /*RATING_FILTER*/
 				   /*NEXT_ORDER_KEY*/
 				 LIMIT 3
-			`), f.FileId, a.AlbumId)
+			`), args...)
 			if e != nil {
 				return e
 			}
@@ -972,7 +1020,8 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				`
 			}
-			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey, "/*RATING_FILTER*/", rfClause)
 			//language=sqlite
 			replaced := replacer.Replace(`
 				  WITH target AS (
@@ -990,9 +1039,12 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				 WHERE marf.album_id = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
+				   /*RATING_FILTER*/
 				  /*PREV_FILTER_KEY*/
 			`)
-			return app.Db.QueryRowContext(ctx, replaced, f.FileId, a.AlbumId).Scan(&rank)
+			args := []any{f.FileId, a.AlbumId}
+			args = append(args, rfArgs...)
+			return app.Db.QueryRowContext(ctx, replaced, args...).Scan(&rank)
 		}); err != nil {
 			return err
 		}
@@ -1038,7 +1090,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				ShowPrevNext: true,
 				Autoplay:     autoplay,
 				ForceFit:     forceFit,
-				BasePage:     &types.BasePage{Perf: perf},
+				BasePage:     &types.BasePage{Perf: perf, RatingFilter: rf},
 			}
 			app.render(ctx, w, "file.gohtml", &model)
 			return nil
@@ -1058,7 +1110,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			ShowPrevNext: true,
 			Autoplay:     autoplay,
 			ForceFit:     forceFit,
-			BasePage:     &types.BasePage{Perf: perf},
+			BasePage:     &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "file.gohtml", &model)
 		return nil
@@ -1810,26 +1862,28 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		rf := getRatingFilter(w, r)
+
 		// 1: Search albums
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank, rf)
 		if err != nil {
 			return err
 		}
 
 		// 2: Search files
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank, rf)
 		if err != nil {
 			return err
 		}
@@ -1858,7 +1912,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Tags:           tags,
 			TagsTotal:      tagsTotal,
 			Sort:           SortRank,
-			BasePage:       &types.BasePage{Perf: perf},
+			BasePage:       &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "search.gohtml", &model)
 		return nil
@@ -1893,14 +1947,15 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
+		rf := getRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
@@ -1911,7 +1966,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 
 		order := getSortSearchGalleries(w, r)
-		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, order)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, order, rf)
 		if err != nil {
 			return err
 		}
@@ -1927,7 +1982,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "search_galleries.gohtml", &model)
 		return nil
@@ -1962,14 +2017,15 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
+		rf := getRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
@@ -1980,7 +2036,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		order := getSortSearchFiles(w, r)
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order, rf)
 		if err != nil {
 			return err
 		}
@@ -1996,7 +2052,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "search_files.gohtml", &model)
 		return nil
@@ -2030,13 +2086,15 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
+		rf := getRatingFilter(w, r)
+
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
 		if err != nil {
 			return err
 		}
@@ -2057,7 +2115,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			AlbumsTotal: albumsTotal,
 			FilesTotal:  filesTotal,
 			TagsTotal:   tagsTotal,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "search_tags.gohtml", &model)
 		return nil
@@ -2089,25 +2147,26 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		size := 10
 		offset := 0
+		rf := getRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched, rf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched, rf)
 		if err != nil {
 			return err
 		}
@@ -2120,7 +2179,7 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 			Files:       files,
 			FilesTotal:  filesTotal,
 			Sort:        SortFetched,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "user.gohtml", &model)
 		return nil
@@ -2143,20 +2202,21 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortGalleries(w, r)
+		rf := getRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order, rf)
 		if err != nil {
 			return err
 		}
@@ -2172,7 +2232,7 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "user_galleries.gohtml", &model)
 		return nil
@@ -2195,20 +2255,21 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortFiles(w, r)
+		rf := getRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order, rf)
 		if err != nil {
 			return err
 		}
@@ -2224,7 +2285,7 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf},
+			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
 		}
 		app.render(ctx, w, "user_files.gohtml", &model)
 		return nil
@@ -2289,18 +2350,84 @@ func isClientAutoplayOn(r *http.Request) bool {
 
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
+	rf := getRatingFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
-		if err := app.withSQL(ctx, func(ctx context.Context) error {
-			return app.Db.QueryRowContext(ctx, `
-				SELECT r.host, a.gid
-				  FROM album a
-				  JOIN ripper r ON r.ripper_id = a.ripper_id
-				 ORDER BY RANDOM()
-				 LIMIT 1
-			`).Scan(&ripperHost, &gid)
-		}); err != nil {
-			return err
+		if rf.Active() {
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+			// Fast path: try twice with independent random seeds
+			var found bool
+			for range 2 {
+				args := append([]any{}, rfArgs...)
+				err := app.withSQL(ctx, func(ctx context.Context) error {
+					return app.Db.QueryRowContext(ctx, replacer.Replace(`
+						SELECT r.host, a.gid
+						  FROM album a
+						  JOIN ripper r ON r.ripper_id = a.ripper_id
+						 WHERE a.album_id >= (ABS(RANDOM()) % (SELECT MAX(album_id) FROM album))
+						   AND EXISTS (
+						       SELECT 1 FROM remote_file rf
+						         JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+						        WHERE marf.album_id = a.album_id
+						          AND rf.fetched = 1
+						          AND rf.ignored = 0
+						          /*RATING_FILTER*/
+						   )
+						 ORDER BY a.album_id
+						 LIMIT 1
+					`), args...).Scan(&ripperHost, &gid)
+				})
+				if err == nil {
+					found = true
+					break
+				}
+				if !errors.Is(err, sql.ErrNoRows) {
+					return err
+				}
+			}
+			if !found {
+				// Slow fallback: CTE COUNT + OFFSET (guaranteed uniform)
+				args := append([]any{}, rfArgs...)
+				if err := app.withSQL(ctx, func(ctx context.Context) error {
+					return app.Db.QueryRowContext(ctx, replacer.Replace(`
+						WITH filtered AS (
+						    SELECT a.album_id, r.host, a.gid
+						      FROM album a
+						      JOIN ripper r ON r.ripper_id = a.ripper_id
+						     WHERE EXISTS (
+						         SELECT 1 FROM remote_file rf
+						           JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+						          WHERE marf.album_id = a.album_id
+						            AND rf.fetched = 1
+						            AND rf.ignored = 0
+						            /*RATING_FILTER*/
+						     )
+						),
+						row_count AS (
+						    SELECT COUNT(*) AS cnt FROM filtered
+						)
+						SELECT f.host, f.gid
+						  FROM filtered f
+						 LIMIT 1 OFFSET (ABS(RANDOM()) % MAX((SELECT cnt FROM row_count), 1))
+					`), args...).Scan(&ripperHost, &gid)
+				}); err != nil {
+					return err
+				}
+			}
+		} else {
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
+				return app.Db.QueryRowContext(ctx, `
+					SELECT r.host, a.gid
+					  FROM album a
+					  JOIN ripper r ON r.ripper_id = a.ripper_id
+					 WHERE a.album_id >= (ABS(RANDOM()) % (SELECT MAX(album_id) FROM album))
+					 ORDER BY a.album_id
+					 LIMIT 1
+				`).Scan(&ripperHost, &gid)
+			}); err != nil {
+				return err
+			}
 		}
 		http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid), http.StatusTemporaryRedirect)
 		return nil
@@ -2313,58 +2440,126 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 
 // handleRandomFile selects a random available file and redirects to its file page.
 func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
+	rf := getRatingFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost string
 		var fileId int64
 		var gid sql.NullString
-		if err := app.withSQL(ctx, func(ctx context.Context) error {
-			// Correct randomness, but slow-ish (avg 200ms)
-			//return app.Db.QueryRowContext(ctx, `
-			//	  WITH row_count AS (
-			//	      SELECT COUNT(*) AS cnt
-			//	        FROM remote_file rf
-			//	       WHERE rf.fetched = 1
-			//	                    )
-			//	SELECT r.host, rf.remote_file_id
-			//	  FROM remote_file rf
-			//	  JOIN ripper r ON r.ripper_id = rf.ripper_id
-			//	 WHERE rf.fetched = 1
-			//	 ORDER BY remote_file_id
-			//	 LIMIT 1 OFFSET (ABS(RANDOM()) % (SELECT cnt FROM row_count))
-			//`).Scan(&ripperHost, &fileId)
 
+		if rf.Active() {
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+			// Fast path: try twice with independent random seeds
+			var found bool
+			for range 2 {
+				args := append([]any{}, rfArgs...)
+				args = append(args, rfArgs...)
+				err := app.withSQL(ctx, func(ctx context.Context) error {
+					return app.Db.QueryRowContext(ctx, replacer.Replace(`
+						SELECT r.host
+						     , rf.remote_file_id
+						     , (
+						    SELECT a.gid
+						      FROM album a
+						      JOIN map_album_remote_file marf ON a.album_id = marf.album_id
+						     WHERE marf.remote_file_id = rf.remote_file_id
+						       AND a.album_id >= (ABS(RANDOM()) % (
+						         SELECT MAX(album_id)
+						          FROM map_album_remote_file marf
+						         WHERE marf.remote_file_id = rf.remote_file_id
+						                                          ))
+						     LIMIT 1
+						       ) AS gid
+						  FROM remote_file rf
+						  JOIN ripper r ON r.ripper_id = rf.ripper_id
+						 WHERE remote_file_id >= (ABS(RANDOM()) % (
+						     SELECT MAX(remote_file_id) FROM remote_file rf
+						      WHERE rf.fetched = 1 AND rf.ignored = 0
+						        /*RATING_FILTER*/
+						 ))
+						   AND rf.fetched = 1
+						   AND rf.ignored = 0
+						   /*RATING_FILTER*/
+						 ORDER BY remote_file_id
+						 LIMIT 1
+					`), args...).Scan(&ripperHost, &fileId, &gid)
+				})
+				if err == nil {
+					found = true
+					break
+				}
+				if !errors.Is(err, sql.ErrNoRows) {
+					return err
+				}
+			}
+			if !found {
+				// Slow fallback: CTE COUNT + OFFSET (guaranteed uniform)
+				args := append([]any{}, rfArgs...)
+				if err := app.withSQL(ctx, func(ctx context.Context) error {
+					return app.Db.QueryRowContext(ctx, replacer.Replace(`
+						WITH filtered AS (
+						    SELECT rf.remote_file_id, r.host, rf.ripper_id
+						      FROM remote_file rf
+						      JOIN ripper r ON r.ripper_id = rf.ripper_id
+						     WHERE rf.fetched = 1
+						       AND rf.ignored = 0
+						       /*RATING_FILTER*/
+						),
+						row_count AS (
+						    SELECT COUNT(*) AS cnt FROM filtered
+						)
+						SELECT f.host
+						     , f.remote_file_id
+						     , (
+						    SELECT a.gid
+						      FROM album a
+						      JOIN map_album_remote_file marf ON a.album_id = marf.album_id
+						     WHERE marf.remote_file_id = f.remote_file_id
+						     LIMIT 1
+						       ) AS gid
+						  FROM filtered f
+						 LIMIT 1 OFFSET (ABS(RANDOM()) % MAX((SELECT cnt FROM row_count), 1))
+					`), args...).Scan(&ripperHost, &fileId, &gid)
+				}); err != nil {
+					return err
+				}
+			}
+		} else {
 			// Not the best random distribution if rows are deleted, but fast (avg 1ms)
-			return app.Db.QueryRowContext(ctx, `
-				SELECT r.host
-				     , rf.remote_file_id
-				     , (
-				    SELECT a.gid
-				      FROM album a
-				      JOIN map_album_remote_file marf ON a.album_id = marf.album_id
-				     WHERE marf.remote_file_id = rf.remote_file_id
-				       AND a.album_id >= (ABS(RANDOM()) % (
-				         SELECT MAX(album_id)
-				          FROM map_album_remote_file marf
-				         WHERE marf.remote_file_id = rf.remote_file_id
-				                                          ))
-				     LIMIT 1
-				       ) AS gid
-				  FROM remote_file rf
-				  JOIN ripper r ON r.ripper_id = rf.ripper_id
-				 WHERE remote_file_id >= (ABS(RANDOM()) % (
-				     SELECT MAX(remote_file_id)
-				       FROM remote_file rf
-				      WHERE rf.fetched = 1
-				        AND rf.ignored = 0
-				                                          ))
-				   AND rf.fetched = 1
-				   AND rf.ignored = 0
-				 ORDER BY remote_file_id
-				 LIMIT 1
-			`).Scan(&ripperHost, &fileId, &gid)
-		}); err != nil {
-			return err
+			if err := app.withSQL(ctx, func(ctx context.Context) error {
+				return app.Db.QueryRowContext(ctx, `
+					SELECT r.host
+					     , rf.remote_file_id
+					     , (
+					    SELECT a.gid
+					      FROM album a
+					      JOIN map_album_remote_file marf ON a.album_id = marf.album_id
+					     WHERE marf.remote_file_id = rf.remote_file_id
+					       AND a.album_id >= (ABS(RANDOM()) % (
+					         SELECT MAX(album_id)
+					          FROM map_album_remote_file marf
+					         WHERE marf.remote_file_id = rf.remote_file_id
+					                                          ))
+					     LIMIT 1
+					       ) AS gid
+					  FROM remote_file rf
+					  JOIN ripper r ON r.ripper_id = rf.ripper_id
+					 WHERE remote_file_id >= (ABS(RANDOM()) % (
+					     SELECT MAX(remote_file_id)
+					       FROM remote_file rf
+					      WHERE rf.fetched = 1
+					        AND rf.ignored = 0
+					                                          ))
+					   AND rf.fetched = 1
+					   AND rf.ignored = 0
+					 ORDER BY remote_file_id
+					 LIMIT 1
+				`).Scan(&ripperHost, &fileId, &gid)
+			}); err != nil {
+				return err
+			}
 		}
+
 		fileIdString := strconv.FormatInt(fileId, 10)
 		if gid.Valid {
 			http.Redirect(w, r, "/gallery/"+ripperHost+"/"+url.PathEscape(gid.String)+"/"+url.PathEscape(fileIdString), http.StatusTemporaryRedirect)
@@ -2409,12 +2604,13 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
 			return nil
 		}
+		rf := getUrlRatingFilter(parsedUrl)
 
 		if m := matchGalleryFile.FindStringSubmatch(path); m != nil {
 			ripperHost := m[1]
 			gid := m[2]
 			fileId := m[3]
-			nextFileId, err := app.getRandomGalleryFilePage(ctx, ripperHost, gid, fileId)
+			nextFileId, err := app.getRandomGalleryFilePage(ctx, ripperHost, gid, fileId, rf)
 			if err != nil {
 				return err
 			}
@@ -2426,7 +2622,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			gid := m[2]
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size)
+			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size, rf)
 			if err != nil {
 				return err
 			}
@@ -2445,7 +2641,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchGalleries(parsedUrl)
-			nextPage, err := app.getRandomSearchGalleryPage(ctx, searchQuery, page, size)
+			nextPage, err := app.getRandomSearchGalleryPage(ctx, searchQuery, page, size, rf)
 			if err != nil {
 				return err
 			}
@@ -2460,7 +2656,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchFiles(parsedUrl)
-			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size)
+			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size, rf)
 			if err != nil {
 				return err
 			}
@@ -2470,7 +2666,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 		if matchBrowse.MatchString(path) {
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := app.getRandomBrowsePage(ctx, page, size)
+			nextPage, err := app.getRandomBrowsePage(ctx, page, size, rf)
 			if err != nil {
 				return err
 			}
@@ -2487,10 +2683,16 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string) (int64, error) {
+func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string, gid string, fileId string, rf types.RatingFilter) (int64, error) {
 	var nextFileId sql.NullInt64
+	rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 	err := app.withSQL(ctx, func(ctx context.Context) error {
-		return app.Db.QueryRowContext(ctx, `
+		args := []any{ripperHost, gid, fileId}
+		args = append(args, rfArgs...)
+		args = append(args, ripperHost, gid, fileId)
+		args = append(args, rfArgs...)
+		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			  WITH row_count AS (
 			      SELECT COUNT(*) cnt
 			        FROM remote_file rf
@@ -2502,6 +2704,7 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 			         AND rf.remote_file_id != ?
 			         AND rf.fetched = 1
 			         AND rf.ignored = 0
+			         /*RATING_FILTER*/
 			                    )
 			SELECT rf.remote_file_id
 			  FROM remote_file rf
@@ -2517,6 +2720,7 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 			        ) = 0)
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
+			   /*RATING_FILTER*/
 			 LIMIT 1 OFFSET CASE
 			                    WHEN (
 			                             SELECT cnt
@@ -2527,7 +2731,7 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 			                          FROM row_count
 			                                          ))
 			     END
-		`, ripperHost, gid, fileId, ripperHost, gid, fileId).Scan(&nextFileId)
+		`), args...).Scan(&nextFileId)
 	})
 	if err != nil {
 		return 0, err
@@ -2538,10 +2742,14 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 	return 0, fmt.Errorf("gallery file not found")
 }
 
-func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int) (int64, error) {
+func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int, rf types.RatingFilter) (int64, error) {
 	var count int64
+	rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 	err := app.withSQL(ctx, func(ctx context.Context) error {
-		return app.Db.QueryRowContext(ctx, `
+		args := []any{ripperHost, gid}
+		args = append(args, rfArgs...)
+		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM album a
 			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
@@ -2551,7 +2759,8 @@ func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid
 			   AND a.gid = ?
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
-		`, ripperHost, gid).Scan(&count)
+			   /*RATING_FILTER*/
+		`), args...).Scan(&count)
 	})
 	if err != nil {
 		return 0, err
@@ -2568,8 +2777,8 @@ func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid
 	return nextPage, nil
 }
 
-func (app *App) getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
-	totalHits, err := app.getSearchAlbumHits(ctx, searchQuery, false)
+func (app *App) getRandomSearchGalleryPage(ctx context.Context, searchQuery string, page int, size int, rf types.RatingFilter) (int64, error) {
+	totalHits, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
 	if err != nil {
 		return 0, err
 	}
@@ -2585,8 +2794,8 @@ func (app *App) getRandomSearchGalleryPage(ctx context.Context, searchQuery stri
 	return nextPage, nil
 }
 
-func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int) (int64, error) {
-	totalHits, err := app.getSearchFileHits(ctx, searchQuery, false)
+func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int, rf types.RatingFilter) (int64, error) {
+	totalHits, err := app.getSearchFileHits(ctx, searchQuery, false, rf)
 	if err != nil {
 		return 0, err
 	}
@@ -2602,8 +2811,8 @@ func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string,
 	return nextPage, nil
 }
 
-func (app *App) getRandomBrowsePage(ctx context.Context, page int, size int) (int64, error) {
-	totalHits, err := app.getTotalAlbumCount(ctx)
+func (app *App) getRandomBrowsePage(ctx context.Context, page int, size int, rf types.RatingFilter) (int64, error) {
+	totalHits, err := app.getTotalAlbumCount(ctx, rf)
 	if err != nil {
 		return 0, err
 	}

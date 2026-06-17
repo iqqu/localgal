@@ -41,6 +41,9 @@
           </label>
         </form>
       </div>
+      <div style="display: flex; align-items:center; gap: .1rem; white-space: nowrap;">
+        {{template "frag_rating_filter.gohtml" .}}
+      </div>
       {{if .nav_extra_gallery}}
         <div class="nav-extra" style="display: flex; align-items:center; gap: .1rem;">
           {{template "nav_extra_gallery" .}}

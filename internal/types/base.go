@@ -12,6 +12,15 @@ type BuildInfo struct {
 	BuildDate string
 }
 
+type RatingFilter struct {
+	Min int `json:"min,omitempty,omitzero"` // 0 = no filter, 1-5 = minimum rating
+	Max int `json:"max,omitempty,omitzero"` // 0 = no filter, 1-5 = maximum rating
+}
+
+func (rf RatingFilter) Active() bool {
+	return rf.Min > 0 || rf.Max > 0
+}
+
 type Album struct {
 	AlbumId     int64         `json:"albumId,omitempty,omitzero"`
 	RipperId    int64         `json:"-"`

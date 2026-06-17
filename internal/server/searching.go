@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
+func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evictCache bool, rf types.RatingFilter) (int, error) {
 	var err error
 	var albumsTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
-	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(searchQuery)))
+	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d", searchQuery, rf.Min, rf.Max))))
 
 	// 1: Evict old entries
 	err = app.withSQL(ctx, func(ctx context.Context) error {
@@ -47,11 +47,17 @@ func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evic
 	}
 
 	// 3: No entry was cached; get total hits
+	rfClause, rfArgs := ratingFilterSQL("a.local_rating", rf)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 	err = app.withSQL(ctx, func(ctx context.Context) error {
-		return app.Db.QueryRowContext(ctx, `
+		args := []any{searchQuery}
+		args = append(args, rfArgs...)
+		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM album_fts5 af5
+			  JOIN album a ON a.album_id = af5.ROWID
 			 WHERE album_fts5 MATCH ?
+			   /*RATING_FILTER*/
 			   AND EXISTS(
 			     SELECT 1
 			       FROM map_album_remote_file marf
@@ -60,7 +66,7 @@ func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evic
 			        AND rf.fetched = 1
 			        AND rf.ignored = 0
 			             )
-		`, searchQuery).Scan(&albumsTotal)
+		`), args...).Scan(&albumsTotal)
 	})
 	if err != nil {
 		return albumsTotal, err
@@ -76,20 +82,27 @@ func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evic
 	})
 	return albumsTotal, err
 }
-func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.Album, error) {
+func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, size int, offset int, order string, rf types.RatingFilter) ([]types.Album, error) {
 	var albums []types.Album
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		var rows *sql.Rows
 		var err error
 
+		rfClause, rfArgs := ratingFilterSQL("a.local_rating", rf)
 		if order == SortRank || order == SortDefault {
 			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
-			rows, err = app.Db.QueryContext(ctx, `
+			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+			args := []any{searchQuery}
+			args = append(args, rfArgs...)
+			args = append(args, size, offset)
+			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT af5.ROWID
 				           , BM25(album_fts5, 9.0, 6.0) AS score
 				        FROM album_fts5 af5
+				        JOIN album a ON a.album_id = af5.ROWID
 				       WHERE album_fts5 MATCH ?
+				         /*RATING_FILTER*/
 				         AND EXISTS(
 				           SELECT 1
 				             FROM map_album_remote_file marf
@@ -142,7 +155,7 @@ func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, siz
 				  JOIN album a ON a.album_id = m.ROWID
 				  JOIN ripper r ON r.ripper_id = a.ripper_id
 				 ORDER BY m.score
-			`, searchQuery, size, offset)
+			`), args...)
 		} else {
 			// Need to enumerate all matches for nonranked sort, but no need to compute bm25
 			var orderBy string
@@ -156,13 +169,18 @@ func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, siz
 			case SortItems:
 				orderBy = "ORDER BY a.cnt_rf DESC, a.album_id DESC"
 			}
-			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
+			args := []any{searchQuery}
+			args = append(args, rfArgs...)
+			args = append(args, size, offset)
 			//language=sqlite
 			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT af5.ROWID
 				        FROM album_fts5 af5
+				        JOIN album a ON a.album_id = af5.ROWID
 				       WHERE album_fts5 MATCH ?
+				         /*RATING_FILTER*/
 				         AND EXISTS(
 				           SELECT 1
 				             FROM map_album_remote_file marf
@@ -215,7 +233,7 @@ func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, siz
 				 --ORDER BY m.score
 				  /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`), searchQuery, size, offset)
+			`), args...)
 
 		}
 		if err != nil {
@@ -290,11 +308,11 @@ func (app *App) getSearchAlbumsPage(ctx context.Context, searchQuery string, siz
 	return albums, nil
 }
 
-func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool) (int, error) {
+func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evictCache bool, rf types.RatingFilter) (int, error) {
 	var err error
 	var filesTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
-	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(searchQuery)))
+	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d", searchQuery, rf.Min, rf.Max))))
 
 	// 1: Evict old entries
 	err = app.withSQL(ctx, func(ctx context.Context) error {
@@ -328,15 +346,20 @@ func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evict
 	}
 
 	// 3: No entry was cached; get total hits
+	rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 	err = app.withSQL(ctx, func(ctx context.Context) error {
-		return app.Db.QueryRowContext(ctx, `
+		args := []any{searchQuery}
+		args = append(args, rfArgs...)
+		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM remote_file_fts5 rff5
 			  JOIN remote_file rf ON rf.remote_file_id = rff5.ROWID
 			 WHERE remote_file_fts5 MATCH ?
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
-		`, searchQuery).Scan(&filesTotal)
+			   /*RATING_FILTER*/
+		`), args...).Scan(&filesTotal)
 	})
 	if err != nil {
 		return filesTotal, err
@@ -353,15 +376,20 @@ func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evict
 	return filesTotal, err
 }
 
-func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int, order string) ([]types.File, error) {
+func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size int, offset int, order string, rf types.RatingFilter) ([]types.File, error) {
 	var files []types.File
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		var rows *sql.Rows
 		var err error
 
+		rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
 		if order == SortRank || order == SortDefault {
 			// Need to compute bm25 for ranked sort, but no need to enumerate all matches
-			rows, err = app.Db.QueryContext(ctx, `
+			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+			args := []any{searchQuery}
+			args = append(args, rfArgs...)
+			args = append(args, size, offset)
+			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
 				      SELECT rff5.ROWID, BM25(remote_file_fts5, 9.0, 6.0) AS score
 				        FROM remote_file_fts5 rff5
@@ -369,6 +397,7 @@ func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size
 				       WHERE remote_file_fts5 MATCH ?
 				         AND rf.fetched = 1
 				         AND rf.ignored = 0
+				         /*RATING_FILTER*/
 				       ORDER BY score, rf.remote_file_id DESC
 				       LIMIT ? OFFSET ?
 				                  )
@@ -393,7 +422,7 @@ func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size
 				  JOIN ripper r ON r.ripper_id = rf.ripper_id
 				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				 ORDER BY m.score, rf.remote_file_id DESC
-			`, searchQuery, size, offset)
+			`), args...)
 		} else {
 			// Need to enumerate all matches for nonranked sort, but no need to compute bm25
 			var orderBy string
@@ -405,7 +434,10 @@ func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size
 			case SortUploaded:
 				orderBy = "ORDER BY rf.uploaded_ts DESC, rf.remote_file_id DESC"
 			}
-			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy)
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
+			args := []any{searchQuery}
+			args = append(args, rfArgs...)
+			args = append(args, size, offset)
 			//language=sqlite
 			rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH matches AS (
@@ -415,6 +447,7 @@ func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size
 				       WHERE remote_file_fts5 MATCH ?
 				         AND rf.fetched = 1
 				         AND rf.ignored = 0
+				         /*RATING_FILTER*/
 				                  )
 				SELECT 0 -- placeholder value for score
 				     , rf.remote_file_id
@@ -439,7 +472,7 @@ func (app *App) getSearchFilesPage(ctx context.Context, searchQuery string, size
 				 --ORDER BY m.score
 				  /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
-			`), searchQuery, size, offset)
+			`), args...)
 		}
 
 		if err != nil {
