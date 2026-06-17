@@ -1,9 +1,10 @@
 package types
 
 type BasePage struct {
-	Perf         *Perf        `json:"perf"`
-	PinHeader    bool         `json:"-"`
-	RatingFilter RatingFilter `json:"ratingFilter,omitzero"`
+	Perf                *Perf        `json:"perf"`
+	PinHeader           bool         `json:"-"`
+	GalleryRatingFilter RatingFilter `json:"galleryRatingFilter,omitzero"`
+	FileRatingFilter    RatingFilter `json:"fileRatingFilter,omitzero"`
 }
 
 type BasePager interface {

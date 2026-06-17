@@ -4,7 +4,7 @@
     <div class="pager-controls">
       <div>
         {{- if .HasPrev }}
-          <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .RatingFilter.Active}}&rating_min={{.RatingFilter.Min}}&rating_max={{.RatingFilter.Max}}{{end}}">&larr; Previous</a>
+          <a class="pager-prev" href="/?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .GalleryRatingFilter.Active}}&gal_rating_min={{.GalleryRatingFilter.Min}}&gal_rating_max={{.GalleryRatingFilter.Max}}{{end}}{{if .GalleryRatingFilter.Unrated}}&gal_unrated={{.GalleryRatingFilter.Unrated}}{{end}}">&larr; Previous</a>
         {{- else }}
           <span class="muted">&larr; Previous</span>
         {{- end }}
@@ -16,13 +16,14 @@
         </label>
         <input type="hidden" name="size" value="{{.PageSize}}">
         <input type="hidden" name="sort" value="{{.Sort}}">
-        {{if .RatingFilter.Active}}<input type="hidden" name="rating_min" value="{{.RatingFilter.Min}}">{{end}}
-        {{if .RatingFilter.Active}}<input type="hidden" name="rating_max" value="{{.RatingFilter.Max}}">{{end}}
+        {{if .GalleryRatingFilter.Active}}<input type="hidden" name="gal_rating_min" value="{{.GalleryRatingFilter.Min}}">{{end}}
+        {{if .GalleryRatingFilter.Active}}<input type="hidden" name="gal_rating_max" value="{{.GalleryRatingFilter.Max}}">{{end}}
+        {{if .GalleryRatingFilter.Unrated}}<input type="hidden" name="gal_unrated" value="{{.GalleryRatingFilter.Unrated}}">{{end}}
         <button type="submit">Go</button>
       </form>
       <div>
         {{- if .HasNext }}
-          <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .RatingFilter.Active}}&rating_min={{.RatingFilter.Min}}&rating_max={{.RatingFilter.Max}}{{end}}">Next &rarr;</a>
+          <a class="pager-next" href="/?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .GalleryRatingFilter.Active}}&gal_rating_min={{.GalleryRatingFilter.Min}}&gal_rating_max={{.GalleryRatingFilter.Max}}{{end}}{{if .GalleryRatingFilter.Unrated}}&gal_unrated={{.GalleryRatingFilter.Unrated}}{{end}}">Next &rarr;</a>
         {{- else }}
           <span class="muted">Next &rarr;</span>
         {{- end }}
@@ -32,8 +33,9 @@
       <form method="get" action="/">
         <input type="hidden" name="page" value="1">
         <input type="hidden" name="size" value="{{.PageSize}}">
-        {{if .RatingFilter.Active}}<input type="hidden" name="rating_min" value="{{.RatingFilter.Min}}">{{end}}
-        {{if .RatingFilter.Active}}<input type="hidden" name="rating_max" value="{{.RatingFilter.Max}}">{{end}}
+        {{if .GalleryRatingFilter.Active}}<input type="hidden" name="gal_rating_min" value="{{.GalleryRatingFilter.Min}}">{{end}}
+        {{if .GalleryRatingFilter.Active}}<input type="hidden" name="gal_rating_max" value="{{.GalleryRatingFilter.Max}}">{{end}}
+        {{if .GalleryRatingFilter.Unrated}}<input type="hidden" name="gal_unrated" value="{{.GalleryRatingFilter.Unrated}}">{{end}}
         <label>
           <span>Sort:</span>
           <select name="sort">

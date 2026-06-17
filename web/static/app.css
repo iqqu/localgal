@@ -324,8 +324,8 @@ html:has(#fb-force-fit:checked):has(#pin-header-checkbox:checked) #main-content:
     z-index: 10;
 }
 header:has(#pin-header-checkbox:checked) .nav-expand.form-local-rating { position: fixed; }
-button[popovertarget="rating-filter-menu"] {
-    anchor-name: --rating-filter-button;
+button[popovertarget="gal-filter-menu"] {
+    anchor-name: --gal-filter-button;
     background: none;
     border: none;
     padding: 0;
@@ -334,18 +334,40 @@ button[popovertarget="rating-filter-menu"] {
     text-decoration: none;
     color: inherit;
 }
-#rating-filter-menu {
+#gal-filter-menu {
     margin: 0;
     border: 0;
     padding: var(--base-padding);
     background: var(--header-bg);
     inset: auto;
     position: absolute;
-    left: anchor(--rating-filter-button center);
+    left: anchor(--gal-filter-button center);
     transform: translateX(-50%);
     top: var(--header-height);
 }
-header:has(#pin-header-checkbox:checked) #rating-filter-menu { position: fixed; }
+header:has(#pin-header-checkbox:checked) #gal-filter-menu { position: fixed; }
+button[popovertarget="file-filter-menu"] {
+    anchor-name: --file-filter-button;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+#file-filter-menu {
+    margin: 0;
+    border: 0;
+    padding: var(--base-padding);
+    background: var(--header-bg);
+    inset: auto;
+    position: absolute;
+    left: anchor(--file-filter-button center);
+    transform: translateX(-50%);
+    top: var(--header-height);
+}
+header:has(#pin-header-checkbox:checked) #file-filter-menu { position: fixed; }
 button[popovertarget="settings-menu-items"] {
     anchor-name: --settings-menu-button;
     background: none;

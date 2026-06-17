@@ -1,25 +1,83 @@
 {{define "frag_rating_filter.gohtml"}}
-<button type="button" popovertarget="rating-filter-menu" title="Rating filter">&#x2B50;{{if .BasePage.RatingFilter.Active}}<small>{{.BasePage.RatingFilter.Min}}-{{.BasePage.RatingFilter.Max}}</small>{{end}}</button>
-<div id="rating-filter-menu" popover>
+<button type="button" popovertarget="gal-filter-menu" title="Gallery filter">&#x1F3E0;
+  {{- if .BasePage.GalleryRatingFilter.Active }}<small>
+    {{- if eq .BasePage.GalleryRatingFilter.Unrated "only" }}?{{else}}
+      {{- if .BasePage.GalleryRatingFilter.Min }}{{.BasePage.GalleryRatingFilter.Min}}{{else}}*{{ end -}}
+      -
+      {{- if .BasePage.GalleryRatingFilter.Max }}{{.BasePage.GalleryRatingFilter.Max}}{{else}}*{{end}}
+      {{- if ne .BasePage.GalleryRatingFilter.Unrated "exclude" }}+?{{end}}
+    {{- end }}</small>
+  {{- end }}
+</button>
+<div id="gal-filter-menu" popover>
   <form method="get" action="" style="display:flex; flex-direction:column; gap:.4rem; padding:.2rem;">
     <label>Min:
-      <select name="rating_min">
+      <select name="gal_rating_min">
         <option value="">Any</option>
-        <option value="1"{{if eq .BasePage.RatingFilter.Min 1}} selected{{end}}>1</option>
-        <option value="2"{{if eq .BasePage.RatingFilter.Min 2}} selected{{end}}>2</option>
-        <option value="3"{{if eq .BasePage.RatingFilter.Min 3}} selected{{end}}>3</option>
-        <option value="4"{{if eq .BasePage.RatingFilter.Min 4}} selected{{end}}>4</option>
-        <option value="5"{{if eq .BasePage.RatingFilter.Min 5}} selected{{end}}>5</option>
+        <option value="1"{{if eq .BasePage.GalleryRatingFilter.Min 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.GalleryRatingFilter.Min 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.GalleryRatingFilter.Min 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.GalleryRatingFilter.Min 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.GalleryRatingFilter.Min 5}} selected{{end}}>5</option>
       </select>
     </label>
     <label>Max:
-      <select name="rating_max">
+      <select name="gal_rating_max">
         <option value="">Any</option>
-        <option value="1"{{if eq .BasePage.RatingFilter.Max 1}} selected{{end}}>1</option>
-        <option value="2"{{if eq .BasePage.RatingFilter.Max 2}} selected{{end}}>2</option>
-        <option value="3"{{if eq .BasePage.RatingFilter.Max 3}} selected{{end}}>3</option>
-        <option value="4"{{if eq .BasePage.RatingFilter.Max 4}} selected{{end}}>4</option>
-        <option value="5"{{if eq .BasePage.RatingFilter.Max 5}} selected{{end}}>5</option>
+        <option value="1"{{if eq .BasePage.GalleryRatingFilter.Max 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.GalleryRatingFilter.Max 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.GalleryRatingFilter.Max 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.GalleryRatingFilter.Max 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.GalleryRatingFilter.Max 5}} selected{{end}}>5</option>
+      </select>
+    </label>
+    <label>Unrated:
+      <select name="gal_unrated">
+        <option value="">Include</option>
+        <option value="exclude"{{if eq .BasePage.GalleryRatingFilter.Unrated "exclude"}} selected{{end}}>Exclude</option>
+        <option value="only"{{if eq .BasePage.GalleryRatingFilter.Unrated "only"}} selected{{end}}>Only</option>
+      </select>
+    </label>
+    <input type="submit" value="Apply">
+  </form>
+</div>
+<button type="button" popovertarget="file-filter-menu" title="File filter">&#x2B50;
+  {{- if .BasePage.FileRatingFilter.Active }}<small>
+    {{- if eq .BasePage.FileRatingFilter.Unrated "only" }}?{{else}}
+      {{- if .BasePage.FileRatingFilter.Min }}{{.BasePage.FileRatingFilter.Min}}{{else}}*{{ end -}}
+      -
+      {{- if .BasePage.FileRatingFilter.Max }}{{.BasePage.FileRatingFilter.Max}}{{else}}*{{end}}
+      {{- if ne .BasePage.FileRatingFilter.Unrated "exclude" }}+?{{end}}
+    {{- end }}</small>
+  {{- end }}
+</button>
+<div id="file-filter-menu" popover>
+  <form method="get" action="" style="display:flex; flex-direction:column; gap:.4rem; padding:.2rem;">
+    <label>Min:
+      <select name="file_rating_min">
+        <option value="">Any</option>
+        <option value="1"{{if eq .BasePage.FileRatingFilter.Min 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.FileRatingFilter.Min 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.FileRatingFilter.Min 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.FileRatingFilter.Min 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.FileRatingFilter.Min 5}} selected{{end}}>5</option>
+      </select>
+    </label>
+    <label>Max:
+      <select name="file_rating_max">
+        <option value="">Any</option>
+        <option value="1"{{if eq .BasePage.FileRatingFilter.Max 1}} selected{{end}}>1</option>
+        <option value="2"{{if eq .BasePage.FileRatingFilter.Max 2}} selected{{end}}>2</option>
+        <option value="3"{{if eq .BasePage.FileRatingFilter.Max 3}} selected{{end}}>3</option>
+        <option value="4"{{if eq .BasePage.FileRatingFilter.Max 4}} selected{{end}}>4</option>
+        <option value="5"{{if eq .BasePage.FileRatingFilter.Max 5}} selected{{end}}>5</option>
+      </select>
+    </label>
+    <label>Unrated:
+      <select name="file_unrated">
+        <option value="">Include</option>
+        <option value="exclude"{{if eq .BasePage.FileRatingFilter.Unrated "exclude"}} selected{{end}}>Exclude</option>
+        <option value="only"{{if eq .BasePage.FileRatingFilter.Unrated "only"}} selected{{end}}>Only</option>
       </select>
     </label>
     <input type="submit" value="Apply">

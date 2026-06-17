@@ -12,13 +12,20 @@ type BuildInfo struct {
 	BuildDate string
 }
 
+const (
+	UnratedInclude = "include" // default: include unrated alongside rating range ("" is alias)
+	UnratedExclude = "exclude" // exclude unrated when range is set
+	UnratedOnly    = "only"    // show only unrated, ignore min/max
+)
+
 type RatingFilter struct {
-	Min int `json:"min,omitempty,omitzero"` // 0 = no filter, 1-5 = minimum rating
-	Max int `json:"max,omitempty,omitzero"` // 0 = no filter, 1-5 = maximum rating
+	Min     int    `json:"min,omitempty,omitzero"`     // 0 = no filter, 1-5 = minimum rating
+	Max     int    `json:"max,omitempty,omitzero"`     // 0 = no filter, 1-5 = maximum rating
+	Unrated string `json:"unrated,omitempty,omitzero"` // "" (=include), "include", "exclude", or "only"
 }
 
 func (rf RatingFilter) Active() bool {
-	return rf.Min > 0 || rf.Max > 0
+	return rf.Min > 0 || rf.Max > 0 || (rf.Unrated != "" && rf.Unrated != UnratedInclude)
 }
 
 type Album struct {

@@ -107,9 +107,10 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortGalleries(w, r)
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
-		total, err := app.getTotalAlbumCount(ctx, rf)
+		total, err := app.getTotalAlbumCount(ctx, grf)
 		if err != nil {
 			return err
 		}
@@ -134,7 +135,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByPage = "ORDER BY (a.last_fetch_ts IS NULL), a.last_fetch_ts DESC, a.inserted_ts DESC, a.album_id DESC"
 				orderByAgg = "ORDER BY (p.last_fetch_ts IS NULL), p.last_fetch_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			}
-			rfClause, rfArgs := ratingFilterSQL("a.local_rating", rf)
+			rfClause, rfArgs := ratingFilterSQL("a.local_rating", grf)
 			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg, "/*RATING_FILTER*/", rfClause)
 			args := append([]any{}, rfArgs...)
 			args = append(args, size, offset)
@@ -302,7 +303,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			HasPrev:  page > 1,
 			HasNext:  totalPageCount > int64(page),
 			Sort:     sort,
-			BasePage: &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage: &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "browse.gohtml", &model)
 		return nil
@@ -389,7 +390,8 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		sort := getSortFiles(w, r)
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		//var total int
 		//var albumBytes int64
@@ -420,7 +422,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			default:
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
-			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
 			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
 			args := []any{a.AlbumId}
 			args = append(args, rfArgs...)
@@ -521,9 +523,9 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var totalFiltered int
-		if rf.Active() {
+		if frf.Active() {
 			if err := app.withSQL(ctx, func(ctx context.Context) error {
-				rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+				rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
 				replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
 				args := []any{a.AlbumId}
 				args = append(args, rfArgs...)
@@ -560,7 +562,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				AsyncFileTags:   true,
 				AlbumBytes:      albumBytes,
 				Sort:            sort,
-				BasePage:        &types.BasePage{Perf: perf, RatingFilter: rf},
+				BasePage:        &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 			}
 			app.render(ctx, w, "gallery.gohtml", &model)
 			return nil
@@ -582,7 +584,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			FileTags:   fileTags,
 			AlbumBytes: albumBytes,
 			Sort:       sort,
-			BasePage:   &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:   &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "gallery.gohtml", &model)
 		return nil
@@ -763,7 +765,8 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		sort := getSortFiles(w, r)
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
 		if err := app.withSQL(ctx, func(ctx context.Context) error {
@@ -796,7 +799,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				prevOrderKey2 = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
 
-			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
 			replacer := strings.NewReplacer(
 				"/*PREV_ORDER_KEY_INNER*/",
 				prevOrderKey1,
@@ -904,7 +907,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				`
 			}
 
-			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
 			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey, "/*RATING_FILTER*/", rfClause)
 			args := []any{f.FileId, a.AlbumId}
 			args = append(args, rfArgs...)
@@ -1022,7 +1025,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				         AND (rf.inserted_ts, rf.remote_file_id) > (t.inserted_ts, t.remote_file_id)
 				`
 			}
-			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
+			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
 			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey, "/*RATING_FILTER*/", rfClause)
 			//language=sqlite
 			replaced := replacer.Replace(`
@@ -1092,7 +1095,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				ShowPrevNext: true,
 				Autoplay:     autoplay,
 				ForceFit:     forceFit,
-				BasePage:     &types.BasePage{Perf: perf, RatingFilter: rf},
+				BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 			}
 			app.render(ctx, w, "file.gohtml", &model)
 			return nil
@@ -1112,7 +1115,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			ShowPrevNext: true,
 			Autoplay:     autoplay,
 			ForceFit:     forceFit,
-			BasePage:     &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "file.gohtml", &model)
 		return nil
@@ -1864,28 +1867,29 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		// 1: Search albums
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank, rf)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, SortRank, grf)
 		if err != nil {
 			return err
 		}
 
 		// 2: Search files
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank, rf)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank, frf)
 		if err != nil {
 			return err
 		}
@@ -1914,7 +1918,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Tags:           tags,
 			TagsTotal:      tagsTotal,
 			Sort:           SortRank,
-			BasePage:       &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:       &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "search.gohtml", &model)
 		return nil
@@ -1949,15 +1953,16 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
 		if err != nil {
 			return err
 		}
@@ -1968,7 +1973,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 
 		order := getSortSearchGalleries(w, r)
-		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, order, rf)
+		albums, err := app.getSearchAlbumsPage(ctx, searchQuery, size, offset, order, grf)
 		if err != nil {
 			return err
 		}
@@ -1984,7 +1989,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "search_galleries.gohtml", &model)
 		return nil
@@ -2019,15 +2024,16 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
 		if err != nil {
 			return err
 		}
@@ -2038,7 +2044,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		order := getSortSearchFiles(w, r)
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order, rf)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order, frf)
 		if err != nil {
 			return err
 		}
@@ -2054,7 +2060,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "search_files.gohtml", &model)
 		return nil
@@ -2088,15 +2094,16 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, rf)
+		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
 		if err != nil {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, rf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
 		if err != nil {
 			return err
 		}
@@ -2117,7 +2124,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			AlbumsTotal: albumsTotal,
 			FilesTotal:  filesTotal,
 			TagsTotal:   tagsTotal,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "search_tags.gohtml", &model)
 		return nil
@@ -2149,26 +2156,27 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		size := 10
 		offset := 0
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched, rf)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, SortFetched, grf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched, rf)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched, frf)
 		if err != nil {
 			return err
 		}
@@ -2181,7 +2189,7 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 			Files:       files,
 			FilesTotal:  filesTotal,
 			Sort:        SortFetched,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "user.gohtml", &model)
 		return nil
@@ -2204,21 +2212,22 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortGalleries(w, r)
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
 		if err != nil {
 			return err
 		}
 
-		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order, rf)
+		albums, err := app.getUserAlbumsPage(ctx, ripperHost, userName, size, offset, order, grf)
 		if err != nil {
 			return err
 		}
@@ -2234,7 +2243,7 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "user_galleries.gohtml", &model)
 		return nil
@@ -2257,21 +2266,22 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 		page, size := getPageParams(w, r, r.URL)
 		offset := (page - 1) * size
 		order := getSortFiles(w, r)
-		rf := getRatingFilter(w, r)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		var albumsTotal int
-		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, rf)
+		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
 		if err != nil {
 			return err
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, rf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order, rf)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order, frf)
 		if err != nil {
 			return err
 		}
@@ -2287,7 +2297,7 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, RatingFilter: rf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
 		}
 		app.render(ctx, w, "user_files.gohtml", &model)
 		return nil
@@ -2352,7 +2362,7 @@ func isClientAutoplayOn(r *http.Request) bool {
 
 // handleRandomGallery selects a random album and redirects to its gallery page.
 func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
-	rf := getRatingFilter(w, r)
+	rf := getFileRatingFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
 		if rf.Active() {
@@ -2442,7 +2452,7 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 
 // handleRandomFile selects a random available file and redirects to its file page.
 func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
-	rf := getRatingFilter(w, r)
+	rf := getFileRatingFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost string
 		var fileId int64
@@ -2606,13 +2616,14 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
 			return nil
 		}
-		rf := getUrlRatingFilter(parsedUrl)
+		grf := getGalleryRatingFilter(w, r)
+		frf := getFileRatingFilter(w, r)
 
 		if m := matchGalleryFile.FindStringSubmatch(path); m != nil {
 			ripperHost := m[1]
 			gid := m[2]
 			fileId := m[3]
-			nextFileId, err := app.getRandomGalleryFilePage(ctx, ripperHost, gid, fileId, rf)
+			nextFileId, err := app.getRandomGalleryFilePage(ctx, ripperHost, gid, fileId, frf)
 			if err != nil {
 				return err
 			}
@@ -2624,7 +2635,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			gid := m[2]
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size, rf)
+			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size, frf)
 			if err != nil {
 				return err
 			}
@@ -2643,7 +2654,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchGalleries(parsedUrl)
-			nextPage, err := app.getRandomSearchGalleryPage(ctx, searchQuery, page, size, rf)
+			nextPage, err := app.getRandomSearchGalleryPage(ctx, searchQuery, page, size, grf)
 			if err != nil {
 				return err
 			}
@@ -2658,7 +2669,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchFiles(parsedUrl)
-			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size, rf)
+			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size, frf)
 			if err != nil {
 				return err
 			}
@@ -2668,7 +2679,7 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 		if matchBrowse.MatchString(path) {
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := app.getRandomBrowsePage(ctx, page, size, rf)
+			nextPage, err := app.getRandomBrowsePage(ctx, page, size, grf)
 			if err != nil {
 				return err
 			}
