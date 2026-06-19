@@ -424,6 +424,15 @@ func (app *App) setAndCheckETag(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
+func (app *App) bustCache(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "cacheBust",
+		Value:    strconv.FormatInt(time.Now().UnixNano(), 10),
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
 func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, data any) {
 	select {
 	case <-ctx.Done():

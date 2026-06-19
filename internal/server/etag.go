@@ -49,5 +49,11 @@ func computeETag(r *http.Request) string {
 		}
 	}
 
+	// Bust cache if cacheBust cookie is set
+	if c, err := r.Cookie("cacheBust"); err == nil {
+		h.Write([]byte("cacheBust"))
+		h.Write([]byte(c.Value))
+	}
+
 	return hex.EncodeToString(h.Sum(nil))
 }

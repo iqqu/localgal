@@ -2971,6 +2971,7 @@ func (app *App) handleFilePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		app.bustCache(w)
 		ratingString := r.FormValue("rating")
 		if ratingString == "unset" {
 			return app.withSQL(ctx, func(ctx context.Context) error {
@@ -3027,6 +3028,7 @@ func (app *App) handleGalleryPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
+		app.bustCache(w)
 		ratingString := r.FormValue("rating")
 		if ratingString == "unset" {
 			return app.withSQL(ctx, func(ctx context.Context) error {
