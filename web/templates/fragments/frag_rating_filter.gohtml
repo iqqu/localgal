@@ -46,6 +46,12 @@
       </select>
     </label>
     <input type="submit" value="Apply">
+    <input type="submit" value="Reset" form="reset-gallery-filter">
+  </form>
+  <form id="reset-gallery-filter" method="get" action="" style="display: none">
+    <input type="hidden" value="" name="gal_rating_min"/>
+    <input type="hidden" value="" name="gal_rating_max"/>
+    <input type="hidden" value="" name="gal_unrated"/>
   </form>
 </div>
 <button type="button" popovertarget="file-filter-menu" title="File filter">&#x1F39E;&#xFE0F;{{/*film strip*/}}
@@ -106,6 +112,13 @@
       </select>
     </label>
     <input type="submit" value="Apply">
+    <input type="submit" value="Reset" form="reset-file-filter">
+  </form>
+  <form id="reset-file-filter" method="get" action="" style="display: none">
+    <input type="hidden" value="" name="file_rating_min"/>
+    <input type="hidden" value="" name="file_rating_max"/>
+    <input type="hidden" value="" name="file_unrated"/>
+    <input type="hidden" value="" name="file_type"/>
   </form>
 </div>
 {{end}}
