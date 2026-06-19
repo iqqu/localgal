@@ -28,6 +28,20 @@ func (rf RatingFilter) Active() bool {
 	return rf.Min > 0 || rf.Max > 0 || (rf.Unrated != "" && rf.Unrated != UnratedInclude)
 }
 
+const (
+	FileTypeAll   = ""      // default: show all file types
+	FileTypeImage = "image" // images only
+	FileTypeVideo = "video" // videos only
+)
+
+type FileTypeFilter struct {
+	Type string `json:"type,omitempty,omitzero"` // "", "image", or "video"
+}
+
+func (f FileTypeFilter) Active() bool {
+	return f.Type != FileTypeAll
+}
+
 type Album struct {
 	AlbumId     int64         `json:"albumId,omitempty,omitzero"`
 	RipperId    int64         `json:"-"`

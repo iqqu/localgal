@@ -161,28 +161,32 @@ func (app *App) getUserAlbumsPage(ctx context.Context, ripperHost string, upload
 	return albums, nil
 }
 
-func (app *App) getUserFileHits(ctx context.Context, host string, uploader string, rf types.RatingFilter) (int, error) {
+func (app *App) getUserFileHits(ctx context.Context, host string, uploader string, rf types.RatingFilter, ft types.FileTypeFilter) (int, error) {
 	var filesTotal int
 	rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+	ftClause, ftArgs := fileTypeFilterSQL("mt.name", ft)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 	err := app.withSQL(ctx, func(ctx context.Context) error {
 		args := []any{host, uploader}
 		args = append(args, rfArgs...)
+		args = append(args, ftArgs...)
 		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM remote_file rf
 			  JOIN ripper r ON r.ripper_id = rf.ripper_id
+			  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 			 WHERE r.host = ?
 			   AND rf.uploader = ?
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
 			   /*RATING_FILTER*/
+			   /*FILE_TYPE_FILTER*/
 		`), args...).Scan(&filesTotal)
 	})
 	return filesTotal, err
 }
 
-func (app *App) getUserFilesPage(ctx context.Context, host string, uploader string, size int, offset int, order string, rf types.RatingFilter) ([]types.File, error) {
+func (app *App) getUserFilesPage(ctx context.Context, host string, uploader string, size int, offset int, order string, rf types.RatingFilter, ft types.FileTypeFilter) ([]types.File, error) {
 	var files []types.File
 	if err := app.withSQL(ctx, func(ctx context.Context) error {
 		var rows *sql.Rows
@@ -200,9 +204,11 @@ func (app *App) getUserFilesPage(ctx context.Context, host string, uploader stri
 			orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 		}
 		rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-		replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
+		ftClause, ftArgs := fileTypeFilterSQL("mt.name", ft)
+		replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 		args := []any{host, uploader}
 		args = append(args, rfArgs...)
+		args = append(args, ftArgs...)
 		args = append(args, size, offset)
 		//language=sqlite
 		rows, err = app.Db.QueryContext(ctx, replacer.Replace(`
@@ -229,6 +235,7 @@ func (app *App) getUserFilesPage(ctx context.Context, host string, uploader stri
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
 			   /*RATING_FILTER*/
+			   /*FILE_TYPE_FILTER*/
 			/*ORDER_BY*/
 			 LIMIT ? OFFSET ?
 		`), args...)

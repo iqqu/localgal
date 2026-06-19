@@ -46,6 +46,13 @@ func ratingFilterSQL(column string, rf types.RatingFilter) (string, []any) {
 	return fmt.Sprintf("AND (%s OR %s IS NULL)", rangeClause, column), args
 }
 
+func fileTypeFilterSQL(column string, ft types.FileTypeFilter) (string, []any) {
+	if !ft.Active() {
+		return "", nil
+	}
+	return fmt.Sprintf("AND %s LIKE ?", column), []any{ft.Type + "/%"}
+}
+
 func parseRatingValue(s string) int {
 	v, err := strconv.Atoi(s)
 	if err != nil || v < 1 || v > 5 {
@@ -57,6 +64,15 @@ func parseRatingValue(s string) int {
 func parseUnratedValue(s string) string {
 	switch s {
 	case types.UnratedExclude, types.UnratedOnly:
+		return s
+	default:
+		return ""
+	}
+}
+
+func parseFileTypeValue(s string) string {
+	switch s {
+	case types.FileTypeImage, types.FileTypeVideo:
 		return s
 	default:
 		return ""
@@ -171,6 +187,43 @@ func getFileRatingFilter(w http.ResponseWriter, r *http.Request) types.RatingFil
 	return getRatingFilterWithPrefix(w, r, "file_rating_min", "file_rating_max", "file_unrated", "defaultFileRatingMin", "defaultFileRatingMax", "defaultFileUnrated")
 }
 
+func getFileTypeFilter(w http.ResponseWriter, r *http.Request) types.FileTypeFilter {
+	ft := types.FileTypeFilter{}
+
+	// Read cookie default
+	if c, err := r.Cookie("defaultFileType"); err == nil {
+		ft.Type = parseFileTypeValue(c.Value)
+	}
+
+	query := r.URL.Query()
+
+	if query.Has("file_type") {
+		qType := parseFileTypeValue(query.Get("file_type"))
+		if qType != "" {
+			if qType != ft.Type {
+				http.SetCookie(w, &http.Cookie{
+					Name:     "defaultFileType",
+					Value:    qType,
+					Path:     "/",
+					SameSite: http.SameSiteStrictMode,
+					MaxAge:   int((6 * time.Hour).Seconds()),
+				})
+			}
+			ft.Type = qType
+		} else {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "defaultFileType",
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				MaxAge:   -1,
+			})
+			ft.Type = ""
+		}
+	}
+
+	return ft
+}
+
 func getUrlRatingFilterWithPrefix(u *url.URL, minParam, maxParam, unratedParam string) types.RatingFilter {
 	query := u.Query()
 	rf := types.RatingFilter{
@@ -190,4 +243,10 @@ func getUrlGalleryRatingFilter(u *url.URL) types.RatingFilter {
 
 func getUrlFileRatingFilter(u *url.URL) types.RatingFilter {
 	return getUrlRatingFilterWithPrefix(u, "file_rating_min", "file_rating_max", "file_unrated")
+}
+
+func getUrlFileTypeFilter(u *url.URL) types.FileTypeFilter {
+	return types.FileTypeFilter{
+		Type: parseFileTypeValue(u.Query().Get("file_type")),
+	}
 }

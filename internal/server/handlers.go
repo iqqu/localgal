@@ -109,6 +109,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		sort := getSortGalleries(w, r)
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		total, err := app.getTotalAlbumCount(ctx, grf)
 		if err != nil {
@@ -136,8 +137,10 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				orderByAgg = "ORDER BY (p.last_fetch_ts IS NULL), p.last_fetch_ts DESC, p.inserted_ts DESC, p.album_id DESC"
 			}
 			rfClause, rfArgs := ratingFilterSQL("a.local_rating", grf)
-			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg, "/*RATING_FILTER*/", rfClause)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+			replacer := strings.NewReplacer("/*ORDER_BY_PAGE*/", orderByPage, "/*ORDER_BY_AGG*/", orderByAgg, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 			args := append([]any{}, rfArgs...)
+			args = append(args, ftArgs...)
 			args = append(args, size, offset)
 			//language=sqlite
 			rows, err := app.Db.QueryContext(ctx, replacer.Replace(`
@@ -163,9 +166,11 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 				           SELECT 1
 				             FROM map_album_remote_file marf
 				             JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				             LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				            WHERE marf.album_id = a.album_id
 				              AND rf.fetched = 1
 				              AND rf.ignored = 0
+				              /*FILE_TYPE_FILTER*/
 				                   )
 				       /*RATING_FILTER*/
 				-- ORDER BY a.album_id
@@ -303,7 +308,7 @@ func (app *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			HasPrev:  page > 1,
 			HasNext:  totalPageCount > int64(page),
 			Sort:     sort,
-			BasePage: &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage: &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "browse.gohtml", &model)
 		return nil
@@ -392,6 +397,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		sort := getSortFiles(w, r)
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		//var total int
 		//var albumBytes int64
@@ -423,9 +429,11 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				orderBy = "ORDER BY rf.inserted_ts DESC, rf.remote_file_id DESC"
 			}
 			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
-			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+			replacer := strings.NewReplacer("/*ORDER_BY*/", orderBy, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 			args := []any{a.AlbumId}
 			args = append(args, rfArgs...)
+			args = append(args, ftArgs...)
 			args = append(args, size, offset)
 			rows, err := app.Db.QueryContext(ctx, replacer.Replace(`
 				SELECT rf.remote_file_id
@@ -451,6 +459,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
 				   /*RATING_FILTER*/
+				   /*FILE_TYPE_FILTER*/
 				 -- ORDER BY marf.remote_file_id
 				 /*ORDER_BY*/
 				 LIMIT ? OFFSET ?
@@ -523,20 +532,24 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var totalFiltered int
-		if frf.Active() {
+		if frf.Active() || ftf.Active() {
 			if err := app.withSQL(ctx, func(ctx context.Context) error {
 				rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
-				replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+				ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+				replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 				args := []any{a.AlbumId}
 				args = append(args, rfArgs...)
+				args = append(args, ftArgs...)
 				return app.Db.QueryRowContext(ctx, replacer.Replace(`
 					SELECT COUNT(*)
 					  FROM remote_file rf
 					  JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+					  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 					 WHERE marf.album_id = ?
 					   AND rf.fetched = 1
 					   AND rf.ignored = 0
 					   /*RATING_FILTER*/
+					   /*FILE_TYPE_FILTER*/
 				`), args...).Scan(&totalFiltered)
 			}); err != nil {
 				return err
@@ -1869,6 +1882,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		// 1: Search albums
 		var albumsTotal int
@@ -1884,12 +1898,12 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		// 2: Search files
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf, ftf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank, frf)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, SortRank, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -1918,7 +1932,7 @@ func (app *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Tags:           tags,
 			TagsTotal:      tagsTotal,
 			Sort:           SortRank,
-			BasePage:       &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:       &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "search.gohtml", &model)
 		return nil
@@ -1955,6 +1969,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 		offset := (page - 1) * size
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
@@ -1962,7 +1977,7 @@ func (app *App) handleSearchGalleries(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2026,6 +2041,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		offset := (page - 1) * size
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
@@ -2033,7 +2049,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2044,7 +2060,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		order := getSortSearchFiles(w, r)
-		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order, frf)
+		files, err := app.getSearchFilesPage(ctx, searchQuery, size, offset, order, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2060,7 +2076,7 @@ func (app *App) handleSearchFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "search_files.gohtml", &model)
 		return nil
@@ -2096,6 +2112,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getSearchAlbumHits(ctx, searchQuery, false, grf)
@@ -2103,7 +2120,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		var filesTotal int
-		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf)
+		filesTotal, err = app.getSearchFileHits(ctx, searchQuery, false, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2124,7 +2141,7 @@ func (app *App) handleSearchTags(w http.ResponseWriter, r *http.Request) {
 			AlbumsTotal: albumsTotal,
 			FilesTotal:  filesTotal,
 			TagsTotal:   tagsTotal,
-			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "search_tags.gohtml", &model)
 		return nil
@@ -2158,6 +2175,7 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 		offset := 0
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
@@ -2171,12 +2189,12 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf, ftf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched, frf)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, SortFetched, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2189,7 +2207,7 @@ func (app *App) handleUser(w http.ResponseWriter, r *http.Request) {
 			Files:       files,
 			FilesTotal:  filesTotal,
 			Sort:        SortFetched,
-			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "user.gohtml", &model)
 		return nil
@@ -2214,6 +2232,7 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 		order := getSortGalleries(w, r)
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
@@ -2222,7 +2241,7 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2243,7 +2262,7 @@ func (app *App) handleUserGalleries(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "user_galleries.gohtml", &model)
 		return nil
@@ -2268,6 +2287,7 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 		order := getSortFiles(w, r)
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 
 		var albumsTotal int
 		albumsTotal, err := app.getUserAlbumHits(ctx, ripperHost, userName, grf)
@@ -2276,12 +2296,12 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var filesTotal int
-		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf)
+		filesTotal, err = app.getUserFileHits(ctx, ripperHost, userName, frf, ftf)
 		if err != nil {
 			return err
 		}
 
-		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order, frf)
+		files, err := app.getUserFilesPage(ctx, ripperHost, userName, size, offset, order, frf, ftf)
 		if err != nil {
 			return err
 		}
@@ -2297,7 +2317,7 @@ func (app *App) handleUserFiles(w http.ResponseWriter, r *http.Request) {
 			Page:        page,
 			PageSize:    size,
 			Sort:        order,
-			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:    &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "user_files.gohtml", &model)
 		return nil
@@ -2364,19 +2384,22 @@ func isClientAutoplayOn(r *http.Request) bool {
 func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 	grf := getGalleryRatingFilter(w, r)
 	rf := getFileRatingFilter(w, r)
+	ftf := getFileTypeFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost, gid string
 
 		grfClause, grfArgs := ratingFilterSQL("a.local_rating", grf)
 		rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-		replacer := strings.NewReplacer("/*GALLERY_RATING_FILTER*/", grfClause, "/*RATING_FILTER*/", rfClause)
+		ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+		replacer := strings.NewReplacer("/*GALLERY_RATING_FILTER*/", grfClause, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 
-		if grf.Active() || rf.Active() {
+		if grf.Active() || rf.Active() || ftf.Active() {
 			// Fast path: try twice with independent random seeds
 			var found bool
 			for range 2 {
 				args := append([]any{}, grfArgs...)
 				args = append(args, rfArgs...)
+				args = append(args, ftArgs...)
 				err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
 						SELECT r.host, a.gid
@@ -2387,10 +2410,12 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 						   AND EXISTS (
 						       SELECT 1 FROM remote_file rf
 						         JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+						         LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 						        WHERE marf.album_id = a.album_id
 						          AND rf.fetched = 1
 						          AND rf.ignored = 0
 						          /*RATING_FILTER*/
+						          /*FILE_TYPE_FILTER*/
 						   )
 						 ORDER BY a.album_id
 						 LIMIT 1
@@ -2407,6 +2432,7 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 			if !found {
 				// Slow fallback: CTE COUNT + OFFSET (guaranteed uniform)
 				args := append([]any{}, rfArgs...)
+				args = append(args, ftArgs...)
 				args = append(args, grfArgs...)
 				if err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
@@ -2417,10 +2443,12 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 						     WHERE EXISTS (
 						         SELECT 1 FROM remote_file rf
 						           JOIN map_album_remote_file marf ON rf.remote_file_id = marf.remote_file_id
+						           LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 						          WHERE marf.album_id = a.album_id
 						            AND rf.fetched = 1
 						            AND rf.ignored = 0
 						            /*RATING_FILTER*/
+						            /*FILE_TYPE_FILTER*/
 						     )
 						     /*GALLERY_RATING_FILTER*/
 						),
@@ -2461,19 +2489,22 @@ func (app *App) handleRandomGallery(w http.ResponseWriter, r *http.Request) {
 // handleRandomFile selects a random available file and redirects to its file page.
 func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 	rf := getFileRatingFilter(w, r)
+	ftf := getFileTypeFilter(w, r)
 	p, err := app.perfTracker(r.Context(), func(ctx context.Context, perf *types.Perf) error {
 		var ripperHost string
 		var fileId int64
 		var gid sql.NullString
 
-		if rf.Active() {
+		if rf.Active() || ftf.Active() {
 			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+			replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 			// Fast path: try twice with independent random seeds
 			var found bool
 			for range 2 {
 				args := append([]any{}, rfArgs...)
 				args = append(args, rfArgs...)
+				args = append(args, ftArgs...)
 				err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
 						SELECT r.host
@@ -2492,7 +2523,8 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 						       ) AS gid
 						  FROM remote_file rf
 						  JOIN ripper r ON r.ripper_id = rf.ripper_id
-						 WHERE remote_file_id >= (ABS(RANDOM()) % (
+						  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
+						 WHERE rf.remote_file_id >= (ABS(RANDOM()) % (
 						     SELECT MAX(remote_file_id) FROM remote_file rf
 						      WHERE rf.fetched = 1 AND rf.ignored = 0
 						        /*RATING_FILTER*/
@@ -2500,7 +2532,8 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 						   AND rf.fetched = 1
 						   AND rf.ignored = 0
 						   /*RATING_FILTER*/
-						 ORDER BY remote_file_id
+						   /*FILE_TYPE_FILTER*/
+						 ORDER BY rf.remote_file_id
 						 LIMIT 1
 					`), args...).Scan(&ripperHost, &fileId, &gid)
 				})
@@ -2515,15 +2548,18 @@ func (app *App) handleRandomFile(w http.ResponseWriter, r *http.Request) {
 			if !found {
 				// Slow fallback: CTE COUNT + OFFSET (guaranteed uniform)
 				args := append([]any{}, rfArgs...)
+				args = append(args, ftArgs...)
 				if err := app.withSQL(ctx, func(ctx context.Context) error {
 					return app.Db.QueryRowContext(ctx, replacer.Replace(`
 						WITH filtered AS (
 						    SELECT rf.remote_file_id, r.host, rf.ripper_id
 						      FROM remote_file rf
 						      JOIN ripper r ON r.ripper_id = rf.ripper_id
+						      LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 						     WHERE rf.fetched = 1
 						       AND rf.ignored = 0
 						       /*RATING_FILTER*/
+						       /*FILE_TYPE_FILTER*/
 						),
 						row_count AS (
 						    SELECT COUNT(*) AS cnt FROM filtered
@@ -2643,7 +2679,8 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			gid := m[2]
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortGalleries(parsedUrl)
-			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size, frf)
+			ftf := getUrlFileTypeFilter(parsedUrl)
+			nextPage, err := app.getRandomGalleryPage(ctx, ripperHost, gid, page, size, frf, ftf)
 			if err != nil {
 				return err
 			}
@@ -2677,7 +2714,8 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 			}
 			page, size := getPageParams(w, r, parsedUrl)
 			sort := getUrlSortSearchFiles(parsedUrl)
-			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size, frf)
+			ftf := getUrlFileTypeFilter(parsedUrl)
+			nextPage, err := app.getRandomSearchFilePage(ctx, searchQuery, page, size, frf, ftf)
 			if err != nil {
 				return err
 			}
@@ -2763,24 +2801,28 @@ func (app *App) getRandomGalleryFilePage(ctx context.Context, ripperHost string,
 	return 0, fmt.Errorf("gallery file not found")
 }
 
-func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int, rf types.RatingFilter) (int64, error) {
+func (app *App) getRandomGalleryPage(ctx context.Context, ripperHost string, gid string, page int, size int, rf types.RatingFilter, ft types.FileTypeFilter) (int64, error) {
 	var count int64
 	rfClause, rfArgs := ratingFilterSQL("rf.local_rating", rf)
-	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause)
+	ftClause, ftArgs := fileTypeFilterSQL("mt.name", ft)
+	replacer := strings.NewReplacer("/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 	err := app.withSQL(ctx, func(ctx context.Context) error {
 		args := []any{ripperHost, gid}
 		args = append(args, rfArgs...)
+		args = append(args, ftArgs...)
 		return app.Db.QueryRowContext(ctx, replacer.Replace(`
 			SELECT COUNT(*)
 			  FROM album a
 			  JOIN map_album_remote_file marf ON marf.album_id = a.album_id
 			  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
 			  JOIN ripper r ON r.ripper_id = a.ripper_id
+			  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 			 WHERE r.host = ?
 			   AND a.gid = ?
 			   AND rf.fetched = 1
 			   AND rf.ignored = 0
 			   /*RATING_FILTER*/
+			   /*FILE_TYPE_FILTER*/
 		`), args...).Scan(&count)
 	})
 	if err != nil {
@@ -2815,8 +2857,8 @@ func (app *App) getRandomSearchGalleryPage(ctx context.Context, searchQuery stri
 	return nextPage, nil
 }
 
-func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int, rf types.RatingFilter) (int64, error) {
-	totalHits, err := app.getSearchFileHits(ctx, searchQuery, false, rf)
+func (app *App) getRandomSearchFilePage(ctx context.Context, searchQuery string, page int, size int, rf types.RatingFilter, ft types.FileTypeFilter) (int64, error) {
+	totalHits, err := app.getSearchFileHits(ctx, searchQuery, false, rf, ft)
 	if err != nil {
 		return 0, err
 	}

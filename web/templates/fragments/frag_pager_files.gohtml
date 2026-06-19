@@ -4,7 +4,7 @@
     <div class="pager-controls">
       <div>
         {{if .HasPrev}}
-          <a class="pager-prev" href="{{.Album.HrefPage}}?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .FileRatingFilter.Active}}&file_rating_min={{.FileRatingFilter.Min}}&file_rating_max={{.FileRatingFilter.Max}}{{end}}{{if .FileRatingFilter.Unrated}}&file_unrated={{.FileRatingFilter.Unrated}}{{end}}">&larr; Previous</a>
+          <a class="pager-prev" href="{{.Album.HrefPage}}?page={{sub .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .FileRatingFilter.Active}}&file_rating_min={{.FileRatingFilter.Min}}&file_rating_max={{.FileRatingFilter.Max}}{{end}}{{if .FileRatingFilter.Unrated}}&file_unrated={{.FileRatingFilter.Unrated}}{{end}}{{if .FileTypeFilter.Active}}&file_type={{.FileTypeFilter.Type}}{{end}}">&larr; Previous</a>
         {{else}}
           <span class="muted">&larr; Previous</span>
         {{end}}
@@ -19,11 +19,12 @@
         {{if .FileRatingFilter.Active}}<input type="hidden" name="file_rating_min" value="{{.FileRatingFilter.Min}}">{{end}}
         {{if .FileRatingFilter.Active}}<input type="hidden" name="file_rating_max" value="{{.FileRatingFilter.Max}}">{{end}}
         {{if .FileRatingFilter.Unrated}}<input type="hidden" name="file_unrated" value="{{.FileRatingFilter.Unrated}}">{{end}}
+        {{if .FileTypeFilter.Active}}<input type="hidden" name="file_type" value="{{.FileTypeFilter.Type}}">{{end}}
         <button type="submit">Go</button>
       </form>
       <div>
         {{if .HasNext}}
-          <a class="pager-next" href="{{.Album.HrefPage}}?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .FileRatingFilter.Active}}&file_rating_min={{.FileRatingFilter.Min}}&file_rating_max={{.FileRatingFilter.Max}}{{end}}{{if .FileRatingFilter.Unrated}}&file_unrated={{.FileRatingFilter.Unrated}}{{end}}">Next &rarr;</a>
+          <a class="pager-next" href="{{.Album.HrefPage}}?page={{add .Page 1}}&size={{.PageSize}}&sort={{.Sort}}{{if .FileRatingFilter.Active}}&file_rating_min={{.FileRatingFilter.Min}}&file_rating_max={{.FileRatingFilter.Max}}{{end}}{{if .FileRatingFilter.Unrated}}&file_unrated={{.FileRatingFilter.Unrated}}{{end}}{{if .FileTypeFilter.Active}}&file_type={{.FileTypeFilter.Type}}{{end}}">Next &rarr;</a>
         {{else}}
           <span class="muted">Next &rarr;</span>
         {{end}}
@@ -36,6 +37,7 @@
         {{if .FileRatingFilter.Active}}<input type="hidden" name="file_rating_min" value="{{.FileRatingFilter.Min}}">{{end}}
         {{if .FileRatingFilter.Active}}<input type="hidden" name="file_rating_max" value="{{.FileRatingFilter.Max}}">{{end}}
         {{if .FileRatingFilter.Unrated}}<input type="hidden" name="file_unrated" value="{{.FileRatingFilter.Unrated}}">{{end}}
+        {{if .FileTypeFilter.Active}}<input type="hidden" name="file_type" value="{{.FileTypeFilter.Type}}">{{end}}
         <label>
           <span>Sort:</span>
           <select name="sort">

@@ -42,12 +42,16 @@
   </form>
 </div>
 <button type="button" popovertarget="file-filter-menu" title="File filter">&#x1F39E;&#xFE0F;{{/*film strip*/}}
-  {{- if .BasePage.FileRatingFilter.Active }}<small>
-    {{- if eq .BasePage.FileRatingFilter.Unrated "only" }}?{{else}}
+  {{- if or .BasePage.FileRatingFilter.Active .BasePage.FileTypeFilter.Active }}<small>
+    {{- if eq .BasePage.FileRatingFilter.Unrated "only" }}?{{else if .BasePage.FileRatingFilter.Active}}
       {{- if .BasePage.FileRatingFilter.Min }}{{.BasePage.FileRatingFilter.Min}}{{else}}*{{ end -}}
       -
       {{- if .BasePage.FileRatingFilter.Max }}{{.BasePage.FileRatingFilter.Max}}{{else}}*{{end}}
       {{- if ne .BasePage.FileRatingFilter.Unrated "exclude" }}+?{{end}}
+    {{- end }}
+    {{- if .BasePage.FileTypeFilter.Active }}
+      {{- if .BasePage.FileRatingFilter.Active }} | {{ end -}}
+      {{ .BasePage.FileTypeFilter.Type }}
     {{- end }}</small>
   {{- end }}
 </button>
@@ -78,6 +82,13 @@
         <option value="">Include</option>
         <option value="exclude"{{if eq .BasePage.FileRatingFilter.Unrated "exclude"}} selected{{end}}>Exclude</option>
         <option value="only"{{if eq .BasePage.FileRatingFilter.Unrated "only"}} selected{{end}}>Only</option>
+      </select>
+    </label>
+    <label>Type:
+      <select name="file_type">
+        <option value="">All</option>
+        <option value="image"{{if eq .BasePage.FileTypeFilter.Type "image"}} selected{{end}}>Images</option>
+        <option value="video"{{if eq .BasePage.FileTypeFilter.Type "video"}} selected{{end}}>Videos</option>
       </select>
     </label>
     <input type="submit" value="Apply">
