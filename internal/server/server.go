@@ -254,7 +254,7 @@ func (c *Controller) Stop(ctx context.Context) error {
 func (app *App) newMux() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", app.handleBrowse)
-	mux.HandleFunc("/gallery/{ripper_host}/{gid}", app.handleGallery)
+	mux.HandleFunc("/gallery/{ripper_host}/{gid}", app.withETag(app.handleGallery))
 	mux.HandleFunc("POST /gallery/{ripper_host}/{gid}", app.handleGalleryPost)
 	mux.HandleFunc("/gallery/{ripper_host}/{gid}/{file_id}", app.handleGalleryFile)
 	mux.HandleFunc("/gallery-file-tags/{ripper_host}/{gid}", app.handleGalleryFileTagsFragment)
@@ -263,9 +263,9 @@ func (app *App) newMux() http.Handler {
 	mux.HandleFunc("POST /file/{ripper_host}/{file_id}", app.handleFilePost)
 	mux.HandleFunc("/tags", app.handleTags)
 	mux.HandleFunc("/tag/{tag_name}", app.handleTagDetail)
-	mux.HandleFunc("/search", app.handleSearch)
-	mux.HandleFunc("/search/galleries", app.handleSearchGalleries)
-	mux.HandleFunc("/search/files", app.handleSearchFiles)
+	mux.HandleFunc("/search", app.withETag(app.handleSearch))
+	mux.HandleFunc("/search/galleries", app.withETag(app.handleSearchGalleries))
+	mux.HandleFunc("/search/files", app.withETag(app.handleSearchFiles))
 	mux.HandleFunc("/search/tags", app.handleSearchTags)
 	mux.HandleFunc("/user/{ripper_host}/{user_name}", app.handleUser)
 	mux.HandleFunc("/user/{ripper_host}/{user_name}/galleries", app.handleUserGalleries)
@@ -314,6 +314,29 @@ func (app *App) newMux() http.Handler {
 	wrapped = app.tinyOptimizeDb(mux)
 	wrapped = app.reqCtx(mux)
 	return wrapped
+}
+
+//
+//func (app *App) withETag(next http.Handler) http.Handler {
+//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//		if r.Method == http.MethodGet { // Only GET should be cached
+//			if app.setAndCheckETag(w, r) {
+//				return
+//			}
+//		}
+//		next.ServeHTTP(w, r)
+//	})
+//}
+
+func (app *App) withETag(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet { // Only GET should be cached
+			if app.setAndCheckETag(w, r) {
+				return
+			}
+		}
+		next(w, r)
+	}
 }
 
 func (app *App) asApi(handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -387,6 +410,20 @@ func getRenderMode(ctx context.Context) RenderMode {
 	return RenderHTML
 }
 
+// setAndCheckETag sets the ETag header and checks If-None-Match.
+// It returns true if the client has the current ETag (304), false otherwise.
+func (app *App) setAndCheckETag(w http.ResponseWriter, r *http.Request) bool {
+	etag := computeETag(r)
+	w.Header().Set("ETag", etag)
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		if match == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return true
+		}
+	}
+	return false
+}
+
 func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, data any) {
 	select {
 	case <-ctx.Done():
@@ -430,7 +467,9 @@ func (app *App) render(ctx context.Context, w http.ResponseWriter, name string, 
 	http.SetCookie(w, jsCookie)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
-	w.Header().Set("Cache-Control", "private, max-age=60")
+	req, _ := ctx.Value(requestKey{}).(*http.Request)
+	app.setAndCheckETag(w, req)
+	w.Header().Set("Cache-Control", "private, no-cache")
 	err := app.Tpl.ExecuteTemplate(w, name, data)
 	if err != nil {
 		w.Write([]byte(err.Error()))
@@ -470,7 +509,9 @@ func (app *App) renderFragment(ctx context.Context, w http.ResponseWriter, name 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Set short-lived cache for HTML pages to allow quick back/forward without staleness
-	w.Header().Set("Cache-Control", "private, max-age=60")
+	req, _ := ctx.Value(requestKey{}).(*http.Request)
+	app.setAndCheckETag(w, req)
+	w.Header().Set("Cache-Control", "private, no-cache")
 	err := app.Tpl.ExecuteTemplate(w, name, data)
 	if err != nil {
 		w.Write([]byte(err.Error()))
