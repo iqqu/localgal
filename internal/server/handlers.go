@@ -575,7 +575,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 				AsyncFileTags:   true,
 				AlbumBytes:      albumBytes,
 				Sort:            sort,
-				BasePage:        &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+				BasePage:        &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 			}
 			app.render(ctx, w, "gallery.gohtml", &model)
 			return nil
@@ -597,7 +597,7 @@ func (app *App) handleGallery(w http.ResponseWriter, r *http.Request) {
 			FileTags:   fileTags,
 			AlbumBytes: albumBytes,
 			Sort:       sort,
-			BasePage:   &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:   &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "gallery.gohtml", &model)
 		return nil
@@ -780,6 +780,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		sort := getSortFiles(w, r)
 		grf := getGalleryRatingFilter(w, r)
 		frf := getFileRatingFilter(w, r)
+		ftf := getFileTypeFilter(w, r)
 		// Prev/Next within this album by remote_file_id
 		var prev []types.File
 		if err := app.withSQL(ctx, func(ctx context.Context) error {
@@ -813,6 +814,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			}
 
 			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
 			replacer := strings.NewReplacer(
 				"/*PREV_ORDER_KEY_INNER*/",
 				prevOrderKey1,
@@ -820,9 +822,12 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				prevOrderKey2,
 				"/*RATING_FILTER*/",
 				rfClause,
+				"/*FILE_TYPE_FILTER*/",
+				ftClause,
 			)
 			args := []any{f.FileId, a.AlbumId}
 			args = append(args, rfArgs...)
+			args = append(args, ftArgs...)
 			//language=sqlite
 			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				-- Step 1: On the mapping table, seek previous remote_file_id values (< current) with ORDER BY DESC LIMIT 3 using PK (album_id, remote_file_id).
@@ -858,6 +863,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				         AND rf.fetched = 1
 				         AND rf.ignored = 0
 				         /*RATING_FILTER*/
+				         /*FILE_TYPE_FILTER*/
 				         /*PREV_ORDER_KEY_INNER*/
 				       LIMIT 3
 				                   )
@@ -1075,20 +1081,31 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Populate href
-		a.HrefPage = fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&sort=%s", a.RipperHost, a.Gid, pageNumber, pageSize, sort)
+		filterQuery := fmt.Sprintf("sort=%s", sort)
+		if frf.Active() {
+			filterQuery += fmt.Sprintf("&file_rating_min=%d&file_rating_max=%d", frf.Min, frf.Max)
+		}
+		if frf.Unrated != "" {
+			filterQuery += fmt.Sprintf("&file_unrated=%s", frf.Unrated)
+		}
+		if ftf.Active() {
+			filterQuery += fmt.Sprintf("&file_type=%s", ftf.Type)
+		}
+
+		a.HrefPage = fmt.Sprintf("/gallery/%s/%s?page=%d&size=%d&%s", a.RipperHost, a.Gid, pageNumber, pageSize, filterQuery)
 		//a.HrefPage = fmt.Sprintf("/gallery/%s/%s", a.RipperHost, a.Gid)
-		f.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, f.FileId)
+		f.HrefPage = fmt.Sprintf("/gallery/%s/%s/%d?%s", a.RipperHost, a.Gid, f.FileId, filterQuery)
 		if f.Filename.Valid {
 			f.HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, f.Filename.String)
 		}
 		for i := range prev {
-			prev[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, prev[i].FileId)
+			prev[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d?%s", a.RipperHost, a.Gid, prev[i].FileId, filterQuery)
 			if prev[i].Filename.Valid {
 				prev[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, prev[i].Filename.String)
 			}
 		}
 		for i := range next {
-			next[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d", a.RipperHost, a.Gid, next[i].FileId)
+			next[i].HrefPage = fmt.Sprintf("/gallery/%s/%s/%d?%s", a.RipperHost, a.Gid, next[i].FileId, filterQuery)
 			if next[i].Filename.Valid {
 				next[i].HrefMedia = fmt.Sprintf("/media/%s/%s/%s", a.RipperHost, a.Gid, next[i].Filename.String)
 			}
@@ -1108,7 +1125,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				ShowPrevNext: true,
 				Autoplay:     autoplay,
 				ForceFit:     forceFit,
-				BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+				BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 			}
 			app.render(ctx, w, "file.gohtml", &model)
 			return nil
@@ -1128,7 +1145,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			ShowPrevNext: true,
 			Autoplay:     autoplay,
 			ForceFit:     forceFit,
-			BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf},
+			BasePage:     &types.BasePage{Perf: perf, GalleryRatingFilter: grf, FileRatingFilter: frf, FileTypeFilter: ftf},
 		}
 		app.render(ctx, w, "file.gohtml", &model)
 		return nil

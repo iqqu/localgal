@@ -2,11 +2,18 @@
 {{$title := printf "Search Files: %s" .Query}}
 {{ template "base_start" (dict "BasePage" .BasePage "title" $title "query" .Query) }}
   <h1>Search Files: {{.Query}}</h1>
+{{$filterParams := ""}}
+{{- if .BasePage.FileRatingFilter.Active}} {{$filterParams = printf "%s&file_rating_min=%d&file_rating_max=%d" $filterParams .BasePage.FileRatingFilter.Min .BasePage.FileRatingFilter.Max}}{{end}}
+{{- if .BasePage.FileRatingFilter.Unrated}} {{$filterParams = printf "%s&file_unrated=%s" $filterParams .BasePage.FileRatingFilter.Unrated}}{{end}}
+{{- if .BasePage.FileTypeFilter.Active}} {{$filterParams = printf "%s&file_type=%s" $filterParams .BasePage.FileTypeFilter.Type}}{{end}}
+{{- if .BasePage.GalleryRatingFilter.Active}} {{$filterParams = printf "%s&gal_rating_min=%d&gal_rating_max=%d" $filterParams .BasePage.GalleryRatingFilter.Min .BasePage.GalleryRatingFilter.Max}}{{end}}
+{{- if .BasePage.GalleryRatingFilter.Unrated}} {{$filterParams = printf "%s&gal_unrated=%s" $filterParams .BasePage.GalleryRatingFilter.Unrated}}{{end}}
+
   <div class="tabs">
-    <a class="tab" href="/search?q={{.Query | urlquery}}">Top Results</a>
-    <a class="tab" href="/search/galleries?q={{.Query | urlquery}}">Galleries ({{.AlbumsTotal}})</a>
-    <a class="tab tab-selected" href="/search/files?q={{.Query | urlquery}}">Files ({{.FilesTotal}})</a>
-    <a class="tab" href="/search/tags?q={{.Query | urlquery}}">Tags ({{.TagsTotal}})</a>
+    <a class="tab" href="/search?q={{.Query | urlquery}}{{$filterParams}}">Top Results</a>
+    <a class="tab" href="/search/galleries?q={{.Query | urlquery}}{{$filterParams}}">Galleries ({{.AlbumsTotal}})</a>
+    <a class="tab tab-selected" href="/search/files?q={{.Query | urlquery}}{{$filterParams}}">Files ({{.FilesTotal}})</a>
+    <a class="tab" href="/search/tags?q={{.Query | urlquery}}{{$filterParams}}">Tags ({{.TagsTotal}})</a>
   </div>
   <h2>Files</h2>
   {{- if .Files }}
