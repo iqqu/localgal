@@ -51,6 +51,10 @@ header nav .nav-group-icon {
     cursor: default;
 }
 
+.form-label-grid {display: grid; grid-template-columns: auto 1fr;gap: .4rem .2rem;}
+.form-label-grid label {display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center;}
+.form-label-grid input[type="submit"] {grid-column: 1 / 3;}
+
 @media (max-width: 1120px) { header nav .nav-label-collapse-widest { display: none; } }
 @media (max-width: 990px) { header nav .nav-label-collapse-wide { display: none; } }
 @media (max-width: 800px) { header nav .nav-label-collapse-narrow { display: none; } }
