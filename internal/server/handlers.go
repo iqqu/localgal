@@ -927,9 +927,11 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 			}
 
 			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
-			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey, "/*RATING_FILTER*/", rfClause)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+			replacer := strings.NewReplacer("/*NEXT_ORDER_KEY*/", nextOrderKey, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 			args := []any{f.FileId, a.AlbumId}
 			args = append(args, rfArgs...)
+			args = append(args, ftArgs...)
 			//language=sqlite
 			rows, e := app.Db.QueryContext(ctx, replacer.Replace(`
 				  WITH target AS (
@@ -961,6 +963,7 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
 				   /*RATING_FILTER*/
+				   /*FILE_TYPE_FILTER*/
 				   /*NEXT_ORDER_KEY*/
 				 LIMIT 3
 			`), args...)
@@ -1045,7 +1048,8 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				`
 			}
 			rfClause, rfArgs := ratingFilterSQL("rf.local_rating", frf)
-			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey, "/*RATING_FILTER*/", rfClause)
+			ftClause, ftArgs := fileTypeFilterSQL("mt.name", ftf)
+			replacer := strings.NewReplacer("/*PREV_FILTER_KEY*/", prevFilterKey, "/*RATING_FILTER*/", rfClause, "/*FILE_TYPE_FILTER*/", ftClause)
 			//language=sqlite
 			replaced := replacer.Replace(`
 				  WITH target AS (
@@ -1059,15 +1063,18 @@ func (app *App) handleGalleryFile(w http.ResponseWriter, r *http.Request) {
 				SELECT COUNT(*)
 				  FROM map_album_remote_file marf
 				  JOIN remote_file rf ON rf.remote_file_id = marf.remote_file_id
+				  LEFT JOIN mime_type mt ON mt.mime_type_id = rf.mime_type_id
 				  JOIN target t
 				 WHERE marf.album_id = ?
 				   AND rf.fetched = 1
 				   AND rf.ignored = 0
 				   /*RATING_FILTER*/
+				   /*FILE_TYPE_FILTER*/
 				  /*PREV_FILTER_KEY*/
 			`)
 			args := []any{f.FileId, a.AlbumId}
 			args = append(args, rfArgs...)
+			args = append(args, ftArgs...)
 			return app.Db.QueryRowContext(ctx, replaced, args...).Scan(&rank)
 		}); err != nil {
 			return err
