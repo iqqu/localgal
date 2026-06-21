@@ -6,7 +6,7 @@ require (
 	gioui.org v0.10.0
 	github.com/AllenDang/giu v0.15.0
 	github.com/mattn/go-isatty v0.0.22
-	github.com/mattn/go-sqlite3 v1.14.45
+	github.com/mattn/go-sqlite3 v1.14.46
 	github.com/shirou/gopsutil/v4 v4.26.5
 	golang.org/x/sys v0.46.0
 )
@@ -32,7 +32,7 @@ require (
 	golang.design/x/hotkey v0.6.1 // indirect
 	golang.design/x/mainthread v0.3.1 // indirect
 	golang.org/x/exp/shiny v0.0.0-20260611194520-c48552f49976 // indirect
-	golang.org/x/image v0.42.0 // indirect
+	golang.org/x/image v0.43.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/eapache/queue.v1 v1.1.0 // indirect
