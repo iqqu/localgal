@@ -123,12 +123,8 @@ Note: there is no `/api/random/page` for now, because that endpoint doesn't work
 * Show file dimensions (width/height/duration) if available
 * Distinguish local user-defined tags from remote tags
 * Reduce duplicated error handling code
-* Find a nice UX for random video and random image
-  * The header bar is full already - create a drop-down menu for more space?
-* Filter search to video or image
 * Mark files ignored
 * Modify local user-defined tags
-* Filter and sort by local rating
 * Improve local rating UI
 * ???
 
