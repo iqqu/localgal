@@ -60,7 +60,8 @@ header nav .nav-group-icon {
 @media (max-width: 990px) { header nav .nav-label-collapse-wide { display: none; } }
 @media (max-width: 800px) { header nav .nav-label-collapse-narrow { display: none; } }
 @media (max-width: 750px) { header nav .nav-label { display: none; } }
-header a { color: #fff; text-decoration: none; border-bottom: 1px dotted; display: inline-flex; align-items: center; }
+header a { color: #fff; text-decoration: none; position: relative; display: inline-flex; align-items: center; }
+header a::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 1px; border-top: 1px dotted white; }
 /*header nav input[type="search"] { width: 100px; }*/
 /*header img { display: inline;max-height: 1em;vertical-align: middle;}*/
 h1 { margin: 0.4rem 0 0.6rem; font-size: 1.5rem; word-wrap: break-word; text-wrap: balance; }
