@@ -22,7 +22,7 @@ Local Gallery web server, written in Go. Companion to RipMe3 app. Preview versio
 
 1. Rip a gallery with [RipMe3](https://github.com/RipMeApp3/ripme)
    * After the rip completes, new files will be created: `ripme.sqlite` and `ripme.downloaded.files.log`. LocalGal reads those files.
-2. Download the localgal executable from the release page to the folder containing `ripme.sqlite` and `ripme.downloaded.files.log`
+2. Download the localgal executable from the [release page](https://github.com/iqqu/localgal/releases/latest) to the folder containing `ripme.sqlite` and `ripme.downloaded.files.log`
 3. Run the localgal executable that you downloaded.
    * Double-click the executable to show the Server Control GUI and click the Start button, or
    * Run the executable in a terminal to start the server without the GUI
