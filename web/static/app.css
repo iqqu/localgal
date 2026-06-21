@@ -36,14 +36,15 @@ header nav { max-width: /*960px*/1200px; width: 100%; margin: 0 auto; display:fl
 header nav .nav-icon { margin: 0 .2rem; }
 
 header nav .nav-group {
-    border: 1px solid #444;
+    border: 1px solid #858585;
     border-left: none;
     border-bottom: 1px solid transparent;
     border-radius: 0 3px 3px 3px;
     padding: 0 3px 0 0;
 }
 header nav .nav-group-icon {
-    border: 1px solid #444;
+    border: 1px solid #858585;
+    background: #3a3a3a;
     border-radius: 3px 0 0 3px;
     padding: 0 3px;
     display: flex;
