@@ -2659,6 +2659,7 @@ var matchGallery = regexp.MustCompile(`^/gallery/([^/]+)/(.+)/?$`)
 var matchFile = regexp.MustCompile(`^/file/`)
 var matchSearchGalleries = regexp.MustCompile(`^/search/galleries/?$`)
 var matchSearchFiles = regexp.MustCompile(`^/search/files/?$`)
+var matchSearchSummary = regexp.MustCompile(`^/search/?$`)
 var matchBrowse = regexp.MustCompile(`^/[^/]*$`)
 
 // handleRandomPage selects a random page within the current set of pages.
@@ -2744,6 +2745,11 @@ func (app *App) handleRandomPage(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			app.httpRedirect(ctx, w, r, perf, fmt.Sprintf("/search/files?page=%d&size=%d&sort=%s&q=%s", nextPage, size, sort, searchQuery), http.StatusTemporaryRedirect)
+			return nil
+		}
+		if matchSearchSummary.MatchString(path) {
+			// Not supported on this URL. Go back
+			http.Redirect(w, r, parsedUrl.String(), http.StatusTemporaryRedirect)
 			return nil
 		}
 		if matchBrowse.MatchString(path) {

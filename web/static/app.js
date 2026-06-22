@@ -99,6 +99,11 @@
 
         switch (event.key) {
             case 'd':
+                if (!document.querySelector('[rel="next"],[rel="prev"]')) {
+                    // Random page is only supported when there are pages to navigate
+                    // TODO show popup?
+                    return;
+                }
                 document.location = '/random/page';
                 break;
 

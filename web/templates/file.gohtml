@@ -67,7 +67,7 @@
             {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
             <span class="fb-wrap" style="display: inline-flex;align-items: start;flex-direction: column;">
               <span class="sticky-prev-next-container">
-                <a class="sticky-prev" href="{{.HrefPage}}">
+                <a class="sticky-prev" href="{{.HrefPage}}" rel="prev">
                   <img src="/static/prev.svg" alt="Previous">
                 </a>
               </span>
@@ -76,7 +76,7 @@
             {{if gt (len .Next) 0}}{{with index .Next 0}}
             <span class="fb-wrap" style="display: inline-flex;align-items: end;flex-direction: column;">
               <span class="sticky-prev-next-container">
-                <a class="sticky-prev" href="{{.HrefPage}}">
+                <a class="sticky-prev" href="{{.HrefPage}}" rel="next">
                   <img src="/static/next.svg" alt="Next">
                 </a>
               </span>
@@ -92,14 +92,14 @@
               </label>
             </span>
             {{if gt (len .Prev) 0}}{{with index .Prev (sub (len .Prev) 1)}}
-            <a class="cell-nav prev" href="{{.HrefPage}}">
+            <a class="cell-nav prev" href="{{.HrefPage}}" rel="prev">
               <span class="cell-nav-btn">
                 <img src="/static/prev.svg" alt="Previous">
               </span>
             </a>
             {{end}}{{end}}
             {{if gt (len .Next) 0}}{{with index .Next 0}}
-            <a class="cell-nav next" href="{{.HrefPage}}">
+            <a class="cell-nav next" href="{{.HrefPage}}" rel="next">
               <span class="cell-nav-btn">
                 <img src="/static/next.svg" alt="Next">
               </span>
