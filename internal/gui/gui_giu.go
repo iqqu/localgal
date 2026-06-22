@@ -29,13 +29,14 @@ type MainWindow struct {
 	wWidget *giu.WindowWidget
 	cwd     string
 
-	bind      string
-	dsn       string
-	slowSql   string
-	mediaRoot string
-	dflog     string
-	dflogRoot string
-	log       string
+	bind        string
+	corsOrigins string
+	dsn         string
+	slowSql     string
+	mediaRoot   string
+	dflog       string
+	dflogRoot   string
+	log         string
 
 	status     string
 	running    bool
@@ -90,6 +91,10 @@ func loop() {
 		giu.InputText(&mw.bind),
 		giu.Label("Server listen/bind address, e.g. :5033 or 127.0.0.1:5033").Wrapped(true),
 
+		giu.Label(vars.EnvCorsOrigins.Key()),
+		giu.InputText(&mw.corsOrigins),
+		giu.Label("Comma-separated list of CORS origins, * for all, or empty to disable CORS").Wrapped(true),
+
 		giu.Label(vars.EnvSqliteDsn.Key()),
 		giu.InputText(&mw.dsn),
 		giu.Label("SQLite data source name").Wrapped(true),
@@ -127,6 +132,7 @@ func loop() {
 
 func onStart() {
 	vars.EnvBind.SetValue(mw.bind)
+	vars.EnvCorsOrigins.SetValue(mw.corsOrigins)
 	vars.EnvSqliteDsn.SetValue(mw.dsn)
 	vars.EnvSlowSqlMs.SetValue(mw.slowSql)
 	vars.EnvMediaRoot.SetValue(mw.mediaRoot)

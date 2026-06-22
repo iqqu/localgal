@@ -32,27 +32,28 @@ func Run() {
 }
 
 type MainWindow struct {
-	w            *app.Window
-	ops          *op.Ops
-	th           *material.Theme
-	cwd          string
-	bindEd       widget.Editor
-	dsnEd        widget.Editor
-	roEd         widget.Editor
-	slowSqlEd    widget.Editor
-	mediaRootEd  widget.Editor
-	dflogEd      widget.Editor
-	dflogRootEd  widget.Editor
-	logEd        widget.Editor
-	logList      widget.List
-	startBtn     widget.Clickable
-	stopBtn      widget.Clickable
-	optimizeBtn  widget.Clickable
-	status       string
-	running      bool
-	optimizing   bool
-	ctrl         *server.Controller
-	lastLogLines []string
+	w             *app.Window
+	ops           *op.Ops
+	th            *material.Theme
+	cwd           string
+	bindEd        widget.Editor
+	corsOriginsEd widget.Editor
+	dsnEd         widget.Editor
+	roEd          widget.Editor
+	slowSqlEd     widget.Editor
+	mediaRootEd   widget.Editor
+	dflogEd       widget.Editor
+	dflogRootEd   widget.Editor
+	logEd         widget.Editor
+	logList       widget.List
+	startBtn      widget.Clickable
+	stopBtn       widget.Clickable
+	optimizeBtn   widget.Clickable
+	status        string
+	running       bool
+	optimizing    bool
+	ctrl          *server.Controller
+	lastLogLines  []string
 }
 
 func newMainWindow() *MainWindow {
@@ -64,8 +65,8 @@ func newMainWindow() *MainWindow {
 	}
 	mw.w.Option(
 		app.Title("LocalGal Server"),
-		app.Size(unit.Dp(500), unit.Dp(500)),
-		app.MinSize(unit.Dp(500), unit.Dp(500)),
+		app.Size(unit.Dp(500), unit.Dp(550)),
+		app.MinSize(unit.Dp(500), unit.Dp(550)),
 	)
 
 	mw.bindEd.SingleLine = true
@@ -130,6 +131,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 
 		if mw.startBtn.Clicked(gtx) && !mw.running && !mw.optimizing {
 			vars.EnvBind.SetValue(mw.bindEd.Text())
+			vars.EnvCorsOrigins.SetValue(mw.corsOriginsEd.Text())
 			vars.EnvSqliteDsn.SetValue(mw.dsnEd.Text())
 			vars.EnvRo.SetValue(mw.roEd.Text())
 			vars.EnvSlowSqlMs.SetValue(mw.slowSqlEd.Text())
@@ -274,6 +276,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 					//var textWidgets []layout.Dimensions
 					var keys = []string{
 						vars.EnvBind.Key(),
+						vars.EnvCorsOrigins.Key(),
 						vars.EnvSqliteDsn.Key(),
 						vars.EnvRo.Key(),
 						vars.EnvSlowSqlMs.Key(),
@@ -294,6 +297,7 @@ func handleEvent(e event.Event, mw *MainWindow) {
 
 					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvBind.Key(), &mw.bindEd, "Server listen/bind address, e.g. :5033 or 127.0.0.1:5033")),
+						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvCorsOrigins.Key(), &mw.corsOriginsEd, "Comma-separated list of CORS origins, * for all, or empty to disable CORS")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSqliteDsn.Key(), &mw.dsnEd, "SQLite data source name")),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvRo.Key(), &mw.roEd, roHelp)),
 						layout.Rigid(labeledEditor(mw.th, labelWidth, vars.EnvSlowSqlMs.Key(), &mw.slowSqlEd, "Duration threshold to log slow sql queries, milliseconds, or -1 to disable")),

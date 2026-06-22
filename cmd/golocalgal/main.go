@@ -76,9 +76,11 @@ func main() {
 		fmt.Println("  DFLOG_ROOT:\tbase directory to resolve relative paths in DFLOG from, default directory that DFLOG is in")
 		fmt.Println("  GUI:\tforce GUI mode with `1` or CLI mode with `0`. flag takes precedence")
 		fmt.Println("  RO:\tif `1`, run in read-only mode (no saved ratings). `0` is read-write mode. flag takes precedence")
+		fmt.Println("  CORS_ORIGINS:\tenable CORS, comma-separated list of origins, `*` for all, empty to disable. default empty")
 		fmt.Println("Notes:")
 		fmt.Println("  If stdin, stdout, and stderr are not a tty, GUI mode gets chosen by default. In containers, use GUI=0 or -cli")
 		fmt.Println("  If environment variables are not specified, localgal looks for the ripme configuration file")
+		fmt.Println("  CORS is only useful if you are using a third-party UI")
 		os.Exit(0)
 	}
 

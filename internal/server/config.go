@@ -23,6 +23,7 @@ type Config struct {
 	DfLogRoot       string
 	ReadOnly        bool
 	SlowSqlMs       int
+	CorsOrigins     string
 	BuildInfo       types.BuildInfo
 	TemplatesFS     embed.FS
 	StaticFSHandler http.Handler
@@ -139,6 +140,7 @@ func GetServerConfig() Config {
 		DfLogRoot:       dfLogRoot,
 		ReadOnly:        ro,
 		SlowSqlMs:       slowSqlMs,
+		CorsOrigins:     vars.EnvCorsOrigins.GetValueDefault(""),
 		BuildInfo:       buildInfo,
 		TemplatesFS:     templatesFS,
 		StaticFSHandler: staticFSHandler,

@@ -26,6 +26,7 @@ type App struct {
 	CacheDb         *sql.DB
 	Tpl             *template.Template
 	StaticFSHandler http.Handler
+	CorsOrigins     string
 	BuildInfo       types.BuildInfo
 	MediaRoot       string
 	DfLogRoot       string
@@ -72,6 +73,7 @@ func StartServer(cfg Config) (*Controller, error) {
 		SlowSqlMs:       cfg.SlowSqlMs,
 		DfLogRoot:       cfg.DfLogRoot,
 		MediaRoot:       cfg.MediaRoot,
+		CorsOrigins:     cfg.CorsOrigins,
 		BuildInfo:       cfg.BuildInfo,
 		StaticFSHandler: cfg.StaticFSHandler,
 	}
@@ -311,6 +313,7 @@ func (app *App) newMux() http.Handler {
 
 	var wrapped http.Handler
 	wrapped = app.logMiddleware(mux)
+	wrapped = app.corsMiddleware(mux)
 	wrapped = app.tinyOptimizeDb(mux)
 	wrapped = app.reqCtx(mux)
 	return wrapped
@@ -351,6 +354,26 @@ func (app *App) logMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		dur := time.Since(start)
 		log.Printf("%s %s %v", r.Method, r.URL.Path, dur.Round(time.Millisecond))
+	})
+}
+
+func (app *App) corsMiddleware(next http.Handler) http.Handler {
+	if app.CorsOrigins == "" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", app.CorsOrigins)
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,OPTIONS")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

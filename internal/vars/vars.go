@@ -31,14 +31,15 @@ func (key Env) Key() string {
 }
 
 const (
-	EnvBind      Env = "BIND"
-	EnvSqliteDsn Env = "SQLITE_DSN"
-	EnvSlowSqlMs Env = "SLOW_SQL_MS"
-	EnvMediaRoot Env = "MEDIA_ROOT"
-	EnvDflog     Env = "DFLOG"
-	EnvDflogRoot Env = "DFLOG_ROOT"
-	EnvGui       Env = "GUI"
-	EnvRo        Env = "RO"
+	EnvBind        Env = "BIND"
+	EnvSqliteDsn   Env = "SQLITE_DSN"
+	EnvSlowSqlMs   Env = "SLOW_SQL_MS"
+	EnvMediaRoot   Env = "MEDIA_ROOT"
+	EnvDflog       Env = "DFLOG"
+	EnvDflogRoot   Env = "DFLOG_ROOT"
+	EnvGui         Env = "GUI"
+	EnvRo          Env = "RO"
+	EnvCorsOrigins Env = "CORS_ORIGINS"
 )
 
 // Global variables
