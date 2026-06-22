@@ -31,6 +31,8 @@ func ratingFilterSQL(column string, rf types.RatingFilter) (string, []any) {
 	} else if rf.Max > 0 {
 		rangeClause = fmt.Sprintf("%s <= ?", column)
 		args = []any{rf.Max}
+	} else if rf.Unrated == types.UnratedExclude {
+		return fmt.Sprintf("AND %s IS NOT NULL", column), args
 	}
 
 	if rangeClause == "" {
