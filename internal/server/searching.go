@@ -13,7 +13,7 @@ func (app *App) getSearchAlbumHits(ctx context.Context, searchQuery string, evic
 	var err error
 	var albumsTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
-	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d", searchQuery, rf.Min, rf.Max))))
+	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d|%s", searchQuery, rf.Min, rf.Max, rf.Unrated))))
 
 	// 1: Evict old entries
 	err = app.withSQL(ctx, func(ctx context.Context) error {
@@ -312,7 +312,7 @@ func (app *App) getSearchFileHits(ctx context.Context, searchQuery string, evict
 	var err error
 	var filesTotal int
 	maxCacheAgeMs := 300000 // 5 minutes
-	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d|%s", searchQuery, rf.Min, rf.Max, ft.Type))))
+	queryHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%d|%s|%s", searchQuery, rf.Min, rf.Max, rf.Unrated, ft.Type))))
 
 	// 1: Evict old entries
 	err = app.withSQL(ctx, func(ctx context.Context) error {
