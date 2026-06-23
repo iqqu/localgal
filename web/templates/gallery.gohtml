@@ -35,7 +35,7 @@
   </div>
   {{if .Files}}
     {{template "frag_pager_files.gohtml" .}}
-    {{template "frag_file_tiles.gohtml" .}}
+    {{template "frag_file_tiles.gohtml" (dict "Files" .Files "firstElId" "main-content")}}
     {{template "frag_pager_files.gohtml" .}}
   {{else}}
     <p class="muted">This gallery has no items.</p>

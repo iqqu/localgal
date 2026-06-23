@@ -11,7 +11,7 @@
   <h2>Files</h2>
   {{- if .Files }}
     {{template "frag_pager_files_search.gohtml" .}}
-    {{template "frag_file_tiles.gohtml" .}}
+    {{template "frag_file_tiles.gohtml" (dict "Files" .Files "firstElId" "main-content")}}
     {{template "frag_pager_files_search.gohtml" .}}
   {{- else }}
     <p class="muted">No files to show.</p>

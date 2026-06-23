@@ -1,8 +1,8 @@
 {{define "frag_file_tiles.gohtml"}}
   <div class="grid-container">
     <div class="masonry">
-      {{range .Files}}
-        <a class="card-link masonry-item" href="{{.HrefPage}}">
+      {{range $index, $_ := .Files}}
+        <a class="card-link masonry-item" href="{{.HrefPage}}"{{if and (eq $index 0) $.firstElId}} id="{{$.firstElId}}"{{end}}>
           <div class="card thumb joined">
             {{ if .MimeType.Valid }}
               {{ if hasPrefix .MimeType.String "video/" }}

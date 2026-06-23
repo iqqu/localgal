@@ -3,7 +3,7 @@
   <h1>Galleries</h1>
   {{- if .Albums }}
     {{template "frag_pager_galleries.gohtml" .}}
-    {{template "frag_gallery_tiles.gohtml" .}}
+    {{template "frag_gallery_tiles.gohtml" (dict "Albums" .Albums "firstElId" "main-content")}}
     {{template "frag_pager_galleries.gohtml" .}}
   {{- else }}
     <p class="muted">No galleries to show.</p>

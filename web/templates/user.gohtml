@@ -13,7 +13,7 @@
       {{- if (gt .AlbumsTotal (len .Albums)) }}
         <p class="muted">Showing {{ len .Albums }} of {{ .AlbumsTotal }} total galleries.</p>
       {{- end }}
-      {{template "frag_gallery_tiles.gohtml" .}}
+      {{template "frag_gallery_tiles.gohtml" (dict "Albums" .Albums)}}
     {{- else }}
       <p class="muted">No galleries to show.</p>
     {{- end}}
@@ -24,7 +24,7 @@
       {{- if gt .FilesTotal (len .Files) }}
         <p class="muted">Showing {{ len .Files }} of {{ .FilesTotal }} total files.</p>
       {{- end }}
-      {{template "frag_file_tiles.gohtml" .}}
+      {{template "frag_file_tiles.gohtml" (dict "Files" .Files)}}
     {{- else }}
       <p class="muted">No files to show.</p>
     {{- end}}

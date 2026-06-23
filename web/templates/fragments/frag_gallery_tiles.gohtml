@@ -1,10 +1,10 @@
 {{define "frag_gallery_tiles.gohtml"}}
   <div class="grid-container">
     <div class="grid">
-      {{range .Albums}}
+      {{range $index, $_ := .Albums}}
         <div class="grid-tile">
           <div class="card thumb joined">
-            <a class="card-link" href="{{.HrefPage}}">
+            <a class="card-link" href="{{.HrefPage}}"{{if and (eq $index 0) $.firstElId}} id="{{$.firstElId}}"{{end}}>
               {{ if .Thumb.MimeType.Valid }}
                 {{- if hasPrefix .Thumb.MimeType.String "video/" }}
                   <div class="video-container">
