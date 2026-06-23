@@ -31,7 +31,7 @@
 {{template "base_start" (dict "BasePage" .BasePage "title" $title "nav_extra_file" true "File" .File)}}
   {{if or .Prev .Next}}
     <div class="pv-rail" style="display:flex; gap: 1rem; align-items:stretch; margin: 0.75rem 0;">
-      <div style="flex:1; overflow:hidden;">
+      <div style="flex:1;">
         <div class="pv-prev" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-end;">
           {{if lt (len .Prev) 3}}<div style="flex-grow:1;"><div class="card muted" style="text-align:center;">Start</div></div>{{end}}
           {{range .Prev}}
@@ -45,7 +45,7 @@
         {{end}}
         <div>&larr;&nbsp;Browse&nbsp;&rarr;</div>
       </div>
-      <div style="flex:1; overflow:hidden;">
+      <div style="flex:1;">
         <div class="pv-next" style="display:flex; flex-wrap:nowrap; gap:0.5rem; justify-content:flex-start;">
           {{range .Next}}
             {{template "frag_rail_thumbnail.gohtml" (dict "item" . "title" "Next")}}
