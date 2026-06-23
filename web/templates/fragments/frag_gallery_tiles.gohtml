@@ -8,7 +8,7 @@
               {{ if .Thumb.MimeType.Valid }}
                 {{- if hasPrefix .Thumb.MimeType.String "video/" }}
                   <div class="video-container">
-                    <video preload="metadata" src="{{.Thumb.HrefMedia}}" disablePictureInPicture="true" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"></video>
+                    <video preload="metadata" src="{{.Thumb.HrefMedia}}" disablePictureInPicture="true" aria-label="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}" tabindex="-1"></video>
                   </div>
                 {{- else }}{{- /* assume image */ -}}
                 <img src="{{.Thumb.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else}}{{.Gid}}{{end}}"/>

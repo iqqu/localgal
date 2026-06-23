@@ -7,7 +7,7 @@
             {{ if .MimeType.Valid }}
               {{ if hasPrefix .MimeType.String "video/" }}
                 <div class="video-container">
-                  <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true"></video>
+                  <video preload="metadata" src="{{.HrefMedia}}" disablePictureInPicture="true" tabindex="-1"></video>
                 </div>
               {{ else }}{{/* assume image */}}
               <img src="{{.HrefMedia}}" alt="{{if .Title.Valid}}{{.Title.String}}{{else if .Urlid.Valid}}{{.Urlid.String}}{{else}}{{.FileId}}{{end}}">
