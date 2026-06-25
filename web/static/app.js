@@ -126,15 +126,12 @@
                 let jumpEl = document.querySelector('a#jump-to-content-link');
                 let mainContentEl = document.querySelector('a#main-content');
                 if (jumpEl && mainContentEl) {
-                    jumpEl.click();
+                    handleJump(event);
                 }
                 break;
 
             case 'k':
-                let topEl = document.querySelector('a#top');
-                if (topEl) {
-                    topEl.click();
-                }
+                handleTop();
                 break;
 
             case 'ArrowLeft':
@@ -214,6 +211,12 @@
         }
     });
 
+    function isInView(element) {
+        const r = element.getBoundingClientRect();
+        return !(r.bottom < 0 || r.top > window.innerHeight ||
+            r.right < 0 || r.left > window.innerWidth);
+    }
+
     function scrollIntoView(el, instant) {
         // smooth scrollIntoView is bugged on Chrome; it sometimes stops scrolling too soon
         // smooth only works if enabled in css; currently disabled
@@ -244,9 +247,24 @@
     }
 
     function handleJump(event) {
+        event.preventDefault();
         // It works without JS, but if JS is enabled, we can keep a clean history and update focus
-        goJump();
-        focusVidEl();
+        const imgEl = document.querySelector('img.main-content-resource');
+        const vidEl = document.querySelector('video.main-content-resource');
+        if (imgEl || vidEl) {
+            // On file pages, scroll to content so it fills the screen
+            goJump();
+            focusVidEl();
+        }
+        const mainContentAEl = document.querySelector('a#main-content[href]');
+        if (mainContentAEl) {
+            // On gallery/browse pages, no need to scroll if content is on screen
+            history.replaceState(null, null, '#main-content');
+            mainContentAEl.focus({ preventScroll: true });
+            if (!isInView(mainContentAEl)) {
+                scrollIntoView(mainContentAEl);
+            }
+        }
     }
 
     function goTop() {
@@ -258,6 +276,11 @@
         const topEl = document.querySelector('a#top');
         if (topEl) {
             scrollIntoView(topEl);
+            // Focus can only be set on visible elements
+            const previousVisibility = topEl.style.visibility;
+            topEl.style.visibility = '';
+            topEl.focus();
+            topEl.style.visibility = previousVisibility;
         }
     }
 
@@ -320,11 +343,11 @@
     function setupAutoJumpChangeListener() {
         const checkbox = document.getElementById('auto-jump-checkbox');
         // Save state when checkbox changes
-        checkbox.addEventListener('change', function () {
+        checkbox.addEventListener('change', function (event) {
             localStorage.setItem('autoJumpChecked', JSON.stringify(this.checked));
             const mainContentEl = document.querySelector('#main-content');
             if (this.checked && mainContentEl && /^(#|#main-content|)$/.test(window.location.hash)) {
-                handleJump();
+                handleJump(event);
             }
         });
     }
@@ -500,6 +523,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         const jumpEl = document.querySelector('a#jump-to-content-link');
         jumpEl.addEventListener('click', handleJump);
+        const jumpFirstEl = document.querySelector('a.jump-to-content-first-link');
+        if (jumpFirstEl) {
+            jumpFirstEl.addEventListener('click', handleJump);
+        }
         const topEl = document.querySelector('a#top');
         topEl.addEventListener('click', handleTop);
         const backEls = document.querySelectorAll('a.onclick-back');
